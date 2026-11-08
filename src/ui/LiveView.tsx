@@ -1,12 +1,15 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { TILE_HELP } from './guideText';
 import { useApp } from './AppContext';
 import { NumberStepper } from './NumberStepper';
 import { PolarChart, sailColor } from './PolarChart';
-import { useGps, useStoredState, useWakeLock } from './hooks';
+import { useStoredState, useWakeLock } from './hooks';
+import { useNav } from './NavContext';
+import { NextMarkCard } from './NextMarkCard';
 import { computeLive } from '../performance/targets';
 import { sailOutlook, selectableSails } from '../performance/sails';
 import { adviceFor } from '../performance/advice';
-import { magToTrue, trueToMag, twaFromTwd } from '../performance/angles';
+import { magToTrue, trueToMag, twaFromTwd, twdFromTwa } from '../performance/angles';
 import { formatDM } from '../nav/geo';
 
 interface LiveState {
@@ -19,7 +22,6 @@ interface LiveState {
   heading: number | null;
   bsp: number | null;
   sailId?: string;
-  gps: boolean;
   showPolar: boolean;
 }
 
@@ -32,7 +34,6 @@ const INITIAL: LiveState = {
   headingSource: 'gps',
   heading: null,
   bsp: null,
-  gps: true,
   showPolar: false,
 };
 
@@ -53,8 +54,10 @@ export function LiveView() {
   const { activeBoat: boat, settings } = useApp();
   const [s, setS] = useStoredState<LiveState>('live-state', INITIAL);
   const set = (patch: Partial<LiveState>) => setS((p) => ({ ...p, ...patch }));
-  const gps = useGps(s.gps);
+  const nav = useNav();
+  const gps = nav.gps;
   const wake = useWakeLock(settings.keepAwake);
+  const [help, setHelp] = useState<string>();
 
   // Heading (true) used for TWD → TWA.
   const headingTrue =
@@ -93,6 +96,15 @@ export function LiveView() {
     [result, outlook, s.sailId],
   );
 
+  // Observed true wind for re-routing: TWD typed in, or TWA + GPS course.
+  const observedTwd =
+    s.windInput === 'twd'
+      ? twdTrue
+      : gps.fix?.cog !== undefined && signedTwa !== undefined
+        ? twdFromTwa(signedTwa, gps.fix.cog)
+        : undefined;
+  const observed = s.tws !== null && observedTwd !== undefined ? { tws: s.tws, twd: observedTwd } : undefined;
+
   if (!boat) return <p>Δεν υπάρχει σκάφος.</p>;
   if (!boat.polar)
     return <p className="card">Το σκάφος «{boat.name}» δεν έχει polars. Επίλεξε άλλο σκάφος ή πρόσθεσε polars στο προφίλ.</p>;
@@ -103,7 +115,14 @@ export function LiveView() {
 
   return (
     <div className="live">
-      <section className="results" aria-live="polite">
+      <section
+        className="results"
+        aria-live="polite"
+        onClick={(e) => {
+          const label = (e.target as HTMLElement).closest('.tile')?.querySelector('.tile-label')?.textContent ?? '';
+          setHelp((h) => (h === label ? undefined : label));
+        }}
+      >
         <div className={`tile hero ${pctClass(result?.pctTarget)}`}>
           <div className="tile-label">% target</div>
           <div className="tile-value">{pct(result?.pctTarget)}</div>
@@ -145,6 +164,12 @@ export function LiveView() {
         </div>
       </section>
 
+      {help && TILE_HELP[help] && (
+        <p className="explain" onClick={() => setHelp(undefined)}>
+          <strong>{help}:</strong> {TILE_HELP[help]}
+        </p>
+      )}
+
       {advice.length > 0 && (
         <ul className="advice">
           {advice.map((a) => (
@@ -154,6 +179,8 @@ export function LiveView() {
           ))}
         </ul>
       )}
+
+      <NextMarkCard observed={observed} />
 
       <section className="inputs">
         <NumberStepper label="TWS" unit="kt" value={s.tws} onChange={(v) => set({ tws: v })} small={1} big={3} min={0} max={60} decimals={0} />
@@ -238,7 +265,7 @@ export function LiveView() {
         <div className="gps-head">
           <strong>GPS</strong>
           <label className="switch">
-            <input type="checkbox" checked={s.gps} onChange={(e) => set({ gps: e.target.checked })} /> ενεργό
+            <input type="checkbox" checked={nav.gpsEnabled} onChange={(e) => nav.setGpsEnabled(e.target.checked)} /> ενεργό
           </label>
         </div>
         {gps.fix ? (
@@ -251,7 +278,7 @@ export function LiveView() {
             <span className="muted">{new Date(gps.fix.t).toLocaleTimeString('el-GR')}</span>
           </div>
         ) : (
-          <p className="muted">{gps.message ?? (s.gps ? 'Αναμονή σήματος…' : 'Ανενεργό')}</p>
+          <p className="muted">{gps.message ?? (nav.gpsEnabled ? 'Αναμονή σήματος…' : 'Ανενεργό')}</p>
         )}
         {settings.keepAwake && <p className="muted small">Οθόνη πάντα αναμμένη: {wake ? 'ναι' : 'μη διαθέσιμο'}</p>}
       </section>

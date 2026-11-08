@@ -668,3 +668,273 @@ table.data.edit select {
   background: var(--bg);
   padding: 8px 0;
 }
+
+/* ---- Phase 2 ---- */
+.top-btn {
+  color: var(--accent-fg);
+  font-size: 1.3rem;
+  font-weight: 800;
+  min-width: 44px;
+  min-height: 44px;
+}
+.top-btn.on {
+  background: color-mix(in srgb, var(--accent-fg) 20%, transparent);
+  border-radius: 10px;
+}
+.explain {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 12%, var(--card));
+  border: 2px solid var(--accent);
+  font-size: 0.95rem;
+}
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.row select {
+  flex: 1;
+  min-width: 0;
+}
+label.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-weight: 600;
+  margin-top: 8px;
+}
+.big-btn {
+  width: 100%;
+  min-height: 56px;
+  font-size: 1.1rem;
+  margin-bottom: 12px;
+}
+details > summary {
+  cursor: pointer;
+  font-weight: 700;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+}
+.toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+.toggles label.check {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+
+/* Plan layout: map on top (phone), side by side (desktop) */
+.plan {
+  display: grid;
+  gap: 12px;
+}
+.app.tab-map .content {
+  max-width: none;
+}
+@media (min-width: 900px) {
+  .plan {
+    grid-template-columns: minmax(0, 1.6fr) minmax(340px, 1fr);
+    align-items: start;
+  }
+  .plan-map {
+    position: sticky;
+    top: 70px;
+  }
+  .plan-map .map {
+    height: calc(100dvh - 210px);
+  }
+}
+.map-wrap {
+  position: relative;
+}
+.map {
+  width: 100%;
+  height: 55dvh;
+  min-height: 300px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #cfe3f3;
+}
+.map-wrap.adding .map {
+  outline: 4px solid var(--accent);
+}
+.map-wrap.adding canvas {
+  cursor: crosshair;
+}
+.map-hint {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--accent);
+  color: var(--accent-fg);
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  pointer-events: none;
+}
+.time-slider {
+  margin: 8px 0 0;
+  padding: 8px 12px;
+}
+.time-slider input {
+  width: 100%;
+  min-height: 32px;
+  border: 0;
+  padding: 0;
+}
+.mark-pin {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: grab;
+}
+.mark-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #f59e0b;
+  color: #000;
+  border: 3px solid #000;
+  font-weight: 800;
+  font-size: 14px;
+}
+.mark-pin.start .mark-dot {
+  background: #16a34a;
+  color: #fff;
+}
+.mark-pin.finish .mark-dot {
+  background: #000;
+  color: #fff;
+  border-color: #fff;
+}
+.mark-pin.next .mark-dot {
+  box-shadow: 0 0 0 4px #e11d48;
+}
+.mark-label {
+  background: rgba(255, 255, 255, 0.9);
+  color: #000;
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+ol.marks {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 0;
+  display: grid;
+  gap: 6px;
+}
+ol.marks li {
+  display: grid;
+  grid-template-columns: 30px 1fr auto;
+  grid-template-areas: 'idx name btns' '. coords coords';
+  gap: 2px 6px;
+  align-items: center;
+}
+ol.marks .mark-idx {
+  grid-area: idx;
+  font-weight: 800;
+  text-align: center;
+}
+ol.marks input {
+  grid-area: name;
+  min-width: 0;
+}
+ol.marks .coords {
+  grid-area: coords;
+}
+ol.marks .nowrap {
+  grid-area: btns;
+}
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.big-num {
+  font-size: 1.35rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.leg-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 12px;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 6px;
+}
+.chip.static {
+  min-height: 36px;
+  font-size: 0.95rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Next mark */
+.next-mark {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+.nm-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.nm-head .icon-btn {
+  min-width: 48px;
+  min-height: 48px;
+  font-size: 1.2rem;
+  border: 2px solid var(--line);
+  border-radius: 10px;
+}
+.nm-title {
+  flex: 1;
+  text-align: center;
+  font-size: 1.15rem;
+}
+.nm-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+@media (max-width: 420px) {
+  .nm-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.nm-val {
+  font-size: 1.4rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.nm-route {
+  border-top: 2px solid var(--line);
+  padding-top: 8px;
+}
+
+/* Guide */
+.guide details ul {
+  padding-left: 20px;
+  margin: 8px 0 0;
+}
+.guide details li {
+  margin-bottom: 8px;
+  line-height: 1.45;
+}

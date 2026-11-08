@@ -11,6 +11,7 @@ export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? 'dev'),
   },
+  worker: { format: 'es' },
   plugins: [
     react(),
     VitePWA({
@@ -34,7 +35,27 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        globPatterns: ['**/*.{js,mjs,css,html,svg,png,woff2}'],
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+        // Map tiles, styles and fonts are cached as they are viewed, so areas
+        // seen once (e.g. while planning at home) work offline at sea.
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/tiles\.openfreemap\.org\/styles\//,
+            handler: 'StaleWhileRevalidate',
+            options: { cacheName: 'map-styles' },
+          },
+          {
+            urlPattern: /^https:\/\/tiles\.openfreemap\.org\//,
+            handler: 'CacheFirst',
+            options: { cacheName: 'map-tiles', expiration: { maxEntries: 4000, maxAgeSeconds: 60 * 86400 } },
+          },
+          {
+            urlPattern: /^https:\/\/tiles\.openseamap\.org\//,
+            handler: 'CacheFirst',
+            options: { cacheName: 'seamarks', expiration: { maxEntries: 3000, maxAgeSeconds: 60 * 86400 } },
+          },
+        ],
       },
     }),
   ],

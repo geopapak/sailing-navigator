@@ -1,18 +1,28 @@
 import Dexie, { type Table } from 'dexie';
 import type { BoatProfile } from './types';
 import { TRE_IRENE } from './treIrene';
+import type { Mark } from '../routing/isochrones';
 
 export interface KV {
   key: string;
   value: unknown;
 }
 
+export interface Course {
+  id: string;
+  name: string;
+  marks: Mark[];
+  updatedAt: number;
+}
+
 class NavDB extends Dexie {
   boats!: Table<BoatProfile, string>;
   kv!: Table<KV, string>;
+  courses!: Table<Course, string>;
   constructor() {
     super('sailing-navigator');
     this.version(1).stores({ boats: 'id, name', kv: 'key' });
+    this.version(2).stores({ boats: 'id, name', kv: 'key', courses: 'id, name' });
   }
 }
 
@@ -35,6 +45,18 @@ export async function saveBoat(b: BoatProfile): Promise<void> {
 
 export async function deleteBoat(id: string): Promise<void> {
   await db.boats.delete(id);
+}
+
+export async function listCourses(): Promise<Course[]> {
+  return (await db.courses.toArray()).sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+export async function saveCourse(c: Course): Promise<void> {
+  await db.courses.put({ ...c, updatedAt: Date.now() });
+}
+
+export async function deleteCourse(id: string): Promise<void> {
+  await db.courses.delete(id);
 }
 
 export async function getKV<T>(key: string, fallback: T): Promise<T> {
