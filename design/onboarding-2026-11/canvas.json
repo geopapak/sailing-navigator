@@ -1,0 +1,45 @@
+{
+  "v": 3,
+  "createdOnFiles": { "v": 1, "at": "2026-11-09T20:01:35Z" },
+  "title": "Sailing Navigator — σύνδεση & σκάφη",
+  "launch": { "view": "canvas" },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": { "x": 0, "y": 300, "w": 390, "h": 844, "title": "1 · Σύνδεση", "is_interactive": true },
+    "Signup.dc.html": { "x": 470, "y": 300, "w": 390, "h": 844, "title": "2 · Εγγραφή + GDPR", "is_interactive": true },
+    "Terms.dc.html": { "x": 940, "y": 300, "w": 390, "h": 844, "title": "3 · Όροι χρήσης", "is_interactive": true },
+    "Privacy.dc.html": { "x": 1410, "y": 300, "w": 390, "h": 844, "title": "4 · Πολιτική απορρήτου", "is_interactive": true },
+    "Forgot.dc.html": { "x": 0, "y": 1564, "w": 390, "h": 844, "title": "5 · Ξέχασα τον κωδικό", "is_interactive": true },
+    "TempPassword.dc.html": { "x": 470, "y": 1564, "w": 390, "h": 844, "title": "6 · Νέος κωδικός (μετά από προσωρινό)", "is_interactive": true },
+    "AcceptTerms.dc.html": { "x": 940, "y": 1564, "w": 390, "h": 844, "title": "7 · Αποδοχή όρων (υπάρχοντες χρήστες)", "is_interactive": true },
+    "BoatsEmpty.dc.html": { "x": 0, "y": 2828, "w": 390, "h": 844, "title": "8 · Τα σκάφη μου (κενό)", "is_interactive": true },
+    "PdfUpload.dc.html": { "x": 470, "y": 2828, "w": 390, "h": 844, "title": "9 · Πιστοποιητικό PDF", "is_interactive": true },
+    "Reading.dc.html": { "x": 940, "y": 2828, "w": 390, "h": 844, "title": "10 · Ανάγνωση με AI", "is_interactive": true },
+    "Review.dc.html": { "x": 1410, "y": 2828, "w": 390, "h": 844, "title": "11 · Έλεγχος στοιχείων", "is_interactive": true },
+    "BoatsList.dc.html": { "x": 1880, "y": 2828, "w": 390, "h": 844, "title": "12 · Τα σκάφη μου", "is_interactive": true },
+    "Account.dc.html": { "x": 0, "y": 4092, "w": 390, "h": 844, "title": "13 · Λογαριασμός", "is_interactive": true }
+  },
+  "order": [
+    "Main.dc.html",
+    "Signup.dc.html",
+    "Terms.dc.html",
+    "Privacy.dc.html",
+    "Forgot.dc.html",
+    "TempPassword.dc.html",
+    "AcceptTerms.dc.html",
+    "BoatsEmpty.dc.html",
+    "PdfUpload.dc.html",
+    "Reading.dc.html",
+    "Review.dc.html",
+    "BoatsList.dc.html",
+    "Account.dc.html"
+  ],
+  "notes": {
+    "t_auth": { "x": 0, "y": 40, "text": "Είσοδος: σύνδεση, εγγραφή, όροι", "kind": "title1", "maxW": 1800 },
+    "t_pass": { "x": 0, "y": 1304, "text": "Κωδικός και αποδοχή όρων", "kind": "title1", "maxW": 1330 },
+    "t_boats": { "x": 0, "y": 2568, "text": "Σκάφη: προσθήκη από PDF με AI", "kind": "title1", "maxW": 2270 },
+    "t_acct": { "x": 0, "y": 3832, "text": "Λογαριασμός", "kind": "title1", "maxW": 1200 },
+    "n_play": { "x": -420, "y": 300, "text": "Πάτα Play σε οποιαδήποτε οθόνη: τα κουμπιά σε πάνε στην επόμενη. Γράψε σχόλια πάνω στις οθόνες για αλλαγές.", "w": 320, "fill": "orange" }
+  },
+  "designSystems": []
+}

@@ -1,0 +1,148 @@
+import { useEffect, useState } from 'react';
+import { accountApi, type ServerConfig } from '../sync/api';
+
+/** Version of the texts below; must match TERMS_VERSION on the server. */
+export const TERMS_VERSION = 1;
+export const TERMS_DATE = '10/11/2026';
+
+const KEY = 'server-config';
+
+/** Controller name/email for the policy, from the server (cached for offline). */
+export function useServerConfig(server: string): ServerConfig | undefined {
+  const [cfg, setCfg] = useState<ServerConfig | undefined>(() => {
+    try {
+      const raw = localStorage.getItem(KEY);
+      return raw ? (JSON.parse(raw) as ServerConfig) : undefined;
+    } catch {
+      return undefined;
+    }
+  });
+  useEffect(() => {
+    accountApi
+      .config(server)
+      .then((c) => {
+        setCfg(c);
+        try {
+          localStorage.setItem(KEY, JSON.stringify(c));
+        } catch {
+          /* ignore */
+        }
+      })
+      .catch(() => undefined);
+  }, [server]);
+  return cfg;
+}
+
+function Controller({ cfg }: { cfg?: ServerConfig }) {
+  const name = cfg?.controller.name || 'ο διαχειριστής της εφαρμογής';
+  const email = cfg?.controller.email;
+  return (
+    <>
+      {name}
+      {email && (
+        <>
+          , <a href={`mailto:${email}`}>{email}</a>
+        </>
+      )}
+    </>
+  );
+}
+
+export function TermsText({ cfg, onPrivacy }: { cfg?: ServerConfig; onPrivacy?: () => void }) {
+  return (
+    <div className="legal">
+      <p className="muted small">Έκδοση {TERMS_VERSION} · ισχύουν από {TERMS_DATE}</p>
+      <p>
+        <b>1. Η υπηρεσία.</b> Το Sailing Navigator είναι βοηθητικό εργαλείο για ιστιοπλοΐα και αγώνες ORC. Δίνει υπολογισμούς
+        (targets, διαδρομές, διορθωμένους χρόνους) και συμβουλές από AI.
+      </p>
+      <p>
+        <b>2. Όχι για ναυσιπλοΐα.</b> Δεν αντικαθιστά ναυτικούς χάρτες, όργανα, επίσημες προγνώσεις και την κρίση του
+        κυβερνήτη. Η ακτογραμμή δεν δείχνει ξέρες και βράχους. Η ευθύνη για την ασφάλεια του σκάφους και του πληρώματος είναι
+        πάντα του κυβερνήτη.
+      </p>
+      <p>
+        <b>3. Λογαριασμός.</b> Δίνεις αληθινό email και κρατάς τον κωδικό σου μυστικό. Ένας λογαριασμός ανά άτομο.
+      </p>
+      <p>
+        <b>4. Σύμβουλος AI.</b> Οι απαντήσεις και τα στοιχεία που βγάζει από πιστοποιητικά μπορεί να έχουν λάθη· έλεγξέ τα. Η
+        χρήση του AI έχει όρια που ορίζει ο διαχειριστής.
+      </p>
+      <p>
+        <b>5. Τα δεδομένα σου.</b> Σκάφη, διαδρομές και πιστοποιητικά που ανεβάζεις είναι δικά σου. Μας δίνεις άδεια να τα
+        αποθηκεύουμε και να τα επεξεργαζόμαστε μόνο για να λειτουργεί η εφαρμογή. Δες την{' '}
+        {onPrivacy ? (
+          <button type="button" className="link inline" onClick={onPrivacy}>
+            Πολιτική απορρήτου
+          </button>
+        ) : (
+          'Πολιτική απορρήτου'
+        )}
+        .
+      </p>
+      <p>
+        <b>6. Σωστή χρήση.</b> Όχι κατάχρηση, παραβίαση ή αυτοματοποιημένα αιτήματα. Μπορούμε να αναστείλουμε λογαριασμό που
+        παραβιάζει τους όρους.
+      </p>
+      <p>
+        <b>7. Διαθεσιμότητα και ευθύνη.</b> Η υπηρεσία δίνεται «ως έχει», χωρίς εγγύηση ότι θα είναι πάντα διαθέσιμη ή χωρίς
+        λάθη. Στον βαθμό που επιτρέπει ο νόμος, δεν ευθυνόμαστε για ζημίες από τη χρήση της.
+      </p>
+      <p>
+        <b>8. Διαγραφή.</b> Μπορείς να διαγράψεις τον λογαριασμό σου όποτε θες από τις Ρυθμίσεις → Λογαριασμός.
+      </p>
+      <p>
+        <b>9. Αλλαγές.</b> Αν αλλάξουν οι όροι, θα σου ζητηθεί να τους αποδεχτείς ξανά.
+      </p>
+      <p>
+        <b>10. Δίκαιο και επικοινωνία.</b> Ελληνικό δίκαιο. Επικοινωνία: <Controller cfg={cfg} />.
+      </p>
+    </div>
+  );
+}
+
+export function PrivacyText({ cfg }: { cfg?: ServerConfig }) {
+  return (
+    <div className="legal">
+      <p className="muted small">Έκδοση {TERMS_VERSION} · GDPR (Κανονισμός ΕΕ 2016/679)</p>
+      <p>
+        <b>Υπεύθυνος επεξεργασίας:</b> <Controller cfg={cfg} />.
+      </p>
+      <p>
+        <b>Τι κρατάμε:</b> email, όνομα, κωδικό (μόνο κρυπτογραφημένο hash), σκάφη, διαδρομές, πότε αποδέχτηκες τους όρους,
+        πόσες ερωτήσεις AI και αναγνώσεις πιστοποιητικών έκανες.
+      </p>
+      <p>
+        <b>Τι δεν κρατάμε:</b> τη θέση GPS (μένει στη συσκευή, εκτός αν τη στείλεις στον σύμβουλο με μια ερώτηση) και το αρχείο
+        του πιστοποιητικού (διαβάζεται και δεν αποθηκεύεται· μένουν μόνο τα στοιχεία του σκάφους).
+      </p>
+      <p>
+        <b>Γιατί:</b> για να λειτουργεί ο λογαριασμός και ο συγχρονισμός (εκτέλεση σύμβασης) και για τον σύμβουλο AI
+        (συναίνεση, που μπορείς να ανακαλέσεις διαγράφοντας τον λογαριασμό ή γράφοντάς μας).
+      </p>
+      <p>
+        <b>Σε ποιους πηγαίνουν:</b> Cloudflare (φιλοξενία και βάση δεδομένων). Anthropic (Claude API, ΗΠΑ) μόνο όταν ρωτάς τον
+        σύμβουλο ή ανεβάζεις πιστοποιητικό, με τυποποιημένες συμβατικές ρήτρες. Open-Meteo και Windy παίρνουν μόνο
+        συντεταγμένες, όχι στοιχεία σου.
+      </p>
+      <p>
+        <b>Πόσο:</b> όσο υπάρχει ο λογαριασμός. Με τη διαγραφή σβήνονται όλα από τον server.
+      </p>
+      <p>
+        <b>Τα δικαιώματά σου:</b> πρόσβαση, διόρθωση, διαγραφή, φορητότητα («Κατέβασε τα δεδομένα μου» στις Ρυθμίσεις →
+        Λογαριασμός), περιορισμός, εναντίωση, ανάκληση συναίνεσης. Για οποιοδήποτε αίτημα: <Controller cfg={cfg} />.
+      </p>
+      <p>
+        <b>Καταγγελία:</b> Αρχή Προστασίας Δεδομένων Προσωπικού Χαρακτήρα,{' '}
+        <a href="https://www.dpa.gr" target="_blank" rel="noreferrer noopener">
+          www.dpa.gr
+        </a>
+        .
+      </p>
+      <p>
+        <b>Cookies:</b> δεν χρησιμοποιούμε cookies διαφήμισης ή παρακολούθησης· μόνο τοπική αποθήκευση για να λειτουργεί η
+        εφαρμογή χωρίς internet.
+      </p>
+    </div>
+  );
+}

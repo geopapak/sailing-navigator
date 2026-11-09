@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<title>Λογαριασμός</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#0b2a4a}a:hover{color:#163f6b}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #ffffff; color: #000000; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', sans-serif; display: flex; flex-direction: column">
+<div style="display: flex; align-items: center; gap: 6px; height: 56px; padding: 0 8px; background: #0b2a4a; color: #ffffff">
+<a href="BoatsList.dc.html" aria-label="Πίσω" style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; color: #ffffff">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg></a>
+<span style="font-size: 18px; font-weight: 700">Λογαριασμός</span>
+</div>
+<div style="flex: 1; padding: 16px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto">
+<div style="display: flex; gap: 12px; align-items: center">
+<div style="display: flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: 26px; background: #e8eef5; color: #0b2a4a; font-size: 20px; font-weight: 700">Γ</div>
+<div style="display: flex; flex-direction: column"><span style="font-size: 18px; font-weight: 700">Γιώργος</span><span style="font-size: 14px; color: #4b5563">name@example.gr</span></div>
+</div>
+<div style="border: 1px solid #d1d5db; border-radius: 12px; display: flex; flex-direction: column">
+<div style="display: flex; justify-content: space-between; align-items: center; min-height: 50px; padding: 0 14px; border-bottom: 1px solid #e5e7eb; font-size: 15px"><span>Συγχρονισμός</span><span style="color: #047857; font-weight: 600">OK · 21:04</span></div>
+<div style="display: flex; justify-content: space-between; align-items: center; min-height: 50px; padding: 0 14px; border-bottom: 1px solid #e5e7eb; font-size: 15px"><span>Σύμβουλος AI</span><span style="font-weight: 600">12 / 100 τον μήνα</span></div>
+<div style="display: flex; justify-content: space-between; align-items: center; min-height: 50px; padding: 0 14px; font-size: 15px"><span>Αναγνώσεις PDF</span><span style="font-weight: 600">2 από 3 έμειναν</span></div>
+</div>
+<h2 style="margin: 6px 0 0; font-size: 15px; font-weight: 700; color: #374151">Ασφάλεια</h2>
+<div style="display: flex; flex-direction: column; border: 1px solid #d1d5db; border-radius: 12px">
+<span style="display: flex; justify-content: space-between; align-items: center; min-height: 50px; padding: 0 14px; border-bottom: 1px solid #e5e7eb; font-size: 15px">Αλλαγή κωδικού<span style="color: #6b7280">›</span></span>
+<a href="Main.dc.html" style="display: flex; justify-content: space-between; align-items: center; min-height: 50px; padding: 0 14px; font-size: 15px; text-decoration: none; color: #000000">Αποσύνδεση<span style="color: #6b7280">›</span></a>
+</div>
+<h2 style="margin: 6px 0 0; font-size: 15px; font-weight: 700; color: #374151">Τα δεδομένα μου</h2>
+<div style="display: flex; flex-direction: column; border: 1px solid #d1d5db; border-radius: 12px">
+<span style="display: flex; justify-content: space-between; align-items: center; min-height: 56px; padding: 0 14px; border-bottom: 1px solid #e5e7eb; font-size: 15px"><span style="display: flex; flex-direction: column"><span>Κατέβασε τα δεδομένα μου</span><span style="font-size: 12px; color: #4b5563">Όλα σε ένα αρχείο JSON</span></span><span style="color: #6b7280">›</span></span>
+<a href="Terms.dc.html" style="display: flex; justify-content: space-between; align-items: center; min-height: 50px; padding: 0 14px; border-bottom: 1px solid #e5e7eb; font-size: 15px; text-decoration: none; color: #000000">Όροι χρήσης (αποδεκτοί 09/11/2026)<span style="color: #6b7280">›</span></a>
+<a href="Privacy.dc.html" style="display: flex; justify-content: space-between; align-items: center; min-height: 50px; padding: 0 14px; font-size: 15px; text-decoration: none; color: #000000">Πολιτική απορρήτου<span style="color: #6b7280">›</span></a>
+</div>
+<sc-if value="{{closed}}" hint-placeholder-val="{{true}}">
+<button type="button" onClick="{{ask}}" style="height: 50px; border: 2px solid #b91c1c; border-radius: 12px; background: #ffffff; color: #b91c1c; font-size: 16px; font-weight: 700; font-family: inherit; cursor: pointer; margin-top: 4px">Διαγραφή λογαριασμού</button>
+</sc-if>
+<sc-if value="{{asking}}" hint-placeholder-val="{{false}}">
+<div style="border: 2px solid #b91c1c; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px; background: #fef2f2">
+<span style="font-size: 16px; font-weight: 700; color: #7f1d1d">Οριστική διαγραφή;</span>
+<span style="font-size: 14px; line-height: 1.45; color: #7f1d1d">Σβήνονται ο λογαριασμός, τα σκάφη και οι διαδρομές από τον server. Δεν αναιρείται. Κατέβασε πρώτα τα δεδομένα σου αν τα θες.</span>
+<div style="display: flex; gap: 8px">
+<button type="button" onClick="{{cancel}}" style="flex: 1; height: 46px; border: 2px solid #9ca3af; border-radius: 10px; background: #ffffff; font-size: 15px; font-weight: 700; font-family: inherit; cursor: pointer">Άκυρο</button>
+<a href="Main.dc.html" style="flex: 1; display: flex; align-items: center; justify-content: center; height: 46px; border-radius: 10px; background: #b91c1c; color: #ffffff; font-size: 15px; font-weight: 700; text-decoration: none">Διαγραφή</a>
+</div>
+</div>
+</sc-if>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = { asking: false };
+}
+renderVals() {
+return {
+asking: this.state.asking,
+closed: !this.state.asking,
+ask: () => this.setState({ asking: true }),
+cancel: () => this.setState({ asking: false })
+};
+}
+}
+</script>
+</body>
+</html>

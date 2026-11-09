@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<title>Έλεγχος στοιχείων</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#0b2a4a}a:hover{color:#163f6b}
+input{font:inherit}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #ffffff; color: #000000; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', sans-serif; display: flex; flex-direction: column">
+<div style="padding: 16px 20px 10px; border-bottom: 1px solid #e5e7eb">
+<a href="PdfUpload.dc.html" style="display: inline-flex; align-items: center; gap: 6px; font-size: 16px; font-weight: 600; text-decoration: none; min-height: 40px">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>Άλλο αρχείο</a>
+<h1 style="margin: 4px 0 6px; font-size: 24px; font-weight: 700">Έλεγξε τα στοιχεία</h1>
+<sc-if value="{{hasFlags}}" hint-placeholder-val="{{true}}">
+<p style="margin: 0; font-size: 14px; line-height: 1.4; color: #92400e; background: #fef3c7; border-radius: 8px; padding: 8px 10px"><b>{{flagCount}} τιμές για έλεγχο.</b> Βρέθηκαν 46 τιμές· οι κίτρινες ήταν δυσανάγνωστες ή δεν στέκουν.</p>
+</sc-if>
+<sc-if value="{{noFlags}}" hint-placeholder-val="{{false}}">
+<p style="margin: 0; font-size: 14px; color: #065f46; background: #ecfdf5; border-radius: 8px; padding: 8px 10px"><b>Όλα ελέγχθηκαν.</b> Μπορείς να αποθηκεύσεις.</p>
+</sc-if>
+</div>
+<div style="flex: 1; overflow-y: auto; padding: 12px 20px; display: flex; flex-direction: column; gap: 10px">
+<h2 style="margin: 4px 0 0; font-size: 15px; font-weight: 700; color: #374151">Σκάφος</h2>
+<label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; color: #4b5563">Όνομα<input type="text" value="TRE IRENE" style="height: 46px; border: 2px solid #9ca3af; border-radius: 10px; padding: 0 12px; font-size: 16px; color: #000000"></label>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+<label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; color: #4b5563">Αριθμός πανιού<input type="text" value="GRE-4711" style="height: 46px; border: 2px solid #9ca3af; border-radius: 10px; padding: 0 12px; font-size: 16px; color: #000000"></label>
+<label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; color: #4b5563">GPH (s/NM)<input type="text" value="617.4" style="height: 46px; border: 2px solid #9ca3af; border-radius: 10px; padding: 0 12px; font-size: 16px; color: #000000"></label>
+</div>
+<label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; color: #4b5563">Σχέδιο<input type="text" value="First 45 SD" style="height: 46px; border: 2px solid #9ca3af; border-radius: 10px; padding: 0 12px; font-size: 16px; color: #000000"></label>
+<div style="display: flex; flex-direction: column; gap: 4px; padding: 8px; border-radius: 10px; background: {{expiryBg}}; border: 2px solid {{expiryBorder}}">
+<label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; color: #4b5563">Λήξη πιστοποιητικού<input type="text" value="31/12/2026" style="height: 46px; border: 2px solid #9ca3af; border-radius: 10px; padding: 0 12px; font-size: 16px; color: #000000; background: #ffffff"></label>
+<sc-if value="{{expiryFlag}}" hint-placeholder-val="{{true}}">
+<div style="display: flex; gap: 8px; align-items: center; justify-content: space-between"><span style="font-size: 13px; color: #92400e">Η ημερομηνία ήταν θολή στο PDF</span><button type="button" onClick="{{okExpiry}}" style="height: 36px; border: 1px solid #92400e; border-radius: 8px; background: #ffffff; color: #92400e; font-size: 14px; font-weight: 700; font-family: inherit; padding: 0 12px; cursor: pointer">Σωστό</button></div>
+</sc-if>
+</div>
+<h2 style="margin: 10px 0 0; font-size: 15px; font-weight: 700; color: #374151">Polars (kt)</h2>
+<div style="overflow-x: auto; border: 1px solid #d1d5db; border-radius: 10px">
+<table style="border-collapse: collapse; font-size: 13px; width: 100%; text-align: right">
+<thead><tr style="background: #f3f4f6"><th style="padding: 6px 8px; text-align: left">TWS</th><th style="padding: 6px 8px">6</th><th style="padding: 6px 8px">8</th><th style="padding: 6px 8px">10</th><th style="padding: 6px 8px">12</th><th style="padding: 6px 8px">14</th></tr></thead>
+<tbody>
+<tr><td style="padding: 6px 8px; text-align: left; border-top: 1px solid #e5e7eb">Γωνία όρτσας</td><td style="padding: 6px 8px; border-top: 1px solid #e5e7eb; background: {{beatBg}}; font-weight: {{beatWeight}}">43.9</td><td style="padding: 6px 8px; border-top: 1px solid #e5e7eb">41.6</td><td style="padding: 6px 8px; border-top: 1px solid #e5e7eb">39.4</td><td style="padding: 6px 8px; border-top: 1px solid #e5e7eb">38.2</td><td style="padding: 6px 8px; border-top: 1px solid #e5e7eb">37.6</td></tr>
+<tr><td style="padding: 6px 8px; text-align: left; border-top: 1px solid #e5e7eb">VMG όρτσας</td><td style="padding: 6px 8px; border-top: 1px solid #e5e7eb">4.21</td><td style="padding: 6px 8px; border-top: 1px solid #e5e7eb">5.12</td><td style="padding: 6px 8px; border-top: 1px solid #e5e7eb">5.66</td><td style="padding: 6px 8px; border-top: 1px solid #e5e7eb">5.95</td><td style="padding: 6px 8px; border-top: 1px solid #e5e7eb">6.10</td></tr>
+<tr><td style="padding: 6px 8px; text-align: left; border-top: 1px solid #e5e7eb">90°</td><td style="padding: 6px 8px; border-top: 1px solid #e5e7eb">6.68</td><td style="padding: 6px 8px; border-top: 1px solid #e5e7eb">7.68</td><td style="padding: 6px 8px; border-top: 1px solid #e5e7eb">8.15</td><td style="padding: 6px 8px; border-top: 1px solid #e5e7eb">8.42</td><td style="padding: 6px 8px; border-top: 1px solid #e5e7eb">8.66</td></tr>
+</tbody>
+</table>
+</div>
+<sc-if value="{{beatFlag}}" hint-placeholder-val="{{true}}">
+<div style="display: flex; gap: 8px; align-items: center; justify-content: space-between; background: #fef3c7; border-radius: 10px; padding: 8px 10px"><span style="font-size: 13px; color: #92400e">Γωνία στα 6 kt: διαβάστηκε 43.9° — έλεγξέ τη</span><button type="button" onClick="{{okBeat}}" style="height: 36px; border: 1px solid #92400e; border-radius: 8px; background: #ffffff; color: #92400e; font-size: 14px; font-weight: 700; font-family: inherit; padding: 0 12px; cursor: pointer">Σωστό</button></div>
+</sc-if>
+<p style="margin: 0; font-size: 14px; color: #374151">+ 6 γωνίες και 2 ακόμα εντάσεις · <a href="Review.dc.html" style="font-weight: 600">Όλος ο πίνακας</a></p>
+<h2 style="margin: 10px 0 0; font-size: 15px; font-weight: 700; color: #374151">Βαθμολογία</h2>
+<div style="display: flex; justify-content: space-between; align-items: center; min-height: 48px; border: 1px solid #d1d5db; border-radius: 10px; padding: 0 12px; font-size: 15px"><span>21 επιλογές ToT / ToD</span><span style="font-weight: 600; color: #0b2a4a">Προβολή ›</span></div>
+<label style="display: flex; gap: 12px; align-items: center; font-size: 16px; min-height: 48px; margin-top: 4px">
+<input type="checkbox" checked="{{own}}" onChange="{{toggleOwn}}" style="width: 24px; height: 24px; margin: 0; accent-color: #0b2a4a">Είναι το δικό μου σκάφος</label>
+</div>
+<div style="padding: 12px 20px 20px; border-top: 1px solid #e5e7eb">
+<a href="BoatsList.dc.html" style="display: flex; align-items: center; justify-content: center; height: 56px; border-radius: 12px; background: #0b2a4a; color: #ffffff; font-size: 18px; font-weight: 700; text-decoration: none">Αποθήκευση σκάφους</a>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = { expiry: true, beat: true, own: true };
+}
+renderVals() {
+const n = (this.state.expiry ? 1 : 0) + (this.state.beat ? 1 : 0);
+return {
+flagCount: n,
+hasFlags: n > 0,
+noFlags: n === 0,
+expiryFlag: this.state.expiry,
+expiryBg: this.state.expiry ? '#fef3c7' : '#ffffff',
+expiryBorder: this.state.expiry ? '#f59e0b' : '#ffffff',
+beatFlag: this.state.beat,
+beatBg: this.state.beat ? '#fde68a' : 'transparent',
+beatWeight: this.state.beat ? '700' : '400',
+own: this.state.own,
+okExpiry: () => this.setState({ expiry: false }),
+okBeat: () => this.setState({ beat: false }),
+toggleOwn: () => this.setState({ own: !this.state.own })
+};
+}
+}
+</script>
+</body>
+</html>

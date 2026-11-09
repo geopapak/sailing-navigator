@@ -83,6 +83,15 @@ npx wrangler secret put ADMIN_EMAIL
 npx wrangler secret put WINDY_KEY
 ```
 
+Σύνδεση, όροι και πιστοποιητικά (0.6): η εφαρμογή ξεκινά με σύνδεση/εγγραφή (`src/ui/AuthFlow.tsx`), με αποδοχή Όρων και Πολιτικής απορρήτου (`src/ui/legal.tsx`, έκδοση `TERMS_VERSION` και στο `server/accounts.ts`). Τα στοιχεία του υπεύθυνου επεξεργασίας δεν είναι στο αποθετήριο· ο server τα δίνει από τα secrets:
+
+```bash
+npx wrangler secret put CONTROLLER_NAME
+npx wrangler secret put CONTROLLER_EMAIL
+```
+
+Ανάγνωση πιστοποιητικού ORC: `POST /certificate` (`server/certificate.ts`) με σχήμα και ελέγχους στο `src/boat/certificate.ts` (π.χ. ToD × ToT ≈ 600, ταχύτητες που αυξάνονται με τον άνεμο). Σχέδια UI/UX στο `design/`.
+
 ## Πηγές δεδομένων
 
 - Χάρτης: [OpenFreeMap](https://openfreemap.org), © OpenMapTiles, © OpenStreetMap contributors

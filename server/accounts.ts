@@ -41,6 +41,12 @@ export interface UserRow {
   ai_count: number;
   failed_logins: number;
   locked_until: number;
+  terms_version: number;
+  terms_at: number | null;
+  marketing: number;
+  must_change_password: number;
+  reset_requested_at: number | null;
+  pdf_used: number;
 }
 
 export interface PublicUser {
@@ -49,7 +55,19 @@ export interface PublicUser {
   name: string;
   isAdmin: boolean;
   ai: { allowed: boolean; used: number; limit: number };
+  /** Accepted the current Terms and Privacy policy. */
+  termsOk: boolean;
+  termsAt: number | null;
+  /** Signed in with a temporary password: must set a new one. */
+  mustChangePassword: boolean;
+  /** Certificate (PDF) readings: free ones left (null = unlimited, for AI-approved users). */
+  pdf: { used: number; left: number | null };
 }
+
+/** Bump when the Terms or Privacy policy change: everyone accepts again. */
+export const TERMS_VERSION = 1;
+/** Free certificate readings for users not (yet) approved for AI. */
+export const FREE_PDF_READS = 3;
 
 const SESSION_DAYS = 120;
 const PBKDF2_ITER = 100_000; // Workers' maximum for PBKDF2.
@@ -86,7 +104,17 @@ const isAdminEmail = (env: AccountEnv, email: string) =>
 
 export function publicUser(u: UserRow): PublicUser {
   const used = u.ai_month === month() ? u.ai_count : 0;
-  return { id: u.id, email: u.email, name: u.name, isAdmin: !!u.is_admin, ai: { allowed: !!u.ai_allowed, used, limit: u.ai_limit } };
+  return {
+    id: u.id,
+    email: u.email,
+    name: u.name,
+    isAdmin: !!u.is_admin,
+    ai: { allowed: !!u.ai_allowed, used, limit: u.ai_limit },
+    termsOk: (u.terms_version ?? 0) >= TERMS_VERSION,
+    termsAt: u.terms_at ?? null,
+    mustChangePassword: !!u.must_change_password,
+    pdf: { used: u.pdf_used ?? 0, left: u.ai_allowed ? null : Math.max(0, FREE_PDF_READS - (u.pdf_used ?? 0)) },
+  };
 }
 
 export class HttpError extends Error {
@@ -113,11 +141,17 @@ async function newSession(env: AccountEnv, userId: string): Promise<string> {
   return token;
 }
 
-export async function register(env: AccountEnv, body: { email?: unknown; password?: unknown; name?: unknown }) {
+export async function register(
+  env: AccountEnv,
+  body: { email?: unknown; password?: unknown; name?: unknown; acceptTerms?: unknown; acceptPrivacy?: unknown; marketing?: unknown },
+) {
+  if (body.acceptTerms !== true || body.acceptPrivacy !== true) {
+    throw new HttpError(400, 'Χρειάζεται αποδοχή των Όρων χρήσης και της Πολιτικής απορρήτου.');
+  }
   const email = typeof body.email === 'string' ? normEmail(body.email) : '';
   const password = typeof body.password === 'string' ? body.password : '';
   const name = typeof body.name === 'string' ? body.name.trim().slice(0, 60) : '';
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 120) throw new HttpError(400, 'Άκυρο email.');
+  if (!EMAIL_RE.test(email) || email.length > 120) throw new HttpError(400, 'Άκυρο email.');
   if (password.length < 8 || password.length > 200) throw new HttpError(400, 'Ο κωδικός θέλει τουλάχιστον 8 χαρακτήρες.');
   const d = db(env);
   if (await d.prepare('SELECT id FROM users WHERE email = ?').bind(email).first()) throw new HttpError(409, 'Υπάρχει ήδη λογαριασμός με αυτό το email.');
@@ -137,12 +171,19 @@ export async function register(env: AccountEnv, body: { email?: unknown; passwor
     ai_count: 0,
     failed_logins: 0,
     locked_until: 0,
+    terms_version: TERMS_VERSION,
+    terms_at: Date.now(),
+    marketing: body.marketing === true ? 1 : 0,
+    must_change_password: 0,
+    reset_requested_at: null,
+    pdf_used: 0,
   };
   await d
     .prepare(
-      'INSERT INTO users (id, email, name, pass_hash, pass_salt, created_at, is_admin, ai_allowed, ai_limit) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      `INSERT INTO users (id, email, name, pass_hash, pass_salt, created_at, is_admin, ai_allowed, ai_limit, terms_version, terms_at, marketing)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
-    .bind(u.id, u.email, u.name, u.pass_hash, u.pass_salt, u.created_at, u.is_admin, u.ai_allowed, u.ai_limit)
+    .bind(u.id, u.email, u.name, u.pass_hash, u.pass_salt, u.created_at, u.is_admin, u.ai_allowed, u.ai_limit, u.terms_version, u.terms_at, u.marketing)
     .run();
   return { token: await newSession(env, u.id), user: publicUser(u) };
 }
@@ -192,6 +233,61 @@ export async function sessionUser(env: AccountEnv, req: Request): Promise<{ user
 
 export async function logout(env: AccountEnv, tokenHash: string) {
   await db(env).prepare('DELETE FROM sessions WHERE token_hash = ?').bind(tokenHash).run();
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * "Forgot my password" without email: marks the request for the admin, who
+ * hands out a temporary password. Same answer whether or not the email exists.
+ */
+export async function requestReset(env: AccountEnv, body: { email?: unknown }) {
+  const email = typeof body.email === 'string' ? normEmail(body.email) : '';
+  if (!EMAIL_RE.test(email)) throw new HttpError(400, 'Άκυρο email.');
+  await db(env).prepare('UPDATE users SET reset_requested_at = ? WHERE email = ?').bind(Date.now(), email).run();
+  return { ok: true };
+}
+
+export async function acceptTerms(env: AccountEnv, u: UserRow, body: { version?: unknown }) {
+  if (body.version !== TERMS_VERSION) throw new HttpError(409, 'Οι όροι άλλαξαν· ανανέωσε την εφαρμογή.');
+  const at = Date.now();
+  await db(env).prepare('UPDATE users SET terms_version = ?, terms_at = ? WHERE id = ?').bind(TERMS_VERSION, at, u.id).run();
+  return { user: publicUser({ ...u, terms_version: TERMS_VERSION, terms_at: at }) };
+}
+
+/** Everything stored about the user (GDPR portability). */
+export async function exportData(env: AccountEnv, u: UserRow) {
+  const items = await db(env)
+    .prepare('SELECT kind, id, data, updated_at FROM items WHERE user_id = ? AND deleted = 0')
+    .bind(u.id)
+    .all<{ kind: string; id: string; data: string | null; updated_at: number }>();
+  return {
+    exportedAt: new Date().toISOString(),
+    account: {
+      email: u.email,
+      name: u.name,
+      createdAt: new Date(u.created_at).toISOString(),
+      termsVersion: u.terms_version,
+      termsAcceptedAt: u.terms_at ? new Date(u.terms_at).toISOString() : null,
+      marketingEmails: !!u.marketing,
+      aiAllowed: !!u.ai_allowed,
+      aiQuestionsThisMonth: u.ai_month === month() ? u.ai_count : 0,
+      certificateReadings: u.pdf_used,
+    },
+    boats: items.results.filter((r) => r.kind === 'boat').map((r) => (r.data ? JSON.parse(r.data) : null)),
+    courses: items.results.filter((r) => r.kind === 'course').map((r) => (r.data ? JSON.parse(r.data) : null)),
+  };
+}
+
+/** Checks the certificate-reading allowance before the (paid) AI call. */
+export function canReadPdf(u: UserRow): void {
+  if (!u.ai_allowed && (u.pdf_used ?? 0) >= FREE_PDF_READS) {
+    throw new HttpError(403, `Χρησιμοποίησες τις ${FREE_PDF_READS} δωρεάν αναγνώσεις πιστοποιητικού. Ζήτα από τον διαχειριστή να σου ενεργοποιήσει το AI.`);
+  }
+}
+
+export async function countPdfRead(env: AccountEnv, u: UserRow) {
+  await db(env).prepare('UPDATE users SET pdf_used = pdf_used + 1 WHERE id = ?').bind(u.id).run();
 }
 
 /**
@@ -276,7 +372,7 @@ export async function sync(env: AccountEnv, u: UserRow, body: { since?: unknown;
 
 export async function listUsers(env: AccountEnv) {
   const rows = await db(env).prepare('SELECT * FROM users ORDER BY created_at DESC LIMIT 500').all<UserRow>();
-  return rows.results.map((u) => ({ ...publicUser(u), createdAt: u.created_at }));
+  return rows.results.map((u) => ({ ...publicUser(u), createdAt: u.created_at, resetRequestedAt: u.reset_requested_at ?? null }));
 }
 
 export async function updateUser(env: AccountEnv, id: string, body: { aiAllowed?: unknown; aiLimit?: unknown; resetPassword?: unknown }) {
@@ -292,7 +388,11 @@ export async function updateUser(env: AccountEnv, id: string, body: { aiAllowed?
     tempPassword = randomHex(5);
     const salt = randomHex(16);
     stmts.push(
-      d.prepare('UPDATE users SET pass_hash = ?, pass_salt = ?, failed_logins = 0, locked_until = 0 WHERE id = ?').bind(await hashPassword(tempPassword, salt), salt, id),
+      d
+        .prepare(
+          'UPDATE users SET pass_hash = ?, pass_salt = ?, failed_logins = 0, locked_until = 0, must_change_password = 1, reset_requested_at = NULL WHERE id = ?',
+        )
+        .bind(await hashPassword(tempPassword, salt), salt, id),
       d.prepare('DELETE FROM sessions WHERE user_id = ?').bind(id),
     );
   }
@@ -300,13 +400,20 @@ export async function updateUser(env: AccountEnv, id: string, body: { aiAllowed?
   return { user: publicUser(u), tempPassword };
 }
 
-export async function changePassword(env: AccountEnv, u: UserRow, body: { current?: unknown; next?: unknown }) {
+export async function changePassword(env: AccountEnv, u: UserRow, tokenHash: string, body: { current?: unknown; next?: unknown }) {
   const cur = typeof body.current === 'string' ? body.current : '';
   const next = typeof body.next === 'string' ? body.next : '';
-  if (!sameHex(await hashPassword(cur, u.pass_salt), u.pass_hash)) throw new HttpError(401, 'Λάθος τρέχων κωδικός.');
+  // After a temporary password the user just signed in with it: no need to type it again.
+  if (!u.must_change_password && !sameHex(await hashPassword(cur, u.pass_salt), u.pass_hash)) throw new HttpError(401, 'Λάθος τρέχων κωδικός.');
   if (next.length < 8 || next.length > 200) throw new HttpError(400, 'Ο νέος κωδικός θέλει τουλάχιστον 8 χαρακτήρες.');
   const salt = randomHex(16);
-  await db(env).prepare('UPDATE users SET pass_hash = ?, pass_salt = ? WHERE id = ?').bind(await hashPassword(next, salt), salt, u.id).run();
+  const d = db(env);
+  await d.batch([
+    d.prepare('UPDATE users SET pass_hash = ?, pass_salt = ?, must_change_password = 0 WHERE id = ?').bind(await hashPassword(next, salt), salt, u.id),
+    // Other devices sign in again with the new password.
+    d.prepare('DELETE FROM sessions WHERE user_id = ? AND token_hash != ?').bind(u.id, tokenHash),
+  ]);
+  return { user: publicUser({ ...u, must_change_password: 0 }) };
 }
 
 export async function deleteAccount(env: AccountEnv, u: UserRow) {

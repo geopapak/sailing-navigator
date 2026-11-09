@@ -1,5 +1,6 @@
 import Dexie, { type Table } from 'dexie';
 import type { BoatProfile } from './types';
+import { newBoatId } from './ids';
 import type { Mark } from '../routing/isochrones';
 
 export interface KV {
@@ -90,15 +91,7 @@ export async function setKV<T>(key: string, value: T): Promise<void> {
   await db.kv.put({ key, value });
 }
 
-export function newBoatId(name: string): string {
-  const slug = name
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9α-ω]+/g, '-')
-    .replace(/^-|-$/g, '');
-  return `${slug || 'boat'}-${Math.random().toString(36).slice(2, 7)}`;
-}
+export { newBoatId } from './ids';
 
 /** Parses an exported profile JSON; throws with a Greek message on bad input. */
 export function parseBoatJson(text: string): BoatProfile {

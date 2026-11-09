@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from 'react';
+import { lazy, Suspense, useEffect, useRef } from 'react';
 import { onOpenTab, type AppTab } from './openTab';
 import { AppProvider, useApp } from './AppContext';
 import { NavProvider } from './NavContext';
@@ -11,6 +11,7 @@ import { GuideView } from './GuideView';
 import { ChatView } from './ChatView';
 import { WelcomeCard } from './WelcomeCard';
 import { WhatsNew } from './WhatsNew';
+import { AcceptTermsScreen, AuthFlow, SetPasswordScreen } from './AuthFlow';
 import { useStoredState } from './hooks';
 import { Icon, type IconName } from './Icons';
 
@@ -35,9 +36,21 @@ const THEMES = {
 } as const;
 
 function Shell() {
-  const { ready, error, activeBoat, boats, settings, updateSettings } = useApp();
+  const { ready, error, activeBoat, boats, settings, updateSettings, account } = useApp();
   const [nav, setNav] = useStoredState<{ tab: Tab }>('nav', { tab: 'live' });
   useEffect(() => onOpenTab((tab) => setNav({ tab })), [setNav]);
+  // Right after signing in, start at "Τα σκάφη μου".
+  const prevAccount = useRef(account?.id);
+  useEffect(() => {
+    if (account?.id && !prevAccount.current) setNav({ tab: 'boats' });
+    prevAccount.current = account?.id;
+  }, [account?.id, setNav]);
+
+  // Sign-in comes first; then a new password after a temporary one; then the terms.
+  if (ready && !account) return <AuthFlow />;
+  if (ready && account?.mustChangePassword) return <SetPasswordScreen />;
+  if (ready && account && account.termsOk === false) return <AcceptTermsScreen />;
+  if (ready && account && account.termsOk === undefined) return <AcceptTermsScreen />;
   const go = (tab: Tab) => setNav({ tab: nav.tab === tab && (tab === 'guide' || tab === 'settings') ? 'live' : tab });
 
   return (

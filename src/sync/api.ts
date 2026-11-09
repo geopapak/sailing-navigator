@@ -6,10 +6,20 @@ export interface PublicUser {
   name: string;
   isAdmin: boolean;
   ai: { allowed: boolean; used: number; limit: number };
+  termsOk: boolean;
+  termsAt: number | null;
+  mustChangePassword: boolean;
+  pdf: { used: number; left: number | null };
 }
 
 export interface AdminUser extends PublicUser {
   createdAt: number;
+  resetRequestedAt: number | null;
+}
+
+export interface ServerConfig {
+  termsVersion: number;
+  controller: { name: string; email: string };
 }
 
 export interface SyncItem {
@@ -58,12 +68,23 @@ export async function api<T>(server: string, path: string, opts: { method?: stri
 }
 
 export const accountApi = {
-  register: (server: string, email: string, password: string, name: string) =>
-    api<{ token: string; user: PublicUser }>(server, '/auth/register', { body: { email, password, name } }),
+  register: (server: string, p: { email: string; password: string; name: string; acceptTerms: boolean; acceptPrivacy: boolean; marketing: boolean }) =>
+    api<{ token: string; user: PublicUser }>(server, '/auth/register', { body: p }),
+  forgot: (server: string, email: string) => api<{ ok: true }>(server, '/auth/forgot', { body: { email } }),
+  acceptTerms: (server: string, token: string, version: number) => api<{ user: PublicUser }>(server, '/me/terms', { body: { version }, token }),
+  exportData: (server: string, token: string) => api<Record<string, unknown>>(server, '/me/export', { token }),
+  config: (server: string) => api<ServerConfig>(server, '/config', { timeoutMs: 8000 }),
   login: (server: string, email: string, password: string) => api<{ token: string; user: PublicUser }>(server, '/auth/login', { body: { email, password } }),
   logout: (server: string, token: string) => api(server, '/auth/logout', { body: {}, token }),
   me: (server: string, token: string) => api<{ user: PublicUser }>(server, '/me', { token }),
-  changePassword: (server: string, token: string, current: string, next: string) => api(server, '/me/password', { body: { current, next }, token }),
+  changePassword: (server: string, token: string, current: string, next: string) =>
+    api<{ user: PublicUser }>(server, '/me/password', { body: { current, next }, token }),
+  certificate: (server: string, token: string, data: string, mediaType: string) =>
+    api<{ extract: import('../boat/certificate').CertificateExtract; model: string }>(server, '/certificate', {
+      body: { data, mediaType },
+      token,
+      timeoutMs: 150_000,
+    }),
   deleteAccount: (server: string, token: string) => api(server, '/me', { method: 'DELETE', token }),
   sync: (server: string, token: string, since: number, changes: SyncItem[]) =>
     api<{ now: number; items: SyncItem[] }>(server, '/sync', { body: { since, changes }, token, timeoutMs: 40_000 }),

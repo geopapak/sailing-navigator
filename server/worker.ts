@@ -18,8 +18,15 @@ import { WINDY_MODELS, WINDY_URL, parseWindy, windyBody } from '../src/weather/w
 import type { ModelSeries } from '../src/weather/compare';
 import { CHAT_LIMITS, validateChat } from '../src/ai/chat';
 import { AgentError, runAgent } from './agent';
+import { MAX_CERT_BASE64, readCertificate, validateCertificateBody } from './certificate';
 import {
   HttpError,
+  TERMS_VERSION,
+  acceptTerms,
+  canReadPdf,
+  countPdfRead,
+  exportData,
+  requestReset,
   changePassword,
   deleteAccount,
   listUsers,
@@ -36,6 +43,9 @@ import {
 
 export interface Env extends AccountEnv {
   ANTHROPIC_API_KEY: string;
+  /** Data controller shown in the Privacy policy (vars or secrets). */
+  CONTROLLER_NAME?: string;
+  CONTROLLER_EMAIL?: string;
   ACCESS_CODE: string;
   ALLOWED_ORIGINS?: string;
   WINDY_KEY?: string;
@@ -165,12 +175,15 @@ async function accountRoutes(req: Request, env: Env, path: string): Promise<unkn
   const m = req.method;
   if (m === 'POST' && path === '/auth/register') return register(env, await body(req));
   if (m === 'POST' && path === '/auth/login') return login(env, await body(req));
+  if (m === 'POST' && path === '/auth/forgot') return requestReset(env, await body(req));
   const s = await sessionUser(env, req);
   if (!s) throw new HttpError(401, 'Χρειάζεται σύνδεση.');
   const u = s.user;
   if (m === 'POST' && path === '/auth/logout') return logout(env, s.tokenHash).then(() => ({ ok: true }));
   if (m === 'GET' && path === '/me') return { user: publicUser(u) };
-  if (m === 'POST' && path === '/me/password') return changePassword(env, u, await body(req)).then(() => ({ ok: true }));
+  if (m === 'POST' && path === '/me/password') return changePassword(env, u, s.tokenHash, await body(req));
+  if (m === 'POST' && path === '/me/terms') return acceptTerms(env, u, await body(req));
+  if (m === 'GET' && path === '/me/export') return exportData(env, u);
   if (m === 'DELETE' && path === '/me') return deleteAccount(env, u).then(() => ({ ok: true }));
   if (m === 'POST' && path === '/sync') return sync(env, u, await body(req, 4 * 1024 * 1024));
   if (path.startsWith('/admin/')) {
@@ -184,6 +197,24 @@ async function accountRoutes(req: Request, env: Env, path: string): Promise<unkn
 
 const ACCOUNT_PATHS = /^\/(auth\/|me$|me\/|sync$|admin\/)/;
 
+/** Certificate (PDF/photo) → boat data, for signed-in users within their allowance. */
+async function certificate(req: Request, env: Env, cors: Record<string, string>): Promise<Response> {
+  const s = await sessionUser(env, req);
+  if (!s) throw new HttpError(401, 'Χρειάζεται σύνδεση.');
+  canReadPdf(s.user);
+  if (!env.ANTHROPIC_API_KEY) throw new HttpError(500, 'Ο server δεν έχει κλειδί Claude API.');
+  const file = validateCertificateBody(await body(req, MAX_CERT_BASE64 + 1024));
+  const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY, maxRetries: 1, timeout: 110_000 });
+  try {
+    const r = await readCertificate(client, file);
+    await countPdfRead(env, s.user);
+    return json(r, 200, cors);
+  } catch (e) {
+    if (e instanceof HttpError) throw e;
+    return apiError(e, cors);
+  }
+}
+
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url);
@@ -193,6 +224,14 @@ export default {
 
     try {
       if (ACCOUNT_PATHS.test(path)) return json(await accountRoutes(req, env, path), 200, cors);
+      if (req.method === 'POST' && path === '/certificate') return await certificate(req, env, cors);
+      if (req.method === 'GET' && path === '/config') {
+        return json(
+          { termsVersion: TERMS_VERSION, controller: { name: env.CONTROLLER_NAME ?? '', email: env.CONTROLLER_EMAIL ?? '' } },
+          200,
+          cors,
+        );
+      }
 
       const codeOk = sameCode((req.headers.get('x-access-code') ?? '').trim(), (env.ACCESS_CODE ?? '').trim());
       if (req.method === 'GET' && path === '/health') {
