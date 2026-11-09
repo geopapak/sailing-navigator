@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Map as MLMap, Marker, NavigationControl, ScaleControl, setWorkerUrl, type GeoJSONSource } from 'maplibre-gl';
 import type { StyleSpecification } from '@maplibre/maplibre-gl-style-spec';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -70,6 +70,8 @@ interface Props {
   boatPos?: LatLon & { cog?: number };
   simPos?: LatLon;
   fitKey?: string;
+  /** Extra controls drawn over the map (buttons, legend). */
+  children?: ReactNode;
 }
 
 const EMPTY = { type: 'FeatureCollection', features: [] } as const;
@@ -256,6 +258,7 @@ export function MapView(p: Props) {
     <div className={`map-wrap ${p.addMode ? 'adding' : ''}`}>
       <div ref={el} className="map" />
       {p.addMode && <div className="map-hint">Άγγιξε τον χάρτη για νέα σημαδούρα</div>}
+      {p.children}
     </div>
   );
 }

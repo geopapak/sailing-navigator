@@ -32,6 +32,7 @@ export function NumberStepper({ label, unit, value, onChange, small, big, min, m
   }, [value, editing]);
 
   const step = (d: number) => {
+    navigator.vibrate?.(10); // short tick so presses register with wet hands / gloves
     const base = value ?? (min !== undefined && min > 0 ? min : 0);
     let v = Math.round((base + d) * 10 ** decimals) / 10 ** decimals;
     if (wrap) v = ((v % 360) + 360) % 360;

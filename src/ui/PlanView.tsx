@@ -11,6 +11,8 @@ import { formatDM } from '../nav/geo';
 import { corrected, formatDuration } from '../scoring/corrected';
 import { STANDARD_SCORING_OPTIONS } from '../boat/scoringOptions';
 import { sailColor } from './PolarChart';
+import { Icon } from './Icons';
+import { useStoredState } from './hooks';
 import type { BoatProfile } from '../boat/types';
 
 const fmtTime = (ms: number) =>
@@ -28,6 +30,7 @@ export function PlanView() {
   const [addMode, setAddMode] = useState(false);
   const [simT, setSimT] = useState<number>();
   const [fitKey, setFitKey] = useState(course?.id ?? '');
+  const [ui, setUi] = useStoredState<{ bigMap: boolean }>('plan-ui', { bigMap: false });
 
   const marks = course?.marks ?? [];
   const setMarks = (m: Mark[]) => course && nav.updateCourse({ ...course, marks: m });
@@ -54,10 +57,20 @@ export function PlanView() {
 
   const sim = positionAt(route, t);
 
+  // Sails used on the route, in order of first use, for the map legend.
+  const legendSails = useMemo(() => {
+    const ids: string[] = [];
+    route?.legs.forEach((l) => l.sails.forEach((s) => !ids.includes(s.sailId) && ids.push(s.sailId)));
+    return ids;
+  }, [route]);
+
   if (!boat) return null;
 
+  const canCompute = marks.length >= 2 && !nav.planStatus.busy;
+  const computeLabel = nav.planStatus.busy ? 'Υπολογισμός…' : route ? '↻ Ξανά υπολογισμός' : 'Υπολογισμός βέλτιστης πορείας';
+
   return (
-    <div className="plan">
+    <div className={`plan ${ui.bigMap ? 'big-map' : ''}`}>
       <div className="plan-map">
         <MapView
           boat={boat}
@@ -78,7 +91,32 @@ export function PlanView() {
           boatPos={nav.gps.fix}
           simPos={route ? sim : undefined}
           fitKey={fitKey}
-        />
+        >
+          <button
+            type="button"
+            className="map-fab map-fab-size"
+            aria-label={ui.bigMap ? 'Κανονικός χάρτης' : 'Χάρτης σε όλη την οθόνη'}
+            title={ui.bigMap ? 'Κανονικός χάρτης' : 'Όλη η οθόνη'}
+            onClick={() => setUi({ bigMap: !ui.bigMap })}
+          >
+            <Icon name={ui.bigMap ? 'shrink' : 'expand'} />
+          </button>
+          {ui.bigMap && (
+            <button type="button" className="map-fab map-fab-go btn primary" disabled={!canCompute} onClick={nav.computePlan}>
+              {computeLabel}
+            </button>
+          )}
+          {legendSails.length > 0 && (
+            <div className="map-legend" aria-label="Πανιά στη διαδρομή">
+              {legendSails.map((id) => (
+                <span key={id}>
+                  <i style={{ background: sailColor(boat, id) }} />
+                  {boat.sails.find((x) => x.id === id)?.name ?? id}
+                </span>
+              ))}
+            </div>
+          )}
+        </MapView>
         {(route || forecast) && (
           <div className="time-slider card">
             <input
@@ -144,7 +182,7 @@ export function PlanView() {
                     </span>
                     <span className="nowrap">
                       <button
-                        className="icon-btn"
+                        className="icon-btn mark-btn"
                         aria-label="Πάνω"
                         disabled={i === 0}
                         onClick={() => {
@@ -155,7 +193,7 @@ export function PlanView() {
                       >
                         ↑
                       </button>
-                      <button className="icon-btn" aria-label="Αφαίρεση" onClick={() => setMarks(marks.filter((x) => x.id !== m.id))}>
+                      <button className="icon-btn mark-btn" aria-label="Αφαίρεση" onClick={() => setMarks(marks.filter((x) => x.id !== m.id))}>
                         ✕
                       </button>
                     </span>
@@ -274,9 +312,11 @@ export function PlanView() {
           </div>
         </section>
 
-        <button className="btn primary big-btn" disabled={nav.planStatus.busy || marks.length < 2} onClick={nav.computePlan}>
-          {nav.planStatus.busy ? 'Υπολογισμός…' : 'Υπολογισμός βέλτιστης πορείας'}
-        </button>
+        <div className="compute-bar">
+          <button className="btn primary big-btn" disabled={!canCompute} onClick={nav.computePlan}>
+            {computeLabel}
+          </button>
+        </div>
         {marks.length < 2 && <p className="muted small">Χρειάζονται τουλάχιστον εκκίνηση και ένα ακόμη σημείο.</p>}
         {nav.planStatus.error && <p className="errors">{nav.planStatus.error}</p>}
 

@@ -56,7 +56,7 @@ export function useGps(enabled: boolean): { status: GpsStatus; fix?: GpsFix; mes
       (err) => {
         if (err.code === err.PERMISSION_DENIED) {
           setStatus('denied');
-          setMessage('Δεν δόθηκε άδεια θέσης. Ενεργοποίησέ την από τις ρυθμίσεις του browser.');
+          setMessage('Δεν δόθηκε άδεια θέσης. Στο κινητό: Ρυθμίσεις → Τοποθεσία → επίτρεψε για τον browser (ή πάτα το λουκέτο δίπλα στη διεύθυνση) και ξαναφόρτωσε τη σελίδα.');
         } else {
           setStatus('waiting');
           setMessage(err.code === err.TIMEOUT ? 'Αναμονή σήματος GPS…' : 'Δεν υπάρχει σήμα GPS.');

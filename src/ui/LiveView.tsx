@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { TILE_HELP } from './guideText';
 import { useApp } from './AppContext';
 import { NumberStepper } from './NumberStepper';
@@ -58,6 +58,16 @@ export function LiveView() {
   const gps = nav.gps;
   const wake = useWakeLock(settings.keepAwake);
   const [help, setHelp] = useState<string>();
+  // Show a compact strip of the key numbers once the result tiles scroll out of view.
+  const resultsRef = useRef<HTMLElement>(null);
+  const [tilesHidden, setTilesHidden] = useState(false);
+  useEffect(() => {
+    const el = resultsRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver(([e]) => setTilesHidden(!e.isIntersecting), { rootMargin: '-60px 0px 0px 0px', threshold: 0.15 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [boat?.id, !!boat?.polar]);
 
   // Heading (true) used for TWD → TWA.
   const headingTrue =
@@ -115,7 +125,26 @@ export function LiveView() {
 
   return (
     <div className="live">
+      {result && (
+        <button
+          type="button"
+          className={`live-strip ${tilesHidden ? 'show' : ''}`}
+          aria-hidden={!tilesHidden}
+          tabIndex={tilesHidden ? 0 : -1}
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        >
+          <span className={`ls-pct ${pctClass(result.pctTarget)}`}>{pct(result.pctTarget)}</span>
+          <span>
+            <small>BSP</small> {f1(result.bsp)}/{f1(result.targetBsp)}
+          </span>
+          <span>
+            <small>TWA</small> {f0(Math.abs(result.twa))}°/{f0(result.targetTwa)}°
+          </span>
+          <span>{outlook?.recommended?.name ?? '—'}</span>
+        </button>
+      )}
       <section
+        ref={resultsRef}
         className="results"
         aria-live="polite"
         onClick={(e) => {
@@ -131,7 +160,11 @@ export function LiveView() {
         <div className="tile">
           <div className="tile-label">Target BSP</div>
           <div className="tile-value">{f1(result?.targetBsp)}</div>
-          <div className="tile-sub">kt</div>
+          <div className="tile-sub">
+            {result?.bsp !== undefined && result.targetBsp !== undefined
+              ? `${result.bsp - result.targetBsp >= 0 ? '+' : '−'}${Math.abs(result.bsp - result.targetBsp).toFixed(1)} kt από target`
+              : 'kt'}
+          </div>
         </div>
         <div className="tile">
           <div className="tile-label">Target TWA</div>
@@ -179,8 +212,6 @@ export function LiveView() {
           ))}
         </ul>
       )}
-
-      <NextMarkCard observed={observed} />
 
       <section className="inputs">
         <NumberStepper label="TWS" unit="kt" value={s.tws} onChange={(v) => set({ tws: v })} small={1} big={3} min={0} max={60} decimals={0} />
@@ -252,14 +283,17 @@ export function LiveView() {
             <button
               key={sl.id}
               className={`chip ${s.sailId === sl.id ? 'on' : ''}`}
-              style={{ borderColor: sailColor(boat, sl.id) }}
+              style={{ borderColor: sailColor(boat, sl.id), ['--sail' as string]: sailColor(boat, sl.id) }}
               onClick={() => set({ sailId: s.sailId === sl.id ? undefined : sl.id })}
             >
+              {outlook?.recommended?.id === sl.id && <span className="chip-star" aria-label="προτεινόμενο">★</span>}
               {sl.name}
             </button>
           ))}
         </div>
       </section>
+
+      <NextMarkCard observed={observed} />
 
       <section className="card gps">
         <div className="gps-head">
