@@ -16,9 +16,13 @@ describe('release notes', () => {
   });
 
   it('keeps CHANGELOG.md in sync with releases.json', () => {
-    const before = readFileSync('CHANGELOG.md', 'utf8');
+    // Line endings may be CRLF in a Windows checkout; compare the text only.
+    const lf = (t: string) => t.replace(/
+/g, '
+');
+    const before = lf(readFileSync('CHANGELOG.md', 'utf8'));
     execFileSync(process.execPath, ['scripts/changelog.mjs']);
-    expect(readFileSync('CHANGELOG.md', 'utf8')).toBe(before);
+    expect(lf(readFileSync('CHANGELOG.md', 'utf8'))).toBe(before);
   });
 
   it('picks what is new since the last seen version', () => {
