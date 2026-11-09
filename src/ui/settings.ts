@@ -21,7 +21,7 @@ export const DEFAULT_SERVER = 'https://sailing-navigator-ai.geopapak.workers.dev
 
 export const DEFAULT_SETTINGS: Settings = {
   theme: 'day',
-  activeBoatId: 'tre-irene',
+  activeBoatId: '',
   declination: 5,
   manualMagnetic: true,
   keepAwake: true,

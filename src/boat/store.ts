@@ -1,6 +1,5 @@
 import Dexie, { type Table } from 'dexie';
 import type { BoatProfile } from './types';
-import { TRE_IRENE } from './treIrene';
 import type { Mark } from '../routing/isochrones';
 
 export interface KV {
@@ -28,11 +27,11 @@ class NavDB extends Dexie {
 
 export const db = new NavDB();
 
-/** Seeds the default boat on first run. */
-export async function ensureSeed(): Promise<void> {
-  const count = await db.boats.count();
-  if (count === 0) await db.boats.put({ ...TRE_IRENE, updatedAt: Date.now() });
-}
+/**
+ * Id of the boat that older versions added to every new install. It is not
+ * seeded any more: each user adds their own boat.
+ */
+export const LEGACY_SEED_BOAT_ID = 'tre-irene';
 
 export async function listBoats(): Promise<BoatProfile[]> {
   const all = await db.boats.toArray();

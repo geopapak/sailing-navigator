@@ -9,6 +9,7 @@ import { BoatsView } from './BoatsView';
 import { SettingsView } from './SettingsView';
 import { GuideView } from './GuideView';
 import { ChatView } from './ChatView';
+import { WelcomeCard } from './WelcomeCard';
 import { useStoredState } from './hooks';
 import { Icon, type IconName } from './Icons';
 
@@ -47,6 +48,7 @@ function Shell() {
           value={activeBoat?.id ?? ''}
           onChange={(e) => updateSettings({ activeBoatId: e.target.value })}
         >
+          {boats.length === 0 && <option value="">Χωρίς σκάφος</option>}
           {boats.map((b) => (
             <option key={b.id} value={b.id}>
               {b.name}
@@ -77,10 +79,16 @@ function Shell() {
           <p className="muted">Φόρτωση…</p>
         ) : (
           <Suspense fallback={<p className="muted">Φόρτωση χάρτη…</p>}>
-            {nav.tab === 'live' && <LiveView />}
-            {nav.tab === 'map' && <PlanView />}
+            {boats.length === 0 && (nav.tab === 'live' || nav.tab === 'map' || nav.tab === 'polar') ? (
+              <WelcomeCard />
+            ) : (
+              <>
+                {nav.tab === 'live' && <LiveView />}
+                {nav.tab === 'map' && <PlanView />}
+                {nav.tab === 'polar' && <PolarView />}
+              </>
+            )}
             {nav.tab === 'chat' && <ChatView />}
-            {nav.tab === 'polar' && <PolarView />}
             {nav.tab === 'scoring' && <ScoringView />}
             {nav.tab === 'boats' && <BoatsView />}
             {nav.tab === 'settings' && <SettingsView />}

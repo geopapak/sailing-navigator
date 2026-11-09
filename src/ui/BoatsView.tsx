@@ -1,13 +1,15 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { NEW_BOAT_FLAG } from './WelcomeCard';
 import { useApp } from './AppContext';
 import { BoatEditor } from './BoatEditor';
 import type { BoatProfile } from '../boat/types';
 import { newBoatId, parseBoatJson } from '../boat/store';
 
-function blankBoat(): BoatProfile {
+function blankBoat(isOwn = false): BoatProfile {
   return {
     id: newBoatId('boat'),
     name: '',
+    isOwn,
     performanceFactor: 1,
     sails: [{ id: 'main', name: 'Μεγίστη', kind: 'main' }],
     sailRules: [],
@@ -28,6 +30,19 @@ function download(name: string, text: string) {
 export function BoatsView() {
   const { boats, activeBoat, settings, updateSettings, saveBoat, deleteBoat } = useApp();
   const [editing, setEditing] = useState<{ boat: BoatProfile; isNew: boolean }>();
+  const hasOwn = boats.some((b) => b.isOwn);
+  // Opened from the welcome screen: go straight to a new boat.
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem(NEW_BOAT_FLAG)) {
+        sessionStorage.removeItem(NEW_BOAT_FLAG);
+        setEditing({ boat: blankBoat(!hasOwn), isNew: true });
+      }
+    } catch {
+      /* ignore */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [msg, setMsg] = useState<string>();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -39,6 +54,8 @@ export function BoatsView() {
         onCancel={() => setEditing(undefined)}
         onSave={async (b) => {
           await saveBoat(b);
+          // The first boat, or a new own boat when none was active, becomes the active one.
+          if (!activeBoat || (b.isOwn && !activeBoat.isOwn)) updateSettings({ activeBoatId: b.id });
           setEditing(undefined);
           setMsg(`Αποθηκεύτηκε: ${b.name}`);
         }}
@@ -49,6 +66,13 @@ export function BoatsView() {
   return (
     <div className="boats">
       {msg && <p className="toast">{msg}</p>}
+      {boats.length === 0 && (
+        <p className="card small">
+          Δεν έχεις ακόμα σκάφος. Πάτα «+ Νέο σκάφος» και συμπλήρωσε όνομα, polars (από τον πίνακα «Velocity Prediction» του
+          πιστοποιητικού ORC) και επιλογές βαθμολογίας — ή φέρε έτοιμο αρχείο με «Import JSON». Μπορείς να προσθέσεις και
+          αντιπάλους (μόνο με συντελεστές) για τον διορθωμένο χρόνο.
+        </p>
+      )}
       <ul className="boat-list">
         {boats.map((b) => (
           <li key={b.id} className={`card ${b.id === activeBoat?.id ? 'active' : ''}`}>
@@ -100,7 +124,7 @@ export function BoatsView() {
         ))}
       </ul>
       <div className="btn-row">
-        <button className="btn primary" onClick={() => setEditing({ boat: blankBoat(), isNew: true })}>
+        <button className="btn primary" onClick={() => setEditing({ boat: blankBoat(!hasOwn), isNew: true })}>
           + Νέο σκάφος
         </button>
         <button className="btn" onClick={() => fileRef.current?.click()}>

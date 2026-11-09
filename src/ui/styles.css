@@ -1308,3 +1308,7 @@ td.mc-poor { color: var(--bad); font-weight: 700; }
 .user-list li { display: flex; flex-direction: column; gap: 6px; padding: 10px 0; border-bottom: 1px solid var(--line); }
 .user-list .row { gap: 12px; align-items: center; }
 .btn.small-btn { min-height: 36px; padding: 4px 10px; font-size: 0.85rem; }
+
+/* Welcome (no boat yet) */
+.welcome h2 { margin-top: 0; }
+.welcome .btn-col { display: flex; flex-direction: column; gap: 10px; margin: 14px 0; }

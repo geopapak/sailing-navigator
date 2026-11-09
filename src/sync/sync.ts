@@ -3,7 +3,7 @@
  * The phone's database stays the working copy; changes are pushed when there
  * is a connection and the server's newer versions are pulled (last write wins).
  */
-import { db, getKV, setKV, type Course, type Tombstone } from '../boat/store';
+import { LEGACY_SEED_BOAT_ID, db, getKV, setKV, type Course, type Tombstone } from '../boat/store';
 import type { BoatProfile } from '../boat/types';
 import { accountApi, type SyncItem } from './api';
 
@@ -28,7 +28,9 @@ export async function getSyncState(): Promise<SyncState> {
 /**
  * Prepares the device for an account. If another account's data is here,
  * it is removed first (it lives on in that account); a device with no owner
- * yet uploads its data into the new account.
+ * yet uploads its data into the new account — except the example boat that
+ * older versions added to every install (if it really is this account's
+ * boat, the account's copy comes back with the first sync).
  */
 export async function adoptAccount(userId: string): Promise<void> {
   const st = await getSyncState();
@@ -40,7 +42,10 @@ export async function adoptAccount(userId: string): Promise<void> {
       await setKV<SyncState>(KEY, { since: 0, pushedAt: 0, owner: userId });
     });
   } else if (!st.owner) {
-    await setKV<SyncState>(KEY, { since: 0, pushedAt: 0, owner: userId });
+    await db.transaction('rw', db.boats, db.kv, async () => {
+      await db.boats.delete(LEGACY_SEED_BOAT_ID);
+      await setKV<SyncState>(KEY, { since: 0, pushedAt: 0, owner: userId });
+    });
   }
 }
 

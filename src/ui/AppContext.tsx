@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { BoatProfile } from '../boat/types';
-import { LOCAL_CHANGE, deleteBoat, ensureSeed, getKV, listBoats, saveBoat, setKV } from '../boat/store';
+import { LOCAL_CHANGE, deleteBoat, getKV, listBoats, saveBoat, setKV } from '../boat/store';
 import { DEFAULT_SERVER, DEFAULT_SETTINGS, type Settings } from './settings';
 import { REMOTE_CHANGE, adoptAccount, syncNow } from '../sync/sync';
 import { ApiError, accountApi, type PublicUser } from '../sync/api';
@@ -43,7 +43,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     (async () => {
       try {
-        await ensureSeed();
         const s = await getKV<Partial<Settings>>('settings', {});
         // Older installs stored an empty server address: use the project's server.
         if (!s.aiUrl) delete s.aiUrl;
