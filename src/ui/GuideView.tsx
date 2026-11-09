@@ -1,4 +1,5 @@
 import { GUIDE } from './guideText';
+import { ReleaseHistory } from './WhatsNew';
 
 export function GuideView() {
   return (
@@ -18,6 +19,7 @@ export function GuideView() {
           </ul>
         </details>
       ))}
+      <ReleaseHistory />
     </div>
   );
 }

@@ -10,6 +10,7 @@ import { SettingsView } from './SettingsView';
 import { GuideView } from './GuideView';
 import { ChatView } from './ChatView';
 import { WelcomeCard } from './WelcomeCard';
+import { WhatsNew } from './WhatsNew';
 import { useStoredState } from './hooks';
 import { Icon, type IconName } from './Icons';
 
@@ -75,6 +76,7 @@ function Shell() {
       </header>
       <main className="content">
         {error && <p className="errors">{error}</p>}
+        {ready && <WhatsNew />}
         {!ready ? (
           <p className="muted">Φόρτωση…</p>
         ) : (

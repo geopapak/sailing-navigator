@@ -91,6 +91,14 @@ npx wrangler secret put WINDY_KEY
 - Πρόγνωση: [Open-Meteo](https://open-meteo.com) (CC BY 4.0) — ECMWF, DWD, Météo-France, UK Met Office, NOAA, ECCC, JMA· κύμα από Open-Meteo Marine
 - Προαιρετικά: [Windy Point Forecast API](https://api.windy.com)
 
+## Νέα έκδοση (σε κάθε deploy)
+
+1. Νέα εγγραφή στην αρχή του `src/releases.json` (έκδοση, ημερομηνία, τίτλος, αλλαγές εφαρμογής / server, στα ελληνικά).
+2. Ίδια έκδοση στο `package.json`.
+3. `npm run changelog` → ενημερώνει το `CHANGELOG.md`.
+
+Τα tests αποτυγχάνουν αν λείπουν σημειώσεις για την έκδοση του `package.json` ή αν το `CHANGELOG.md` δεν είναι ενημερωμένο. Η εφαρμογή δείχνει «Τι νέο» μετά από κάθε ενημέρωση και το πλήρες ιστορικό στον Οδηγό.
+
 ## Deploy (GitHub Pages)
 
 Το `.github/workflows/pages.yml` τρέχει τα tests, κάνει build και δημοσιεύει σε κάθε push στο `main`. Στο GitHub: Settings → Pages → Source: GitHub Actions.

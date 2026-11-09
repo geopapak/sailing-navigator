@@ -1312,3 +1312,10 @@ td.mc-poor { color: var(--bad); font-weight: 700; }
 /* Welcome (no boat yet) */
 .welcome h2 { margin-top: 0; }
 .welcome .btn-col { display: flex; flex-direction: column; gap: 10px; margin: 14px 0; }
+
+/* Release notes */
+.whats-new { border: 2px solid var(--accent); }
+.whats-new h3 { margin-top: 0; }
+.whats-new ul, .release-history ul { margin: 4px 0 10px; padding-left: 20px; }
+.whats-new li, .release-history li { margin: 3px 0; }
+.release-title { margin: 10px 0 2px; }
