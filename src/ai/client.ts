@@ -17,7 +17,7 @@ async function call(cfg: AdvisorConfig, path: string, init: RequestInit, timeout
     return await fetch(`${base(cfg.url)}${path}`, {
       ...init,
       signal: ctl.signal,
-      headers: { 'content-type': 'application/json', 'x-access-code': cfg.code, ...(init.headers ?? {}) },
+      headers: { 'content-type': 'application/json', 'x-access-code': cfg.code.trim(), ...(init.headers ?? {}) },
     });
   } catch (e) {
     if ((e as Error).name === 'AbortError') throw new AdvisorError('Ο σύμβουλος δεν απάντησε εγκαίρως. Δοκίμασε ξανά.');

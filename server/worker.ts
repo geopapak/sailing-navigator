@@ -52,7 +52,7 @@ export default {
     const cors = corsHeaders(req.headers.get('Origin'), env);
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
 
-    const codeOk = sameCode(req.headers.get('x-access-code') ?? '', env.ACCESS_CODE ?? '');
+    const codeOk = sameCode((req.headers.get('x-access-code') ?? '').trim(), (env.ACCESS_CODE ?? '').trim());
 
     if (req.method === 'GET' && url.pathname === '/health') {
       return json({ ok: true, codeOk, configured: Boolean(env.ANTHROPIC_API_KEY) }, 200, cors);
