@@ -1299,3 +1299,12 @@ td.mc-poor { color: var(--bad); font-weight: 700; }
 .chat-input .btn { min-width: 52px; min-height: 48px; display: inline-flex; align-items: center; justify-content: center; }
 .chat-foot { text-align: center; }
 :root[data-theme='night'] .bubble.user { background: #2a0604; color: var(--fg); }
+
+/* Account & admin */
+.row.wrap { flex-wrap: wrap; }
+.account .badge, .admin .badge { margin-left: 6px; }
+.account .row.wrap .btn { flex: 1 1 auto; }
+.user-list { list-style: none; margin: 0; padding: 0; }
+.user-list li { display: flex; flex-direction: column; gap: 6px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.user-list .row { gap: 12px; align-items: center; }
+.btn.small-btn { min-height: 36px; padding: 4px 10px; font-size: 0.85rem; }

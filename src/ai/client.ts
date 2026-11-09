@@ -2,8 +2,19 @@ import type { AdvisorContext, AdvisorResponse } from './types';
 
 export interface AdvisorConfig {
   url: string;
+  /** Owner's access code (optional when signed in). */
   code: string;
+  /** Account session token. */
+  token?: string;
 }
+
+/** Server configuration from the app settings. */
+export function advisorConfig(s: { aiUrl: string; aiCode: string; authToken: string }): AdvisorConfig {
+  return { url: s.aiUrl, code: s.aiCode, token: s.authToken || undefined };
+}
+
+/** Whether the AI features can be called: a server and either an account or the access code. */
+export const advisorReady = (c: AdvisorConfig) => c.url.trim() !== '' && (c.code.trim() !== '' || !!c.token);
 
 export class AdvisorError extends Error {}
 
@@ -17,7 +28,12 @@ async function call(cfg: AdvisorConfig, path: string, init: RequestInit, timeout
     return await fetch(`${base(cfg.url)}${path}`, {
       ...init,
       signal: ctl.signal,
-      headers: { 'content-type': 'application/json', 'x-access-code': cfg.code.trim(), ...(init.headers ?? {}) },
+      headers: {
+        'content-type': 'application/json',
+        ...(cfg.code.trim() ? { 'x-access-code': cfg.code.trim() } : {}),
+        ...(cfg.token ? { Authorization: `Bearer ${cfg.token}` } : {}),
+        ...(init.headers ?? {}),
+      },
     });
   } catch (e) {
     if ((e as Error).name === 'AbortError') throw new AdvisorError('Ο σύμβουλος δεν απάντησε εγκαίρως. Δοκίμασε ξανά.');
@@ -36,11 +52,21 @@ export async function askAdvisor(cfg: AdvisorConfig, ctx: AdvisorContext): Promi
 
 export async function checkAdvisor(cfg: AdvisorConfig): Promise<string> {
   const res = await call(cfg, '/health', { method: 'GET' }, 10_000);
-  const data = (await res.json().catch(() => ({}))) as { ok?: boolean; codeOk?: boolean; configured?: boolean };
+  const data = (await res.json().catch(() => ({}))) as {
+    ok?: boolean;
+    codeOk?: boolean;
+    configured?: boolean;
+    user?: { ai: { allowed: boolean; used: number; limit: number } };
+  };
   if (!res.ok || !data.ok) return `Ο server απάντησε με σφάλμα (${res.status}).`;
   if (!data.configured) return 'Ο server λειτουργεί αλλά δεν έχει κλειδί Claude API.';
-  if (!data.codeOk) return 'Ο server λειτουργεί, αλλά ο κωδικός πρόσβασης είναι λάθος.';
-  return 'OK — ο σύμβουλος είναι έτοιμος.';
+  if (data.codeOk) return 'OK — ο σύμβουλος είναι έτοιμος (κωδικός ιδιοκτήτη).';
+  if (data.user) {
+    if (!data.user.ai.allowed) return 'Συνδεδεμένος, αλλά ο σύμβουλος AI δεν έχει εγκριθεί ακόμα για τον λογαριασμό σου.';
+    return `OK — ο σύμβουλος είναι έτοιμος (${data.user.ai.used}/${data.user.ai.limit} ερωτήσεις αυτόν τον μήνα).`;
+  }
+  if (cfg.code.trim()) return 'Ο server λειτουργεί, αλλά ο κωδικός πρόσβασης είναι λάθος.';
+  return 'Ο server λειτουργεί. Συνδέσου στον λογαριασμό σου για τον σύμβουλο AI.';
 }
 
 /** Windy point forecast through our server (it holds the Windy key). */

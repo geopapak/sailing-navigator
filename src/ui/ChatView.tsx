@@ -4,7 +4,7 @@ import { useNav } from './NavContext';
 import { useStoredState } from './hooks';
 import { Icon } from './Icons';
 import { openTab } from './openTab';
-import { askChat, AdvisorError } from '../ai/client';
+import { advisorConfig, advisorReady, askChat, AdvisorError } from '../ai/client';
 import { modelsContext, type ChatContext, type ChatMessage, type ChatSource } from '../ai/chat';
 import { buildPlanContext, localIso } from '../ai/context';
 import { getLiveSnapshot } from '../ai/snapshot';
@@ -85,7 +85,8 @@ export function ChatView() {
     models: true,
   });
   const endRef = useRef<HTMLDivElement>(null);
-  const configured = settings.aiUrl.trim() !== '' && settings.aiCode.trim() !== '';
+  const cfg = advisorConfig(settings);
+  const configured = advisorReady(cfg);
 
   const live = getLiveSnapshot();
   const planned = nav.planned;
@@ -136,7 +137,7 @@ export function ChatView() {
       let msgs = history.map(({ role, text: t }) => ({ role, text: t }));
       if (msgs.length > 23) msgs = msgs.slice(-23);
       while (msgs.length && msgs[0].role !== 'user') msgs.shift();
-      const res = await askChat({ url: settings.aiUrl, code: settings.aiCode }, { messages: msgs, context: buildContext() });
+      const res = await askChat(cfg, { messages: msgs, context: buildContext() });
       setLog({
         entries: [...history, { role: 'assistant', text: res.text, at: Date.now(), tools: res.tools, sources: res.sources, fallback: res.fallback }],
       });
@@ -190,7 +191,7 @@ export function ChatView() {
         {nav.plan.startLocal && !planned && <p className="muted small">Χωρίς υπολογισμένη διαδρομή — ο σύμβουλος δεν θα ξέρει το σχέδιο.</p>}
         {!configured && (
           <p className="small">
-            Χρειάζεται διεύθυνση server και κωδικός.{' '}
+            Συνδέσου στον λογαριασμό σου (Ρυθμίσεις) για να μιλήσεις με τον σύμβουλο.{' '}
             <button className="link inline" onClick={() => openTab('settings')}>
               Άνοιξε τις Ρυθμίσεις →
             </button>
@@ -257,7 +258,7 @@ export function ChatView() {
               send(draft);
             }
           }}
-          placeholder={configured ? 'Γράψε ερώτηση…' : 'Ρύθμισε πρώτα τον server'}
+          placeholder={configured ? 'Γράψε ερώτηση…' : 'Συνδέσου πρώτα στις Ρυθμίσεις'}
           disabled={!configured}
           maxLength={4000}
           rows={2}

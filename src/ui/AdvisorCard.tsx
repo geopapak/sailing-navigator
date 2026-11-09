@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useApp } from './AppContext';
 import { useStoredState } from './hooks';
-import { askAdvisor, AdvisorError } from '../ai/client';
+import { advisorConfig, advisorReady, askAdvisor, AdvisorError } from '../ai/client';
 import type { AdvisorContext, AdvisorResponse, AdvisorWhen } from '../ai/types';
 
 const WHEN: Record<AdvisorWhen, string> = { now: 'Τώρα', soon: 'Σύντομα', watch: 'Πρόσεξε' };
@@ -37,7 +37,8 @@ export function AdvisorCard({
   const [question, setQuestion] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
-  const configured = settings.aiUrl.trim() !== '' && settings.aiCode.trim() !== '';
+  const cfg = advisorConfig(settings);
+  const configured = advisorReady(cfg);
 
   const ask = async (q?: string) => {
     const ctx = build(q?.trim() || undefined);
@@ -45,7 +46,7 @@ export function AdvisorCard({
     setBusy(true);
     setError(undefined);
     try {
-      const res = await askAdvisor({ url: settings.aiUrl, code: settings.aiCode }, ctx);
+      const res = await askAdvisor(cfg, ctx);
       setStored({ res, at: Date.now(), question: q?.trim() || undefined });
       setQuestion('');
     } catch (e) {
@@ -67,7 +68,7 @@ export function AdvisorCard({
 
       {!configured ? (
         <p className="small">
-          Ο σύμβουλος AI χρειάζεται τη διεύθυνση του server και κωδικό πρόσβασης.{' '}
+          Ο σύμβουλος AI θέλει λογαριασμό με έγκριση (ή τον κωδικό ιδιοκτήτη).{' '}
           {onOpenSettings && (
             <button className="link inline" onClick={onOpenSettings}>
               Άνοιξε τις Ρυθμίσεις →

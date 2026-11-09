@@ -39,12 +39,32 @@ export async function listBoats(): Promise<BoatProfile[]> {
   return all.sort((a, b) => Number(!!b.isOwn) - Number(!!a.isOwn) || a.name.localeCompare(b.name, 'el'));
 }
 
+/** Fired after any local change to boats/courses, so the sync can push it. */
+export const LOCAL_CHANGE = 'local-data-change';
+const changed = () => {
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(LOCAL_CHANGE));
+};
+
+export interface Tombstone {
+  kind: 'boat' | 'course';
+  id: string;
+  at: number;
+}
+
+async function addTombstone(kind: Tombstone['kind'], id: string) {
+  const list = await getKV<Tombstone[]>('tombstones', []);
+  await setKV('tombstones', [...list.filter((t) => !(t.kind === kind && t.id === id)), { kind, id, at: Date.now() }]);
+}
+
 export async function saveBoat(b: BoatProfile): Promise<void> {
   await db.boats.put({ ...b, updatedAt: Date.now() });
+  changed();
 }
 
 export async function deleteBoat(id: string): Promise<void> {
   await db.boats.delete(id);
+  await addTombstone('boat', id);
+  changed();
 }
 
 export async function listCourses(): Promise<Course[]> {
@@ -53,10 +73,13 @@ export async function listCourses(): Promise<Course[]> {
 
 export async function saveCourse(c: Course): Promise<void> {
   await db.courses.put({ ...c, updatedAt: Date.now() });
+  changed();
 }
 
 export async function deleteCourse(id: string): Promise<void> {
   await db.courses.delete(id);
+  await addTombstone('course', id);
+  changed();
 }
 
 export async function getKV<T>(key: string, fallback: T): Promise<T> {

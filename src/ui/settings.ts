@@ -11,7 +11,13 @@ export interface Settings {
   /** AI advisor backend URL (Cloudflare Worker) and its access code. */
   aiUrl: string;
   aiCode: string;
+  /** Signed-in account (session token from the server) and its cached profile. */
+  authToken: string;
+  account?: import('../sync/api').PublicUser;
 }
+
+/** The project's own server; users can point the app elsewhere in Settings. */
+export const DEFAULT_SERVER = 'https://sailing-navigator-ai.geopapak.workers.dev';
 
 export const DEFAULT_SETTINGS: Settings = {
   theme: 'day',
@@ -19,6 +25,7 @@ export const DEFAULT_SETTINGS: Settings = {
   declination: 5,
   manualMagnetic: true,
   keepAwake: true,
-  aiUrl: '',
+  aiUrl: DEFAULT_SERVER,
   aiCode: '',
+  authToken: '',
 };

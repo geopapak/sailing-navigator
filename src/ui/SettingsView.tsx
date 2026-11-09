@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useApp } from './AppContext';
-import { checkAdvisor, AdvisorError } from '../ai/client';
+import { advisorConfig, checkAdvisor, AdvisorError } from '../ai/client';
+import { AccountCard } from './AccountCard';
+import { DEFAULT_SERVER } from './settings';
 import { NumField } from './NumberStepper';
 import type { Theme } from './settings';
 
@@ -16,6 +18,7 @@ export function SettingsView() {
   const [checking, setChecking] = useState(false);
   return (
     <div className="settings">
+      <AccountCard />
       <section className="card form-grid">
         <label>
           Θέμα
@@ -45,24 +48,23 @@ export function SettingsView() {
         </label>
       </section>
       <section className="card form-grid">
-        <h3>Σύμβουλος AI</h3>
+        <h3>Server & σύμβουλος AI</h3>
         <p className="small full">
-          Ο σύμβουλος στέλνει τα νούμερα που υπολογίζει η εφαρμογή (targets, πανί, σημαδούρα, διαδρομή) σε έναν δικό σου
-          server, που ρωτά το Claude και επιστρέφει σύντομη συμβουλή. Χρειάζεται internet. Το κλειδί του Claude API μένει
-          στον server, όχι στο κινητό.
+          Ο server κρατά τους λογαριασμούς και ρωτά το Claude για τον σύμβουλο. Το κλειδί του Claude API μένει στον server,
+          όχι στο κινητό. Ο κωδικός ιδιοκτήτη χρειάζεται μόνο αν δεν χρησιμοποιείς λογαριασμό.
         </p>
         <label className="full">
           Διεύθυνση server
           <input
             type="url"
             inputMode="url"
-            placeholder="https://sailing-navigator-ai.….workers.dev"
+            placeholder={DEFAULT_SERVER}
             value={settings.aiUrl}
             onChange={(e) => updateSettings({ aiUrl: e.target.value.trim() })}
           />
         </label>
         <label>
-          Κωδικός πρόσβασης
+          Κωδικός ιδιοκτήτη (προαιρετικό)
           <input type="password" autoComplete="off" value={settings.aiCode} onChange={(e) => updateSettings({ aiCode: e.target.value })} />
         </label>
         <div className="full">
@@ -72,7 +74,7 @@ export function SettingsView() {
             onClick={async () => {
               setChecking(true);
               try {
-                setCheck(await checkAdvisor({ url: settings.aiUrl, code: settings.aiCode }));
+                setCheck(await checkAdvisor(advisorConfig(settings)));
               } catch (e) {
                 setCheck(e instanceof AdvisorError ? e.message : 'Αποτυχία ελέγχου.');
               } finally {
@@ -89,8 +91,8 @@ export function SettingsView() {
         <h3>Σχετικά</h3>
         <p className="small">
           Οι υπολογισμοί γίνονται τοπικά από τα polars του πιστοποιητικού ORC. Η εφαρμογή λειτουργεί χωρίς σύνδεση αφού
-          φορτωθεί μία φορά. Τα δεδομένα αποθηκεύονται μόνο σε αυτή τη συσκευή. Μεταφορά σε άλλη συσκευή γίνεται με
-          Export/Import από την καρτέλα «Σκάφη».
+          φορτωθεί μία φορά. Τα δεδομένα αποθηκεύονται στη συσκευή και, αν είσαι συνδεδεμένος, συγχρονίζονται με τον
+          λογαριασμό σου. Χωρίς λογαριασμό, μεταφορά γίνεται με Export/Import από την καρτέλα «Σκάφη».
         </p>
         <p className="muted small">Έκδοση {__APP_VERSION__}</p>
       </section>

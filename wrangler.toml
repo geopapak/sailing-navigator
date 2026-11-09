@@ -9,3 +9,10 @@ compatibility_flags = ["nodejs_compat"]
 
 [vars]
 ALLOWED_ORIGINS = "https://geopapak.github.io"
+
+# Accounts and synced boats/courses (schema in migrations/).
+[[d1_databases]]
+binding = "DB"
+database_name = "sailing-navigator"
+database_id = "80257e2c-0db6-435c-a048-a0557a957619"
+migrations_dir = "migrations"

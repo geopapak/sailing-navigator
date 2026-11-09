@@ -4,8 +4,9 @@ import type { Mark, RouteResult } from '../routing/isochrones';
 import { routeInWorker, type WindSpec } from '../routing/protocol';
 import { fetchOpenMeteo } from '../weather/openMeteo';
 import { normalizeModel } from '../weather/models';
+import { REMOTE_CHANGE } from '../sync/sync';
 import { fetchComparison, type Comparison } from '../weather/compare';
-import { fetchWindySeries } from '../ai/client';
+import { advisorConfig, advisorReady, fetchWindySeries } from '../ai/client';
 import { SARONIKOS_BOX, type GridForecast, type WindSample } from '../weather/types';
 import { calibrationFrom, gridField } from '../weather/field';
 import { useApp } from './AppContext';
@@ -126,6 +127,13 @@ export function NavProvider({ children }: { children: ReactNode }) {
     })().catch(() => undefined);
   }, []);
 
+  // Courses pulled from the account by the sync.
+  useEffect(() => {
+    const h = () => listCourses().then(setCourses).catch(() => undefined);
+    window.addEventListener(REMOTE_CHANGE, h);
+    return () => window.removeEventListener(REMOTE_CHANGE, h);
+  }, []);
+
   const course = courses.find((c) => c.id === ui.courseId) ?? courses[0];
 
   const updateCourse = useCallback((c: Course) => {
@@ -182,8 +190,8 @@ export function NavProvider({ children }: { children: ReactNode }) {
           ? { lat: fix.lat, lon: fix.lon, place: 'Θέση GPS' }
           : { lat: 37.75, lon: 23.55, place: 'Κέντρο Σαρωνικού' };
       const end = planned && planned.start === start ? planned.end : start + 8 * 3_600_000;
-      const cfg = { url: settings.aiUrl, code: settings.aiCode };
-      const windy = cfg.url.trim() && cfg.code.trim() ? (la: number, lo: number) => fetchWindySeries(cfg, la, lo) : undefined;
+      const cfg = advisorConfig(settings);
+      const windy = advisorReady(cfg) ? (la: number, lo: number) => fetchWindySeries(cfg, la, lo) : undefined;
       const c = await fetchComparison(pt.lat, pt.lon, pt.place, start, end, windy);
       setComparison(c);
       await setKV('comparison', c);
@@ -194,7 +202,7 @@ export function NavProvider({ children }: { children: ReactNode }) {
         error: navigator.onLine === false ? 'Δεν υπάρχει σύνδεση. Δείχνεται η αποθηκευμένη σύγκριση.' : (e as Error).message,
       });
     }
-  }, [plan.startLocal, course, gps.fix, planned, settings.aiUrl, settings.aiCode]);
+  }, [plan.startLocal, course, gps.fix, planned, settings]);
 
   const windSpec = useCallback(
     (calibration?: { twsFactor: number; twdOffset: number }): WindSpec | undefined => {

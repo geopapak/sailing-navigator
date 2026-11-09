@@ -67,14 +67,29 @@ npx wrangler secret put ACCESS_CODE
 
 4. Στην εφαρμογή: ⚙ → Σύμβουλος AI → η διεύθυνση `https://sailing-navigator-ai.<λογαριασμός>.workers.dev` και ο κωδικός → «Δοκιμή σύνδεσης».
 
-Τοπικά: φτιάξε `.dev.vars` με `ACCESS_CODE=…` και `ANTHROPIC_API_KEY=…` και τρέξε `npx wrangler dev`.
+Τοπικά: φτιάξε `.dev.vars` με `ACCESS_CODE=…`, `ANTHROPIC_API_KEY=…`, `ADMIN_EMAIL=…`, τρέξε `npx wrangler d1 migrations apply sailing-navigator --local` και `npx wrangler dev`.
+
+## Σύμβουλος-agent, μοντέλα καιρού, λογαριασμοί
+
+- **Συνομιλία (`POST /chat`)**: agent με το Claude (`server/agent.ts`). Βιβλιοθήκη γνώσεων ιστιοπλοΐας στο `server/knowledge.ts` (σύνοψη με δικά μας λόγια — RRS, ORC, τακτική, ρύθμιση, μετεωρολογία Σαρωνικού, ασφάλεια), cached στο system prompt. Εργαλεία που τρέχουν τον κώδικα της εφαρμογής: `boat_targets` (polars/πανιά), `ratings_math` (ToT/ToD, αντίπαλοι), `weather_models` (8 μοντέλα + κύμα), `distance_bearing`, και `web_search` (server tool· αν δεν είναι ενεργό στον οργανισμό, η απάντηση δίνεται χωρίς αυτό).
+- **Μοντέλα καιρού**: `src/weather/models.ts` (κατάλογος), `src/weather/compare.ts` (σύγκριση/διασπορά σε σημείο, Open-Meteo Marine για κύμα), «Συμφωνία 5 μοντέλων» ως πλέγμα για το routing (`consensus` στο `openMeteo.ts`). Windy Point Forecast μέσω του server (`POST /windy`, secret `WINDY_KEY` — με δοκιμαστικό κλειδί το Windy δίνει σκόπιμα αλλοιωμένα νούμερα).
+- **Λογαριασμοί (`server/accounts.ts`, D1)**: email + κωδικός (PBKDF2-SHA256), session tokens (αποθηκεύεται μόνο το hash), συγχρονισμός σκαφών/διαδρομών (last write wins, `src/sync/`). Ο σύμβουλος AI επιτρέπεται σε λογαριασμούς που εγκρίνει ο διαχειριστής (`ADMIN_EMAIL`), με μηνιαίο όριο· ο `ACCESS_CODE` συνεχίζει να δουλεύει για τον ιδιοκτήτη.
+
+Εγκατάσταση βάσης και secrets:
+
+```bash
+npx wrangler d1 migrations apply sailing-navigator --remote
+npx wrangler secret put ADMIN_EMAIL
+npx wrangler secret put WINDY_KEY
+```
 
 ## Πηγές δεδομένων
 
 - Χάρτης: [OpenFreeMap](https://openfreemap.org), © OpenMapTiles, © OpenStreetMap contributors
 - Ναυτικά σημάδια: © [OpenSeaMap](https://openseamap.org) contributors
 - Ακτογραμμή: © OpenStreetMap contributors (ODbL)
-- Πρόγνωση: [Open-Meteo](https://open-meteo.com) (CC BY 4.0)
+- Πρόγνωση: [Open-Meteo](https://open-meteo.com) (CC BY 4.0) — ECMWF, DWD, Météo-France, UK Met Office, NOAA, ECCC, JMA· κύμα από Open-Meteo Marine
+- Προαιρετικά: [Windy Point Forecast API](https://api.windy.com)
 
 ## Deploy (GitHub Pages)
 

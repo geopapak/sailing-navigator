@@ -24,7 +24,8 @@ const msg = (content: unknown[], stop_reason = 'end_turn') => ({
 afterEach(() => vi.unstubAllGlobals());
 
 describe('advisor agent tools', () => {
-  const tools = Object.fromEntries(makeTools(ctx).map((t) => [t.name, t]));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tools = Object.fromEntries(makeTools(ctx).map((t) => [t.name, t])) as Record<string, { run: (input: any) => unknown }>;
 
   it('computes targets and sails from the boat polars', async () => {
     const out = JSON.parse((await tools.boat_targets.run({ tws: 12, twa: 45 })) as string);
