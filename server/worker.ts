@@ -104,6 +104,9 @@ export default {
       const out: AdvisorResponse = { reply, model: res.model, fallback };
       return json(out, 200, cors);
     } catch (e) {
+      console.error('Claude API error:', e instanceof Error ? e.message : e);
+      if (e instanceof Anthropic.BadRequestError && /credit balance/i.test(e.message))
+        return json({ error: 'Δεν υπάρχει υπόλοιπο στον λογαριασμό Claude API (Plans & Billing στο Claude Console).' }, 502, cors);
       if (e instanceof Anthropic.AuthenticationError) return json({ error: 'Άκυρο κλειδί Claude API στον server.' }, 500, cors);
       if (e instanceof Anthropic.RateLimitError) return json({ error: 'Πολλά αιτήματα. Δοκίμασε σε λίγο.' }, 429, cors);
       if (e instanceof Anthropic.APIConnectionTimeoutError) return json({ error: 'Το μοντέλο άργησε. Δοκίμασε ξανά.' }, 504, cors);
