@@ -1,6 +1,6 @@
 # Navigator — ORC ιστιοπλοΐα
 
-PWA για targets/VMG, επιλογή πανιών, συμβουλές και διορθωμένο χρόνο ORC. Φάση 1: live mode με χειροκίνητη εισαγωγή.
+PWA για targets/VMG, επιλογή πανιών, συμβουλές, routing με πρόγνωση, σύμβουλο AI και διορθωμένο χρόνο ORC.
 
 ## Εντολές
 
@@ -21,6 +21,8 @@ npm run build    # παραγωγή στο dist/
 | `src/nav/` | Γεωδαισία: απόσταση, διόπτευση, VMC, SOG/COG από fixes |
 | `src/weather/` | Πεδίο ανέμου (grid/σταθερός/διορθωμένος), λήψη Open-Meteo. Ανεξάρτητο από την πηγή, ώστε να μπει GRIB αργότερα |
 | `src/routing/` | Ισόχρονες, αποφυγή στεριάς (ακτογραμμή OSM Σαρωνικού), web worker, GeoJSON για τον χάρτη |
+| `src/ai/` | Σύμβουλος AI: δεδομένα που στέλνονται (τύποι, builders), system prompt, σχήμα απάντησης, client |
+| `server/` | Cloudflare Worker που καλεί το Claude API (το κλειδί μένει στον server) |
 | `src/ui/` | React UI: Live, Χάρτης/σχεδιασμός, Polar, Χρόνος, Σκάφη, Οδηγός, Ρυθμίσεις |
 
 Το core (`boat`, `performance`, `scoring`, `nav`) είναι καθαρό TypeScript χωρίς React, για να το χρησιμοποιήσει και το backend της Φάσης 3.
@@ -45,6 +47,27 @@ npm run build    # παραγωγή στο dist/
 ```bash
 node scripts/fetch-coastline.mjs
 ```
+
+## Σύμβουλος AI (Φάση 3)
+
+Η εφαρμογή υπολογίζει τα πάντα τοπικά και στέλνει μόνο τα αποτελέσματα (JSON) στο `server/worker.ts`. Ο Worker καλεί το Claude (`claude-opus-5-5`, structured output, effort `low` για Live και `medium` για σχεδιασμό, `fallbacks: "default"`) και επιστρέφει `{summary, actions[{text, when}], caution}` στα ελληνικά. Προστασία: κωδικός πρόσβασης (`x-access-code`) και επιτρεπτά origins (CORS).
+
+Εγκατάσταση (μία φορά):
+
+1. Λογαριασμός στο [Claude Console](https://platform.claude.com): δημιούργησε API key και βάλε μηνιαίο όριο χρέωσης.
+2. Δωρεάν λογαριασμός στο [Cloudflare](https://dash.cloudflare.com/sign-up).
+3. Από τον φάκελο του project:
+
+```bash
+npx wrangler login
+npx wrangler deploy
+npx wrangler secret put ANTHROPIC_API_KEY
+npx wrangler secret put ACCESS_CODE
+```
+
+4. Στην εφαρμογή: ⚙ → Σύμβουλος AI → η διεύθυνση `https://sailing-navigator-ai.<λογαριασμός>.workers.dev` και ο κωδικός → «Δοκιμή σύνδεσης».
+
+Τοπικά: φτιάξε `.dev.vars` με `ACCESS_CODE=…` και `ANTHROPIC_API_KEY=…` και τρέξε `npx wrangler dev`.
 
 ## Πηγές δεδομένων
 

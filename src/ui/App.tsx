@@ -1,4 +1,5 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
+import { onOpenTab, type AppTab } from './openTab';
 import { AppProvider, useApp } from './AppContext';
 import { NavProvider } from './NavContext';
 import { LiveView } from './LiveView';
@@ -13,7 +14,7 @@ import { Icon, type IconName } from './Icons';
 // The map (MapLibre) is large: load it only when the tab is opened.
 const PlanView = lazy(() => import('./PlanView').then((m) => ({ default: m.PlanView })));
 
-type Tab = 'live' | 'map' | 'polar' | 'scoring' | 'boats' | 'settings' | 'guide';
+type Tab = AppTab;
 
 const TABS: { id: Tab; label: string; icon: IconName }[] = [
   { id: 'live', label: 'Live', icon: 'live' },
@@ -32,6 +33,7 @@ const THEMES = {
 function Shell() {
   const { ready, error, activeBoat, boats, settings, updateSettings } = useApp();
   const [nav, setNav] = useStoredState<{ tab: Tab }>('nav', { tab: 'live' });
+  useEffect(() => onOpenTab((tab) => setNav({ tab })), [setNav]);
   const go = (tab: Tab) => setNav({ tab: nav.tab === tab && (tab === 'guide' || tab === 'settings') ? 'live' : tab });
 
   return (

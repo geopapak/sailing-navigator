@@ -1141,3 +1141,91 @@ input[type='checkbox'],
 input[type='range'] {
   accent-color: var(--accent);
 }
+
+/* ---- AI advisor ---- */
+.advisor {
+  border: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.advisor-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.advisor-presets {
+  margin: 4px 0 8px;
+}
+.small-chip {
+  min-height: 44px;
+  font-size: 0.95rem;
+  padding: 4px 12px;
+}
+.primary-chip {
+  background: var(--accent) !important;
+  color: var(--accent-fg);
+  border-color: var(--accent) !important;
+}
+.advisor-ask input {
+  flex: 1;
+  min-width: 0;
+}
+.advisor-reply {
+  margin-top: 10px;
+  border-top: 2px solid var(--line);
+  padding-top: 8px;
+}
+.advisor-reply.stale {
+  opacity: 0.5;
+}
+.advisor-summary {
+  font-weight: 700;
+  font-size: 1.1rem;
+  margin: 4px 0 8px;
+}
+.advisor-actions {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 8px;
+  display: grid;
+  gap: 6px;
+}
+.advisor-actions li {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+.advisor-actions .when {
+  flex: none;
+  min-width: 4.6em;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  border-radius: 6px;
+  padding: 2px 6px;
+  border: 2px solid var(--line);
+}
+.when-now .when {
+  border-color: var(--bad);
+  color: var(--bad);
+}
+.when-soon .when {
+  border-color: var(--fair);
+  color: var(--fair);
+}
+.when-watch .when {
+  color: var(--muted);
+}
+.advisor-caution {
+  color: var(--bad);
+  font-weight: 700;
+  margin: 4px 0;
+}
+.link.inline {
+  display: inline;
+  padding: 0;
+  color: var(--accent);
+  text-decoration: underline;
+}

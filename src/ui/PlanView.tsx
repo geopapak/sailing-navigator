@@ -13,6 +13,9 @@ import { STANDARD_SCORING_OPTIONS } from '../boat/scoringOptions';
 import { sailColor } from './PolarChart';
 import { Icon } from './Icons';
 import { useStoredState } from './hooks';
+import { AdvisorCard } from './AdvisorCard';
+import { buildPlanContext, localIso } from '../ai/context';
+import { openTab } from './openTab';
 import type { BoatProfile } from '../boat/types';
 
 const fmtTime = (ms: number) =>
@@ -321,6 +324,35 @@ export function PlanView() {
         {nav.planStatus.error && <p className="errors">{nav.planStatus.error}</p>}
 
         {route && <RouteSummary route={route} boat={boat} scoringOptionId={plan.scoringOptionId} onScoring={(id) => setPlan({ scoringOptionId: id })} />}
+        {route && (
+          <AdvisorCard
+            storageKey="advisor-plan"
+            title="Ανάλυση σχεδίου (AI)"
+            presets={['Ποια πλευρά πληρώνει;', 'Κίνδυνοι;', 'Πανιά;']}
+            onOpenSettings={() => openTab('settings')}
+            build={(question) => {
+              const opt = boat.scoring.find((o) => o.id === plan.scoringOptionId);
+              return buildPlanContext(
+                boat,
+                {
+                  courseName: course?.name ?? '',
+                  windSource: plan.windSource,
+                  model: plan.windSource === 'forecast' ? OPEN_METEO_MODELS.find((m) => m.id === forecast?.model)?.label ?? forecast?.model : undefined,
+                  forecastFetched: plan.windSource === 'forecast' && forecast ? localIso(forecast.fetchedAt) : undefined,
+                  route,
+                  corrected: opt
+                    ? {
+                        option: STANDARD_SCORING_OPTIONS.find((o) => o.id === opt.id)?.label ?? opt.id,
+                        tot: formatDuration(corrected('ToT', route.elapsedSec, opt, route.rhumbNm)),
+                        tod: formatDuration(corrected('ToD', route.elapsedSec, opt, route.rhumbNm)),
+                      }
+                    : undefined,
+                },
+                question,
+              );
+            }}
+          />
+        )}
       </div>
     </div>
   );

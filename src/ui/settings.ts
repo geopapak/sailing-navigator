@@ -8,6 +8,9 @@ export interface Settings {
   /** Manual TWD / heading entries are magnetic (compass) values. */
   manualMagnetic: boolean;
   keepAwake: boolean;
+  /** AI advisor backend URL (Cloudflare Worker) and its access code. */
+  aiUrl: string;
+  aiCode: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -16,4 +19,6 @@ export const DEFAULT_SETTINGS: Settings = {
   declination: 5,
   manualMagnetic: true,
   keepAwake: true,
+  aiUrl: '',
+  aiCode: '',
 };

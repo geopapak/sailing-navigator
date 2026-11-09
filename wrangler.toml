@@ -1,0 +1,11 @@
+# AI advisor backend — Cloudflare Worker.
+# Deploy:   npx wrangler deploy
+# Secrets:  npx wrangler secret put ANTHROPIC_API_KEY
+#           npx wrangler secret put ACCESS_CODE
+name = "sailing-navigator-ai"
+main = "server/worker.ts"
+compatibility_date = "2026-10-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+ALLOWED_ORIGINS = "https://geopapak.github.io"

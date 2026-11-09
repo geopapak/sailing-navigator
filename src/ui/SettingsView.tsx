@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { useApp } from './AppContext';
+import { checkAdvisor, AdvisorError } from '../ai/client';
 import { NumField } from './NumberStepper';
 import type { Theme } from './settings';
 
@@ -10,6 +12,8 @@ const THEMES: { id: Theme; label: string }[] = [
 
 export function SettingsView() {
   const { settings, updateSettings } = useApp();
+  const [check, setCheck] = useState<string>();
+  const [checking, setChecking] = useState(false);
   return (
     <div className="settings">
       <section className="card form-grid">
@@ -39,6 +43,47 @@ export function SettingsView() {
           <input type="checkbox" checked={settings.keepAwake} onChange={(e) => updateSettings({ keepAwake: e.target.checked })} />
           Η οθόνη να μένει αναμμένη
         </label>
+      </section>
+      <section className="card form-grid">
+        <h3>Σύμβουλος AI</h3>
+        <p className="small full">
+          Ο σύμβουλος στέλνει τα νούμερα που υπολογίζει η εφαρμογή (targets, πανί, σημαδούρα, διαδρομή) σε έναν δικό σου
+          server, που ρωτά το Claude και επιστρέφει σύντομη συμβουλή. Χρειάζεται internet. Το κλειδί του Claude API μένει
+          στον server, όχι στο κινητό.
+        </p>
+        <label className="full">
+          Διεύθυνση server
+          <input
+            type="url"
+            inputMode="url"
+            placeholder="https://sailing-navigator-ai.….workers.dev"
+            value={settings.aiUrl}
+            onChange={(e) => updateSettings({ aiUrl: e.target.value.trim() })}
+          />
+        </label>
+        <label>
+          Κωδικός πρόσβασης
+          <input type="password" autoComplete="off" value={settings.aiCode} onChange={(e) => updateSettings({ aiCode: e.target.value })} />
+        </label>
+        <div className="full">
+          <button
+            className="btn"
+            disabled={checking || !settings.aiUrl}
+            onClick={async () => {
+              setChecking(true);
+              try {
+                setCheck(await checkAdvisor({ url: settings.aiUrl, code: settings.aiCode }));
+              } catch (e) {
+                setCheck(e instanceof AdvisorError ? e.message : 'Αποτυχία ελέγχου.');
+              } finally {
+                setChecking(false);
+              }
+            }}
+          >
+            {checking ? 'Έλεγχος…' : 'Δοκιμή σύνδεσης'}
+          </button>
+          {check && <p className="small">{check}</p>}
+        </div>
       </section>
       <section className="card">
         <h3>Σχετικά</h3>
