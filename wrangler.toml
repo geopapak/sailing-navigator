@@ -16,3 +16,9 @@ binding = "DB"
 database_name = "sailing-navigator"
 database_id = "80257e2c-0db6-435c-a048-a0557a957619"
 migrations_dir = "migrations"
+
+# Workers Logs: keeps the server's log lines (one JSON per request / AI call / account event)
+# searchable in the Cloudflare dashboard → Workers & Pages → sailing-navigator-ai → Logs.
+[observability]
+enabled = true
+head_sampling_rate = 1

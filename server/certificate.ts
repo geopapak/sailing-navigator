@@ -5,6 +5,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { CERTIFICATE_PROMPT, CERTIFICATE_SCHEMA, isExtract, type CertificateExtract } from '../src/boat/certificate';
 import { HttpError } from './accounts';
+import type { Usage } from './log';
 
 export const CERT_MODEL = 'claude-opus-5-5';
 /** 10 MB file → base64 is 4/3 of that. */
@@ -21,7 +22,7 @@ export function validateCertificateBody(body: Record<string, unknown>): { data: 
   return { data, mediaType };
 }
 
-export async function readCertificate(client: Anthropic, file: { data: string; mediaType: MediaType }): Promise<{ extract: CertificateExtract; model: string }> {
+export async function readCertificate(client: Anthropic, file: { data: string; mediaType: MediaType }): Promise<{ extract: CertificateExtract; model: string; usage: Usage }> {
   const source =
     file.mediaType === 'application/pdf'
       ? ({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: file.data } } as const)
@@ -46,5 +47,9 @@ export async function readCertificate(client: Anthropic, file: { data: string; m
   }
   if (!isExtract(x)) throw new HttpError(502, 'Μη αναμενόμενη απάντηση από το AI.');
   if (!x.isCertificate) throw new HttpError(422, 'Δεν μοιάζει με πιστοποιητικό ORC. Έλεγξε το αρχείο.');
-  return { extract: x, model: res.model };
+  return {
+    extract: x,
+    model: res.model,
+    usage: { input_tokens: res.usage.input_tokens, output_tokens: res.usage.output_tokens, cache_read_input_tokens: res.usage.cache_read_input_tokens ?? 0 },
+  };
 }

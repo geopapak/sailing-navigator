@@ -18,6 +18,7 @@ import { WINDY_MODELS, WINDY_URL, parseWindy, windyBody } from '../src/weather/w
 import type { ModelSeries } from '../src/weather/compare';
 import { CHAT_LIMITS, validateChat } from '../src/ai/chat';
 import { AgentError, runAgent } from './agent';
+import { log } from './log';
 import { MAX_CERT_BASE64, readCertificate, validateCertificateBody } from './certificate';
 import {
   HttpError,
@@ -119,7 +120,7 @@ async function windy(req: Request, env: Env, cors: Record<string, string>): Prom
 
 /** Maps Claude API failures to short Greek messages. */
 function apiError(e: unknown, cors: Record<string, string>): Response {
-  console.error('Claude API error:', e instanceof Error ? `${e.constructor.name}: ${e.message}` : e);
+  log('error', { where: 'claude', error: e instanceof Error ? `${e.constructor.name}: ${e.message}` : String(e) });
   if (e instanceof AgentError) return json({ error: e.message }, 502, cors);
   if (e instanceof Anthropic.BadRequestError && /credit balance/i.test(e.message))
     return json({ error: 'Δεν υπάρχει υπόλοιπο στον λογαριασμό Claude API (Plans & Billing στο Claude Console).' }, 502, cors);
@@ -149,12 +150,19 @@ async function chat(req: Request, env: Env, cors: Record<string, string>): Promi
   const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY, maxRetries: 1, timeout: 80_000 });
   const webSearch = env.WEB_SEARCH !== '0';
   try {
-    return json(await runAgent(client, v.req, { webSearch }), 200, cors);
+    const t0 = Date.now();
+    const out = await runAgent(client, v.req, { webSearch });
+    log('ai', { kind: 'chat', model: out.model, ms: Date.now() - t0, tools: out.tools.join(','), fallback: out.fallback, ...out.usage });
+    const { usage: _u, ...reply } = out;
+    return json(reply, 200, cors);
   } catch (e) {
     // If web search is not enabled for the organisation, answer without it.
     if (webSearch && e instanceof Anthropic.BadRequestError && /web.?search/i.test(e.message)) {
       try {
-        return json(await runAgent(client, v.req, { webSearch: false }), 200, cors);
+        const out = await runAgent(client, v.req, { webSearch: false });
+        log('ai', { kind: 'chat', model: out.model, webSearch: false, ...out.usage });
+        const { usage: _u, ...reply } = out;
+        return json(reply, 200, cors);
       } catch (e2) {
         return apiError(e2, cors);
       }
@@ -206,9 +214,11 @@ async function certificate(req: Request, env: Env, cors: Record<string, string>)
   const file = validateCertificateBody(await body(req, MAX_CERT_BASE64 + 1024));
   const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY, maxRetries: 1, timeout: 110_000 });
   try {
+    const t0 = Date.now();
     const r = await readCertificate(client, file);
     await countPdfRead(env, s.user);
-    return json(r, 200, cors);
+    log('ai', { kind: 'certificate', user: s.user.id, model: r.model, ms: Date.now() - t0, bytes: Math.round((file.data.length * 3) / 4), ...r.usage });
+    return json({ extract: r.extract, model: r.model }, 200, cors);
   } catch (e) {
     if (e instanceof HttpError) throw e;
     return apiError(e, cors);
@@ -216,7 +226,18 @@ async function certificate(req: Request, env: Env, cors: Record<string, string>)
 }
 
 export default {
+  /** Every request gets one log line: method, path, status, duration. */
   async fetch(req: Request, env: Env): Promise<Response> {
+    const t0 = Date.now();
+    const res = await handle(req, env);
+    const path = new URL(req.url).pathname;
+    if (req.method !== 'OPTIONS') log('request', { method: req.method, path: path.replace(/[0-9a-f]{24}/, ':id'), status: res.status, ms: Date.now() - t0 });
+    return res;
+  },
+};
+
+async function handle(req: Request, env: Env): Promise<Response> {
+  {
     const url = new URL(req.url);
     const path = url.pathname;
     const cors = corsHeaders(req.headers.get('Origin'), env);
@@ -268,11 +289,11 @@ export default {
       return advice(req, env, cors);
     } catch (e) {
       if (e instanceof HttpError) return json({ error: e.message }, e.status, cors);
-      console.error('Server error:', e instanceof Error ? `${e.constructor.name}: ${e.message}` : e);
+      log('error', { where: 'server', path, error: e instanceof Error ? `${e.constructor.name}: ${e.message}` : String(e) });
       return json({ error: 'Απρόσμενο σφάλμα στον server.' }, 500, cors);
     }
-  },
-};
+  }
+}
 
 /** Quick structured advice (Live / plan cards). */
 async function advice(req: Request, env: Env, cors: Record<string, string>): Promise<Response> {
@@ -310,6 +331,14 @@ async function advice(req: Request, env: Env, cors: Record<string, string>): Pro
     if (!isReply(reply)) return json({ error: 'Μη αναμενόμενη μορφή απάντησης.' }, 502, cors);
     reply.actions = reply.actions.slice(0, 4);
     const fallback = (res.usage.iterations ?? []).some((it) => it.type === 'fallback_message');
+    log('ai', {
+      kind: 'advice',
+      model: res.model,
+      input_tokens: res.usage.input_tokens,
+      output_tokens: res.usage.output_tokens,
+      cache_read_input_tokens: res.usage.cache_read_input_tokens ?? 0,
+      fallback,
+    });
     const out: AdvisorResponse = { reply, model: res.model, fallback };
     return json(out, 200, cors);
   } catch (e) {

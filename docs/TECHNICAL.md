@@ -1,0 +1,219 @@
+# Sailing Navigator — τεχνική περιγραφή
+
+Έκδοση εγγράφου για την εφαρμογή **0.6.0**. Οδηγίες για τοπική εγκατάσταση: [LOCAL_SETUP.md](LOCAL_SETUP.md).
+
+## 1. Συνοπτικά
+
+Δύο κομμάτια, ένα αποθετήριο:
+
+| Κομμάτι | Τι είναι | Πού τρέχει | Κώδικας |
+| --- | --- | --- | --- |
+| **Εφαρμογή (PWA)** | React 18 + TypeScript, Vite. Όλοι οι υπολογισμοί (polars, routing, χρονοδιόρθωση) γίνονται στο κινητό. Δουλεύει χωρίς internet. | GitHub Pages: https://geopapak.github.io/sailing-navigator/ | `src/` |
+| **Server (API)** | Cloudflare Worker (TypeScript) + βάση **Cloudflare D1** (SQLite). Λογαριασμοί, συγχρονισμός, σύμβουλος AI (Claude), ανάγνωση πιστοποιητικών, proxy Windy. | https://sailing-navigator-ai.geopapak.workers.dev | `server/`, `migrations/` |
+
+```
+ Κινητό (PWA)                                   Cloudflare
+ ┌───────────────────────────┐   HTTPS/JSON    ┌──────────────────────────┐     ┌─────────────┐
+ │ React UI                  │ ──────────────▶ │ Worker (server/worker.ts)│ ──▶ │ D1 (SQLite) │
+ │ IndexedDB (Dexie)         │ ◀────────────── │  accounts / sync / AI    │     └─────────────┘
+ │ Web Worker: isochrones    │                 └──────────┬───────────────┘
+ │ Service worker (offline)  │                            │
+ └──────┬────────────────────┘                            ├──▶ Anthropic Claude API
+        │                                                 └──▶ Windy Point Forecast API
+        ├──▶ Open-Meteo (πρόγνωση, κύμα) — απευθείας από το κινητό
+        └──▶ OpenFreeMap / OpenSeaMap (χάρτης) — απευθείας, με cache
+```
+
+Βασική αρχή: **ο κώδικας υπολογίζει, το AI ερμηνεύει.** Ο σύμβουλος παίρνει έτοιμα νούμερα από την εφαρμογή ή καλεί εργαλεία που τρέχουν τον ίδιο κώδικα (`src/performance`, `src/scoring`, `src/weather`).
+
+## 2. Τεχνολογίες και εκδόσεις
+
+| Τι | Έκδοση | Σημείωση |
+| --- | --- | --- |
+| Node.js | 22 (LTS) | ίδια με το CI (`.github/workflows/pages.yml`) |
+| npm | 10 | |
+| TypeScript | 5.6 | `tsconfig.json` καλύπτει `src/` και `server/` |
+| React | 18.3 | |
+| Vite | 6 + `vite-plugin-pwa` | service worker, offline cache |
+| Dexie | 4 | IndexedDB στη συσκευή |
+| MapLibre GL | 6.15 | χάρτης, φορτώνει μόνο στην καρτέλα Χάρτης |
+| Vitest | 3 | tests εφαρμογής και server (`npm test`) |
+| Wrangler | 4.158+ | Cloudflare CLI: τοπικός server, D1, deploy |
+| @anthropic-ai/sdk | 1.6 | μόνο στον server |
+| Claude μοντέλο | `claude-opus-5-5` | με `fallbacks: "default"` |
+
+## 3. Δομή φακέλων
+
+```
+src/
+  boat/        προφίλ σκάφους (types), τοπική βάση (store.ts, Dexie), TRE IRENE, scoring options,
+               έλεγχοι (validate.ts), πιστοποιητικό ORC: σχήμα/μετατροπή/έλεγχοι (certificate.ts)
+  performance/ polars, targets, πανιά, συμβουλές (καθαρές συναρτήσεις)
+  routing/     isochrone routing, ακτογραμμή Σαρωνικού, Web Worker
+  weather/     Open-Meteo (πλέγμα, πολλά μοντέλα, consensus), σύγκριση μοντέλων, Windy (parse)
+  scoring/     ToT / ToD, ισοβαθμία με αντίπαλο
+  nav/         γεωγραφία (απόσταση, διόπτευση, VMC)
+  ai/          context προς τον σύμβουλο, client κλήσεων, τύποι συνομιλίας
+  sync/        API λογαριασμών (api.ts), συγχρονισμός (sync.ts)
+  ui/          React components (App, AuthFlow, LiveView, PlanView, ChatView, BoatsView, …)
+  releases.json  σημειώσεις εκδόσεων (πηγή για CHANGELOG.md και «Τι νέο»)
+server/
+  worker.ts      είσοδος Worker: CORS, routing, AI endpoints
+  accounts.ts    χρήστες, sessions, όροι, συγχρονισμός, διαχειριστής, εξαγωγή
+  agent.ts       σύμβουλος-agent (εργαλεία + βιβλιοθήκη)
+  knowledge.ts   βιβλιοθήκη γνώσεων ιστιοπλοΐας (system prompt)
+  certificate.ts ανάγνωση πιστοποιητικού με Claude
+  *.test.ts      tests (D1 προσομοιώνεται με node:sqlite)
+migrations/      σχήμα βάσης D1 (εφαρμόζεται με wrangler)
+design/          εγκεκριμένα σχέδια UI/UX
+docs/            αυτό το έγγραφο και οι οδηγίες εγκατάστασης
+scripts/         εικονίδια, CHANGELOG, ακτογραμμή
+```
+
+## 4. Βάση δεδομένων
+
+### 4.1 Στον server: Cloudflare D1 (SQLite)
+
+Όνομα βάσης `sailing-navigator`, binding `DB` (`wrangler.toml`). Οι αλλαγές σχήματος είναι αριθμημένα αρχεία SQL στο `migrations/` και εφαρμόζονται με τη σειρά. Ποιο έχει ήδη εφαρμοστεί, το κρατά η ίδια η D1 στον πίνακα `d1_migrations`.
+
+**`users`** — ένας λογαριασμός ανά email
+
+| Στήλη | Τύπος | Περιγραφή |
+| --- | --- | --- |
+| `id` | TEXT PK | 24 hex χαρακτήρες, τυχαίο |
+| `email` | TEXT UNIQUE | πάντα πεζά |
+| `name` | TEXT | |
+| `pass_hash`, `pass_salt` | TEXT | PBKDF2-SHA256, 100.000 επαναλήψεις, salt 16 bytes |
+| `created_at` | INTEGER | ms (Unix epoch) |
+| `is_admin` | INTEGER 0/1 | 1 για το email του `ADMIN_EMAIL` |
+| `ai_allowed` | INTEGER 0/1 | έγκριση συμβούλου AI από τον διαχειριστή |
+| `ai_limit` | INTEGER | ερωτήσεις AI τον μήνα (προεπιλογή 100, διαχειριστής 1000) |
+| `ai_month`, `ai_count` | TEXT, INTEGER | μετρητής μήνα (`YYYY-MM`) |
+| `failed_logins`, `locked_until` | INTEGER | 5 λάθος κωδικοί → κλείδωμα 15 λεπτά |
+| `terms_version`, `terms_at` | INTEGER | ποια έκδοση όρων αποδέχτηκε και πότε |
+| `marketing` | INTEGER 0/1 | συναίνεση για email ενημερώσεων |
+| `must_change_password` | INTEGER 0/1 | μπήκε με προσωρινό κωδικό |
+| `reset_requested_at` | INTEGER | πότε πάτησε «Ξέχασα τον κωδικό» |
+| `pdf_used` | INTEGER | αναγνώσεις πιστοποιητικού (3 δωρεάν χωρίς έγκριση AI) |
+
+**`sessions`** — μία ανά συνδεδεμένη συσκευή
+
+| Στήλη | Περιγραφή |
+| --- | --- |
+| `token_hash` PK | SHA-256 του token. Το ίδιο το token (64 hex) το έχει μόνο η συσκευή. |
+| `user_id` | → `users.id` (ON DELETE CASCADE) |
+| `created_at`, `expires_at` | λήξη σε 120 ημέρες |
+
+**`items`** — ό,τι συγχρονίζεται (σκάφη, διαδρομές)
+
+| Στήλη | Περιγραφή |
+| --- | --- |
+| `user_id`, `kind`, `id` | PK· `kind` = `boat` ή `course` |
+| `data` | JSON του σκάφους/διαδρομής (≤ 200 KB), `NULL` αν διαγράφηκε |
+| `updated_at` | ρολόι της συσκευής που το άλλαξε (ms) — «νικάει το νεότερο» |
+| `deleted` | 0/1 (tombstone για να διαγραφεί και στις άλλες συσκευές) |
+| `server_at` | ρολόι του server όταν γράφτηκε — για «τι άλλαξε από τότε» |
+
+Όρια: 500 στοιχεία ανά λογαριασμό.
+
+### 4.2 Στη συσκευή: IndexedDB (Dexie)
+
+Βάση `sailing-navigator` (`src/boat/store.ts`):
+
+| Πίνακας | Περιεχόμενο |
+| --- | --- |
+| `boats` | προφίλ σκαφών (`BoatProfile`: στοιχεία, polars, πανιά, κανόνες πανιών, συντελεστές ORC) |
+| `courses` | διαδρομές (σημαδούρες) |
+| `kv` | ρυθμίσεις, τελευταία πρόγνωση, σύγκριση μοντέλων, υπολογισμένη διαδρομή, `tombstones`, `sync-state` |
+
+Μικρά πράγματα UI (καρτέλα, φόρμες, ιστορικό συνομιλίας) είναι στο `localStorage`.
+
+### 4.3 Συγχρονισμός (`src/sync/sync.ts`, `POST /sync`)
+
+1. Η συσκευή στέλνει όσα άλλαξαν μετά το τελευταίο επιτυχές push (`updatedAt > pushedAt`) και τα tombstones των διαγραφών, μαζί με το `since`, δηλαδή το ρολόι του server της τελευταίας φοράς.
+2. Ο server γράφει όσα είναι **νεότερα** από αυτά που έχει (last write wins με βάση το `updated_at`). Επιστρέφει ό,τι άλλαξε μετά το `since` και, για όσα απέρριψε, τη νεότερη εκδοχή του.
+3. Η συσκευή εφαρμόζει τα εισερχόμενα, εκτός αν η δική της εκδοχή είναι νεότερη, και κρατά το νέο `since`.
+
+Πότε τρέχει: στο άνοιγμα, όταν επανέρχεται το internet ή η εφαρμογή στο προσκήνιο, και 2,5 δευτερόλεπτα μετά από κάθε αλλαγή. Αν συνδεθεί άλλος χρήστης στην ίδια συσκευή, τα δεδομένα του προηγούμενου σβήνονται από τη συσκευή (υπάρχουν στον λογαριασμό του).
+
+## 5. API του server
+
+Όλα JSON. Αυθεντικοποίηση: `Authorization: Bearer <token>`. Εναλλακτικά, μόνο για τα AI endpoints, `x-access-code: <ACCESS_CODE>` (ο ιδιοκτήτης χωρίς λογαριασμό). Τα σφάλματα έρχονται ως `{ "error": "μήνυμα στα ελληνικά" }` με κατάλληλο HTTP status.
+
+| Μέθοδος & διαδρομή | Πρόσβαση | Τι κάνει |
+| --- | --- | --- |
+| `GET /health` | όλοι | κατάσταση server (`configured`, `accounts`, `windy`, `user` αν υπάρχει token) |
+| `GET /config` | όλοι | `termsVersion`, στοιχεία υπευθύνου επεξεργασίας |
+| `POST /auth/register` | όλοι | `{email, password, name, acceptTerms, acceptPrivacy, marketing}` → `{token, user}` |
+| `POST /auth/login` | όλοι | `{email, password}` → `{token, user}` |
+| `POST /auth/forgot` | όλοι | `{email}` → σημειώνει αίτημα για τον διαχειριστή (ίδια απάντηση για άγνωστα email) |
+| `POST /auth/logout` | χρήστης | ακυρώνει το token |
+| `GET /me` | χρήστης | στοιχεία λογαριασμού, όρια AI/PDF, `termsOk`, `mustChangePassword` |
+| `POST /me/password` | χρήστης | `{current, next}` (χωρίς `current` μετά από προσωρινό κωδικό)· αποσυνδέει τις άλλες συσκευές |
+| `POST /me/terms` | χρήστης | `{version}` → αποδοχή τρέχουσας έκδοσης όρων |
+| `GET /me/export` | χρήστης | όλα τα δεδομένα του χρήστη (GDPR) |
+| `DELETE /me` | χρήστης | διαγραφή λογαριασμού, sessions και items |
+| `POST /sync` | χρήστης | `{since, changes[]}` → `{now, items[]}` |
+| `GET /admin/users` | διαχειριστής | λίστα χρηστών με όρια, αιτήματα κωδικού |
+| `POST /admin/users/:id` | διαχειριστής | `{aiAllowed?, aiLimit?, resetPassword?}` → (`tempPassword`) |
+| `POST /certificate` | χρήστης | `{data: base64, mediaType}` (PDF/JPG/PNG/WebP ≤ 10 MB) → `{extract}` |
+| `POST /advice` | AI* | γρήγορη συμβουλή καρτών Live/Χάρτη (structured output) |
+| `POST /chat` | AI* | συνομιλία με τον σύμβουλο-agent |
+| `POST /windy` | εγκεκριμένοι | πρόγνωση Windy σε σημείο (θέλει `WINDY_KEY`) |
+
+\* AI = `ACCESS_CODE` ή χρήστης με `ai_allowed`. Κάθε κλήση μετρά στο μηνιαίο όριο.
+
+**CORS:** επιτρέπονται τα origins του `ALLOWED_ORIGINS` (`wrangler.toml`) και κάθε `http://localhost:<port>` / `http://127.0.0.1:<port>`.
+
+## 6. Ρυθμίσεις server (secrets και vars)
+
+| Όνομα | Τύπος | Υποχρεωτικό | Χρήση |
+| --- | --- | --- | --- |
+| `ANTHROPIC_API_KEY` | secret | για AI | κλειδί Claude API |
+| `ADMIN_EMAIL` | secret | ναι | email(s) διαχειριστή, χωρισμένα με κόμμα |
+| `ACCESS_CODE` | secret | όχι | κωδικός ιδιοκτήτη για AI χωρίς λογαριασμό |
+| `CONTROLLER_NAME`, `CONTROLLER_EMAIL` | secret | ναι (GDPR) | εμφανίζονται στην Πολιτική απορρήτου |
+| `WINDY_KEY` | secret | όχι | Windy Point Forecast API |
+| `WEB_SEARCH` | var | όχι | `0` = ο σύμβουλος χωρίς αναζήτηση web |
+| `ALLOWED_ORIGINS` | var | ναι | origins της εφαρμογής (CORS) |
+| `DB` | binding D1 | ναι | η βάση |
+
+Στην παραγωγή μπαίνουν με `npx wrangler secret put <ΟΝΟΜΑ>`. Τοπικά μπαίνουν στο αρχείο `.dev.vars` (δες `.dev.vars.example`).
+
+Στην εφαρμογή: `VITE_SERVER_URL` (αρχείο `.env.local`, δες `.env.example`) — ποιον server χρησιμοποιεί. Κενό = παραγωγή.
+
+## 7. AI (Claude)
+
+| Χρήση | Αρχείο | Ρυθμίσεις |
+| --- | --- | --- |
+| Γρήγορη συμβουλή | `server/worker.ts` → `advice()`, `src/ai/prompt.ts` | structured output (`REPLY_SCHEMA`), effort `low` (Live) / `medium` (σχέδιο) |
+| Σύμβουλος (συνομιλία) | `server/agent.ts`, `server/knowledge.ts` | tool runner, έως 8 βήματα, effort `medium`, system prompt cached. Εργαλεία: `boat_targets`, `ratings_math`, `weather_models`, `distance_bearing`, `web_search` (server tool, έως 3) |
+| Πιστοποιητικό ORC | `server/certificate.ts`, `src/boat/certificate.ts` | PDF ως `document` ή εικόνα ως `image`, structured output (`CERTIFICATE_SCHEMA`), μετά έλεγχοι στον κώδικα (`checkExtract`) |
+
+Όλα με `betas: ["server-side-fallback-2026-07-01"]`, `fallbacks: "default"`. Τα σφάλματα του API γίνονται ελληνικά μηνύματα στο `apiError()`. Κόστος (ενδεικτικά): γρήγορη συμβουλή 1–4 λεπτά, συνομιλία 5–15 λεπτά, πιστοποιητικό 10–30 λεπτά του ευρώ.
+
+## 8. Ασφάλεια και ιδιωτικότητα
+
+- Κωδικοί: PBKDF2-SHA256 (100k), σύγκριση σταθερού χρόνου, κλείδωμα μετά από 5 αποτυχίες.
+- Sessions: τυχαίο token 256 bit. Στη βάση αποθηκεύεται μόνο το SHA-256 του. Ένας νέος κωδικός αποσυνδέει τις άλλες συσκευές.
+- Το κλειδί Claude API είναι μόνο στον server, ποτέ στο κινητό ή στο αποθετήριο.
+- Το PDF του πιστοποιητικού στέλνεται στο Claude και δεν αποθηκεύεται πουθενά.
+- Η θέση GPS μένει στη συσκευή, εκτός αν σταλεί με ερώτηση στον σύμβουλο.
+- Αποδοχή όρων με έκδοση: όταν αλλάζουν οι όροι, αυξάνεται το `TERMS_VERSION` (σε `server/accounts.ts` **και** `src/ui/legal.tsx`) και όλοι αποδέχονται ξανά.
+
+## 9. Logs
+
+`server/log.ts`: μία γραμμή JSON ανά γεγονός (`request`, `register`, `login`, `login_failed`, `password_reset_requested`, `password_changed`, `admin_update`, `account_deleted`, `sync`, `ai`, `error`). Οι γραμμές περιέχουν μόνο ids και νούμερα, ποτέ email, κωδικούς, tokens ή κείμενο ερωτήσεων.
+
+- **Τοπικά:** στο terminal του `wrangler dev`.
+- **Παραγωγή:** ζωντανά με `npx wrangler tail`, και με ιστορικό στα Workers Logs (`[observability]` στο `wrangler.toml`): Cloudflare dashboard → Workers & Pages → `sailing-navigator-ai` → Logs.
+
+Λεπτομέρειες και φίλτρα: [LOCAL_SETUP.md § Logs](LOCAL_SETUP.md#10-logs).
+
+## 10. Tests, build, εκδόσεις
+
+- `npm test` — 119 tests. Καλύπτουν polars/targets, routing, πρόγνωση, χρονοδιόρθωση, τους ελέγχους πιστοποιητικού, την τοπική βάση, τον server (D1 πάνω σε `node:sqlite`, ψεύτικες απαντήσεις Claude) και τις σημειώσεις εκδόσεων.
+- `npm run build` — typecheck και build στο `dist/`.
+- **Εκδόσεις:** κάθε deploy ανεβάζει την έκδοση στο `package.json` και γράφει εγγραφή στο `src/releases.json`, και μετά τρέχει `npm run changelog`. Τα tests αποτυγχάνουν αν λείπει κάτι από αυτά.
+- **Deploy εφαρμογής:** αυτόματο με push στο `main` (GitHub Actions → Pages). Αλλαγές μόνο σε `docs/` και `*.md` δεν κάνουν deploy.
+- **Deploy server:** `npx wrangler d1 migrations apply sailing-navigator --remote` (αν υπάρχει νέο migration) → `npx wrangler deploy`. Πρώτα ο server και η βάση, μετά η εφαρμογή.

@@ -14,6 +14,7 @@ import { corrected, elapsedToTie, formatDuration } from '../src/scoring/correcte
 import { bearingDeg, distanceNm } from '../src/nav/geo';
 import { fetchModelSeries, fetchWaves, spreadTimeline, valueAt, agreement } from '../src/weather/compare';
 import { KNOWLEDGE, PLACES } from './knowledge';
+import { addUsage, zeroUsage } from './log';
 
 export const AGENT_MODEL = 'claude-opus-5-5';
 
@@ -256,7 +257,11 @@ export function buildMessages(req: ChatRequest): Anthropic.Beta.BetaMessageParam
 }
 
 /** Runs the agent loop and collects the answer, the tools used and web sources. */
-export async function runAgent(client: Anthropic, req: ChatRequest, opts: { webSearch: boolean }): Promise<ChatResponse> {
+export async function runAgent(
+  client: Anthropic,
+  req: ChatRequest,
+  opts: { webSearch: boolean },
+): Promise<ChatResponse & { usage: ReturnType<typeof zeroUsage> }> {
   const tools = makeTools(req.context);
   const runner = client.beta.messages.toolRunner({
     model: AGENT_MODEL,
@@ -272,7 +277,9 @@ export async function runAgent(client: Anthropic, req: ChatRequest, opts: { webS
 
   const used = new Set<string>();
   let fallback = false;
+  const usage = zeroUsage();
   for await (const msg of runner) {
+    addUsage(usage, msg.usage);
     for (const b of msg.content) if (b.type === 'tool_use' || b.type === 'server_tool_use') used.add(b.name);
     if ((msg.usage.iterations ?? []).some((it) => it.type === 'fallback_message')) fallback = true;
     if (msg.stop_reason === 'refusal') throw new AgentError('Ο σύμβουλος δεν απάντησε σε αυτό το αίτημα.');
@@ -291,7 +298,7 @@ export async function runAgent(client: Anthropic, req: ChatRequest, opts: { webS
   }
   text = text.trim();
   if (!text) throw new AgentError('Ο σύμβουλος δεν έδωσε απάντηση. Δοκίμασε ξανά.');
-  return { text, model: final.model, fallback, tools: [...used], sources: [...sources.values()] };
+  return { text, model: final.model, fallback, tools: [...used], sources: [...sources.values()], usage };
 }
 
 export class AgentError extends Error {}

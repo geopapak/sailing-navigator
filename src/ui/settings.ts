@@ -17,7 +17,8 @@ export interface Settings {
 }
 
 /** The project's own server; users can point the app elsewhere in Settings. */
-export const DEFAULT_SERVER = 'https://sailing-navigator-ai.geopapak.workers.dev';
+export const DEFAULT_SERVER: string =
+  (import.meta.env.VITE_SERVER_URL as string | undefined)?.trim() || 'https://sailing-navigator-ai.geopapak.workers.dev';
 
 export const DEFAULT_SETTINGS: Settings = {
   theme: 'day',

@@ -1,0 +1,18 @@
+# Αντίγραψέ το σε .dev.vars για τον τοπικό server (`npx wrangler dev`). Το .dev.vars δεν μπαίνει στο git.
+
+# Κλειδί Claude API (platform.claude.com). Με ψεύτικη τιμή δουλεύουν όλα εκτός από σύμβουλο AI και ανάγνωση PDF.
+ANTHROPIC_API_KEY=sk-ant-test-not-real
+
+# Κωδικός ιδιοκτήτη για τον σύμβουλο χωρίς λογαριασμό (προαιρετικό).
+ACCESS_CODE=local-test
+
+# Το email που γίνεται αυτόματα διαχειριστής (με AI ενεργό) όταν κάνει εγγραφή.
+ADMIN_EMAIL=admin@test.local
+
+# Υπεύθυνος επεξεργασίας για την Πολιτική απορρήτου (προαιρετικά τοπικά).
+CONTROLLER_NAME=Τοπική δοκιμή
+CONTROLLER_EMAIL=privacy@test.local
+
+# Προαιρετικά: κλειδί Windy Point Forecast, και 0 για να κλείσει η αναζήτηση web του συμβούλου.
+# WINDY_KEY=
+# WEB_SEARCH=0

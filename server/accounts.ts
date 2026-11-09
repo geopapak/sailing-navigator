@@ -6,6 +6,8 @@
  */
 
 /** The subset of Cloudflare's D1 API we use (kept local: no extra type package). */
+import { log } from './log';
+
 export interface D1Result<T = unknown> {
   results: T[];
   meta?: { changes?: number };
@@ -185,6 +187,7 @@ export async function register(
     )
     .bind(u.id, u.email, u.name, u.pass_hash, u.pass_salt, u.created_at, u.is_admin, u.ai_allowed, u.ai_limit, u.terms_version, u.terms_at, u.marketing)
     .run();
+  log('register', { user: u.id, admin: !!u.is_admin, marketing: !!u.marketing });
   return { token: await newSession(env, u.id), user: publicUser(u) };
 }
 
@@ -205,6 +208,7 @@ export async function login(env: AccountEnv, body: { email?: unknown; password?:
         .bind(fails >= 5 ? 0 : fails, fails >= 5 ? now + 15 * 60_000 : 0, u.id)
         .run();
     }
+    log('login_failed', { user: u?.id ?? null, locked: !!u && u.failed_logins + 1 >= 5 });
     throw new HttpError(401, 'Λάθος email ή κωδικός.');
   }
   const admin = isAdminEmail(env, u.email);
@@ -213,6 +217,7 @@ export async function login(env: AccountEnv, body: { email?: unknown; password?:
     u.ai_allowed = 1;
   }
   await d.prepare('UPDATE users SET failed_logins = 0, locked_until = 0, is_admin = ?, ai_allowed = ? WHERE id = ?').bind(u.is_admin, u.ai_allowed, u.id).run();
+  log('login', { user: u.id, temp: !!u.must_change_password });
   return { token: await newSession(env, u.id), user: publicUser(u) };
 }
 
@@ -244,7 +249,8 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export async function requestReset(env: AccountEnv, body: { email?: unknown }) {
   const email = typeof body.email === 'string' ? normEmail(body.email) : '';
   if (!EMAIL_RE.test(email)) throw new HttpError(400, 'Άκυρο email.');
-  await db(env).prepare('UPDATE users SET reset_requested_at = ? WHERE email = ?').bind(Date.now(), email).run();
+  const r = await db(env).prepare('UPDATE users SET reset_requested_at = ? WHERE email = ?').bind(Date.now(), email).run();
+  log('password_reset_requested', { known: (r.meta?.changes ?? 0) > 0 });
   return { ok: true };
 }
 
@@ -365,6 +371,7 @@ export async function sync(env: AccountEnv, u: UserRow, body: { since?: unknown;
     const r = await d.prepare('SELECT kind, id, data, updated_at, deleted, server_at FROM items WHERE user_id = ? AND kind = ? AND id = ?').bind(u.id, k.kind, k.id).first<Row>();
     if (r) out.set(`${k.kind}:${k.id}`, toItem(r));
   }
+  if (accepted.size || out.size) log('sync', { user: u.id, pushed: accepted.size, pulled: out.size });
   return { now, items: [...out.values()] };
 }
 
@@ -397,6 +404,7 @@ export async function updateUser(env: AccountEnv, id: string, body: { aiAllowed?
     );
   }
   await d.batch(stmts);
+  log('admin_update', { user: id, aiAllowed: !!u.ai_allowed, aiLimit: u.ai_limit, resetPassword: !!tempPassword });
   return { user: publicUser(u), tempPassword };
 }
 
@@ -413,6 +421,7 @@ export async function changePassword(env: AccountEnv, u: UserRow, tokenHash: str
     // Other devices sign in again with the new password.
     d.prepare('DELETE FROM sessions WHERE user_id = ? AND token_hash != ?').bind(u.id, tokenHash),
   ]);
+  log('password_changed', { user: u.id, afterTemp: !!u.must_change_password });
   return { user: publicUser({ ...u, must_change_password: 0 }) };
 }
 
@@ -423,4 +432,5 @@ export async function deleteAccount(env: AccountEnv, u: UserRow) {
     d.prepare('DELETE FROM sessions WHERE user_id = ?').bind(u.id),
     d.prepare('DELETE FROM users WHERE id = ?').bind(u.id),
   ]);
+  log('account_deleted', { user: u.id });
 }
