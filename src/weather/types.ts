@@ -35,6 +35,12 @@ export interface GridForecast {
   dir: number[];
   /** Gusts, kt (optional). */
   gust?: number[];
+  /** For a consensus grid: the models averaged, and their spread per cell (same layout). */
+  members?: string[];
+  /** Standard deviation of wind speed across models, kt. */
+  spreadTws?: number[];
+  /** Angular deviation of wind direction across models, degrees. */
+  spreadTwd?: number[];
 }
 
 export type LatLonBox = { south: number; west: number; north: number; east: number };

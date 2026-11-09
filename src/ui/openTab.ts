@@ -1,5 +1,5 @@
 /** Lets any view switch the app's tab (e.g. a "go to Settings" link). */
-export type AppTab = 'live' | 'map' | 'polar' | 'scoring' | 'boats' | 'settings' | 'guide';
+export type AppTab = 'live' | 'map' | 'chat' | 'polar' | 'scoring' | 'boats' | 'settings' | 'guide';
 
 const EVENT = 'nav-open-tab';
 

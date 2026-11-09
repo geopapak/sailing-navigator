@@ -15,8 +15,9 @@ import { AdvisorCard } from './AdvisorCard';
 import { buildLiveContext, localIso, routeSnapshot } from '../ai/context';
 import type { NavSnapshot } from '../ai/types';
 import { gridField } from '../weather/field';
-import { OPEN_METEO_MODELS } from '../weather/openMeteo';
+import { modelLabel } from '../weather/models';
 import { openTab } from './openTab';
+import { setLiveSnapshot } from '../ai/snapshot';
 
 interface LiveState {
   windInput: 'twa' | 'twd';
@@ -121,6 +122,13 @@ export function LiveView() {
         : undefined;
   const observed = s.tws !== null && observedTwd !== undefined ? { tws: s.tws, twd: observedTwd } : undefined;
 
+  // Publish the latest numbers for the advisor chat (buildRef is set further down, after the early returns).
+  const buildRef = useRef<(q?: string) => ReturnType<typeof buildLiveContext> | undefined>();
+  useEffect(() => {
+    const c = buildRef.current?.();
+    if (c) setLiveSnapshot(c);
+  }, [result, s.sailId, gps.fix, nav.nextMark, nav.liveRoute, nav.course]);
+
   if (!boat) return <p>Δεν υπάρχει σκάφος.</p>;
   if (!boat.polar)
     return <p className="card">Το σκάφος «{boat.name}» δεν έχει polars. Επίλεξε άλλο σκάφος ή πρόσθεσε polars στο προφίλ.</p>;
@@ -128,6 +136,45 @@ export function LiveView() {
   const sails = selectableSails(boat);
   const headingDisplay =
     headingTrue === undefined ? '—' : `${f0(settings.manualMagnetic ? trueToMag(headingTrue, settings.declination) : headingTrue)}°`;
+
+  const buildCtx = (question?: string) => {
+    if (!result) return undefined;
+    const navSnap: NavSnapshot = { observedTwd: observed?.twd };
+    const fix = gps.fix;
+    if (fix) navSnap.position = { lat: fix.lat, lon: fix.lon, sog: fix.sog, cogTrue: fix.cog };
+    if (fix && nav.forecast) {
+      const now = Date.now();
+      const f = nav.forecast;
+      if (now >= f.times[0] && now <= f.times[f.times.length - 1]) {
+        const w = gridField(f).at(fix.lat, fix.lon, now);
+        navSnap.forecastHere = { tws: w.tws, twd: w.twd, model: modelLabel(f.model) };
+      }
+    }
+    const course = nav.course;
+    const mark = course?.marks[nav.nextMark];
+    if (course && mark && course.marks.length > 1) {
+      const dtw = fix ? distanceNm(fix, mark) : undefined;
+      const btw = fix ? bearingDeg(fix, mark) : undefined;
+      const v = fix?.sog !== undefined && fix.cog !== undefined && btw !== undefined ? vmc(fix.sog, fix.cog, btw) : undefined;
+      navSnap.nextMark = {
+        name: mark.name,
+        index: nav.nextMark,
+        of: course.marks.length - 1,
+        distanceNm: dtw,
+        bearingTrue: btw,
+        vmcKt: v,
+        eta: dtw !== undefined && v !== undefined && v > 0.3 ? localIso(Date.now() + (dtw / v) * 3600_000) : undefined,
+      };
+    }
+    if (nav.liveRoute)
+      navSnap.route = {
+        ...routeSnapshot(nav.liveRoute, boat),
+        computedMinAgo: nav.liveStatus.at ? (Date.now() - nav.liveStatus.at) / 60_000 : undefined,
+      };
+    return buildLiveContext({ boat, result, outlook, advice, currentSailId: s.sailId, nav: navSnap, question });
+};
+
+  buildRef.current = buildCtx;
 
   return (
     <div className="live">
@@ -307,42 +354,7 @@ export function LiveView() {
         presets={['Αναστροφή τώρα;', 'Αλλαγή πανιού;', 'Πώς πάμε;']}
         disabledReason={result ? undefined : 'Βάλε TWS και TWA για να ρωτήσεις.'}
         onOpenSettings={() => openTab('settings')}
-        build={(question) => {
-          if (!result) return undefined;
-          const navSnap: NavSnapshot = { observedTwd: observed?.twd };
-          const fix = gps.fix;
-          if (fix) navSnap.position = { lat: fix.lat, lon: fix.lon, sog: fix.sog, cogTrue: fix.cog };
-          if (fix && nav.forecast) {
-            const now = Date.now();
-            const f = nav.forecast;
-            if (now >= f.times[0] && now <= f.times[f.times.length - 1]) {
-              const w = gridField(f).at(fix.lat, fix.lon, now);
-              navSnap.forecastHere = { tws: w.tws, twd: w.twd, model: OPEN_METEO_MODELS.find((m) => m.id === f.model)?.label ?? f.model };
-            }
-          }
-          const course = nav.course;
-          const mark = course?.marks[nav.nextMark];
-          if (course && mark && course.marks.length > 1) {
-            const dtw = fix ? distanceNm(fix, mark) : undefined;
-            const btw = fix ? bearingDeg(fix, mark) : undefined;
-            const v = fix?.sog !== undefined && fix.cog !== undefined && btw !== undefined ? vmc(fix.sog, fix.cog, btw) : undefined;
-            navSnap.nextMark = {
-              name: mark.name,
-              index: nav.nextMark,
-              of: course.marks.length - 1,
-              distanceNm: dtw,
-              bearingTrue: btw,
-              vmcKt: v,
-              eta: dtw !== undefined && v !== undefined && v > 0.3 ? localIso(Date.now() + (dtw / v) * 3600_000) : undefined,
-            };
-          }
-          if (nav.liveRoute)
-            navSnap.route = {
-              ...routeSnapshot(nav.liveRoute, boat),
-              computedMinAgo: nav.liveStatus.at ? (Date.now() - nav.liveStatus.at) / 60_000 : undefined,
-            };
-          return buildLiveContext({ boat, result, outlook, advice, currentSailId: s.sailId, nav: navSnap, question });
-        }}
+        build={buildCtx}
       />
 
       <section className="card gps">

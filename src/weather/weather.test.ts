@@ -75,12 +75,12 @@ describe('Open-Meteo', () => {
     const { urls } = buildUrls({
       box: { south: 37, west: 23, north: 38, east: 24.9 },
       step: 0.1,
-      model: 'icon_eu',
+      model: 'icon_seamless',
       startDate: '2026-11-08',
       endDate: '2026-11-09',
     });
     expect(urls.length).toBe(3); // 11 × 20 = 220 points → 3 requests
-    expect(urls[0]).toContain('models=icon_eu');
+    expect(urls[0]).toContain('models=icon_seamless');
     expect(urls[0]).toContain('wind_speed_unit=kn');
   });
 

@@ -3,6 +3,9 @@ import { deleteCourse, getKV, listCourses, saveCourse, setKV, type Course } from
 import type { Mark, RouteResult } from '../routing/isochrones';
 import { routeInWorker, type WindSpec } from '../routing/protocol';
 import { fetchOpenMeteo } from '../weather/openMeteo';
+import { normalizeModel } from '../weather/models';
+import { fetchComparison, type Comparison } from '../weather/compare';
+import { fetchWindySeries } from '../ai/client';
 import { SARONIKOS_BOX, type GridForecast, type WindSample } from '../weather/types';
 import { calibrationFrom, gridField } from '../weather/field';
 import { useApp } from './AppContext';
@@ -62,6 +65,11 @@ interface NavState {
   forecastStatus: { busy: boolean; error?: string };
   loadForecast: () => Promise<void>;
 
+  /** Many models compared at one point (start mark by default). */
+  comparison?: Comparison;
+  comparisonStatus: { busy: boolean; error?: string };
+  loadComparison: () => Promise<void>;
+
   planned?: RouteResult;
   planStatus: { busy: boolean; error?: string };
   computePlan: () => Promise<void>;
@@ -88,7 +96,7 @@ export function localToMs(s: string): number {
 const isoDate = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 
 export function NavProvider({ children }: { children: ReactNode }) {
-  const { activeBoat } = useApp();
+  const { activeBoat, settings } = useApp();
   const [courses, setCourses] = useState<Course[]>([]);
   const [ui, setUi] = useStoredState<{ courseId?: string; nextMark: number; gps: boolean }>('nav-ui', {
     nextMark: 1,
@@ -98,6 +106,8 @@ export function NavProvider({ children }: { children: ReactNode }) {
   const [forecast, setForecast] = useState<GridForecast>();
   const [forecastStatus, setForecastStatus] = useState<{ busy: boolean; error?: string }>({ busy: false });
   const [planned, setPlanned] = useState<RouteResult>();
+  const [comparison, setComparison] = useState<Comparison>();
+  const [comparisonStatus, setComparisonStatus] = useState<{ busy: boolean; error?: string }>({ busy: false });
   const [planStatus, setPlanStatus] = useState<{ busy: boolean; error?: string }>({ busy: false });
   const [liveRoute, setLiveRoute] = useState<RouteResult>();
   const [liveStatus, setLiveStatus] = useState<NavState['liveStatus']>({ busy: false });
@@ -111,6 +121,8 @@ export function NavProvider({ children }: { children: ReactNode }) {
       if (f) setForecast(f);
       const p = await getKV<RouteResult | null>('planned', null);
       if (p) setPlanned(p);
+      const c = await getKV<Comparison | null>('comparison', null);
+      if (c) setComparison(c);
     })().catch(() => undefined);
   }, []);
 
@@ -143,7 +155,7 @@ export function NavProvider({ children }: { children: ReactNode }) {
       const f = await fetchOpenMeteo({
         box: SARONIKOS_BOX,
         step: 0.1,
-        model: plan.model,
+        model: normalizeModel(plan.model),
         startDate: isoDate(from - 3600_000),
         endDate: isoDate(start + 2 * 86400_000),
       });
@@ -157,6 +169,32 @@ export function NavProvider({ children }: { children: ReactNode }) {
       });
     }
   }, [plan.startLocal, plan.model]);
+
+  const loadComparison = useCallback(async () => {
+    setComparisonStatus({ busy: true });
+    try {
+      const start = localToMs(plan.startLocal);
+      const first = course?.marks[0];
+      const fix = gps.fix;
+      const pt = first
+        ? { lat: first.lat, lon: first.lon, place: first.name }
+        : fix
+          ? { lat: fix.lat, lon: fix.lon, place: 'Θέση GPS' }
+          : { lat: 37.75, lon: 23.55, place: 'Κέντρο Σαρωνικού' };
+      const end = planned && planned.start === start ? planned.end : start + 8 * 3_600_000;
+      const cfg = { url: settings.aiUrl, code: settings.aiCode };
+      const windy = cfg.url.trim() && cfg.code.trim() ? (la: number, lo: number) => fetchWindySeries(cfg, la, lo) : undefined;
+      const c = await fetchComparison(pt.lat, pt.lon, pt.place, start, end, windy);
+      setComparison(c);
+      await setKV('comparison', c);
+      setComparisonStatus({ busy: false });
+    } catch (e) {
+      setComparisonStatus({
+        busy: false,
+        error: navigator.onLine === false ? 'Δεν υπάρχει σύνδεση. Δείχνεται η αποθηκευμένη σύγκριση.' : (e as Error).message,
+      });
+    }
+  }, [plan.startLocal, course, gps.fix, planned, settings.aiUrl, settings.aiCode]);
 
   const windSpec = useCallback(
     (calibration?: { twsFactor: number; twdOffset: number }): WindSpec | undefined => {
@@ -249,6 +287,9 @@ export function NavProvider({ children }: { children: ReactNode }) {
     forecast,
     forecastStatus,
     loadForecast,
+    comparison,
+    comparisonStatus,
+    loadComparison,
     planned,
     planStatus,
     computePlan,

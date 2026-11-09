@@ -3,7 +3,8 @@ import { useApp } from './AppContext';
 import { useNav } from './NavContext';
 import { MapView, type WindArrow } from './MapView';
 import { NumberStepper, NumField } from './NumberStepper';
-import { OPEN_METEO_MODELS } from '../weather/openMeteo';
+import { GRID_MODELS, modelLabel, normalizeModel } from '../weather/models';
+import { ModelCompareCard } from './ModelCompareCard';
 import { gridField } from '../weather/field';
 import { positionAt } from '../routing/geojson';
 import type { LegResult, Mark, RouteResult } from '../routing/isochrones';
@@ -258,8 +259,8 @@ export function PlanView() {
             <>
               <label>
                 Μοντέλο
-                <select value={plan.model} onChange={(e) => setPlan({ model: e.target.value })}>
-                  {OPEN_METEO_MODELS.map((m) => (
+                <select value={normalizeModel(plan.model)} onChange={(e) => setPlan({ model: e.target.value })}>
+                  {GRID_MODELS.map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.label}
                     </option>
@@ -272,7 +273,7 @@ export function PlanView() {
                 </button>
                 {forecast && (
                   <p className="muted small">
-                    {OPEN_METEO_MODELS.find((m) => m.id === forecast.model)?.label ?? forecast.model} · λήψη {new Date(forecast.fetchedAt).toLocaleString('el-GR')} · έως{' '}
+                    {modelLabel(forecast.model)} · λήψη {new Date(forecast.fetchedAt).toLocaleString('el-GR')} · έως{' '}
                     {fmtTime(forecast.times[forecast.times.length - 1])}
                   </p>
                 )}
@@ -315,6 +316,8 @@ export function PlanView() {
           </div>
         </section>
 
+        <ModelCompareCard />
+
         <div className="compute-bar">
           <button className="btn primary big-btn" disabled={!canCompute} onClick={nav.computePlan}>
             {computeLabel}
@@ -337,7 +340,7 @@ export function PlanView() {
                 {
                   courseName: course?.name ?? '',
                   windSource: plan.windSource,
-                  model: plan.windSource === 'forecast' ? OPEN_METEO_MODELS.find((m) => m.id === forecast?.model)?.label ?? forecast?.model : undefined,
+                  model: plan.windSource === 'forecast' ? forecast && modelLabel(forecast.model) : undefined,
                   forecastFetched: plan.windSource === 'forecast' && forecast ? localIso(forecast.fetchedAt) : undefined,
                   route,
                   corrected: opt

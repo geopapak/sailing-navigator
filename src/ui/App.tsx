@@ -8,6 +8,7 @@ import { ScoringView } from './ScoringView';
 import { BoatsView } from './BoatsView';
 import { SettingsView } from './SettingsView';
 import { GuideView } from './GuideView';
+import { ChatView } from './ChatView';
 import { useStoredState } from './hooks';
 import { Icon, type IconName } from './Icons';
 
@@ -19,6 +20,7 @@ type Tab = AppTab;
 const TABS: { id: Tab; label: string; icon: IconName }[] = [
   { id: 'live', label: 'Live', icon: 'live' },
   { id: 'map', label: 'Χάρτης', icon: 'map' },
+  { id: 'chat', label: 'Σύμβουλος', icon: 'chat' },
   { id: 'polar', label: 'Polar', icon: 'polar' },
   { id: 'scoring', label: 'Χρόνος', icon: 'clock' },
   { id: 'boats', label: 'Σκάφη', icon: 'boats' },
@@ -77,6 +79,7 @@ function Shell() {
           <Suspense fallback={<p className="muted">Φόρτωση χάρτη…</p>}>
             {nav.tab === 'live' && <LiveView />}
             {nav.tab === 'map' && <PlanView />}
+            {nav.tab === 'chat' && <ChatView />}
             {nav.tab === 'polar' && <PolarView />}
             {nav.tab === 'scoring' && <ScoringView />}
             {nav.tab === 'boats' && <BoatsView />}
