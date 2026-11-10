@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<title>Νέος αγώνας</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#0b2a4a}a:hover{color:#163f6b}
+input,select,textarea{font:inherit}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #ffffff; color: #000000; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', sans-serif; display: flex; flex-direction: column">
+<div style="display: flex; align-items: center; gap: 6px; height: 56px; padding: 0 8px; background: #0b2a4a; color: #ffffff">
+<a href="RacesList.dc.html" aria-label="Πίσω" style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; color: #ffffff">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg></a>
+<span style="font-size: 18px; font-weight: 700">Νέος αγώνας</span>
+</div>
+<div style="flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+<label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600; color: #374151">Όνομα
+<input type="text" value="Χειμερινό Σαρωνικού · 3η ιστιοδρομία" style="height: 48px; border: 2px solid #9ca3af; border-radius: 10px; padding: 0 12px; font-size: 16px"></label>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+<label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600; color: #374151">Διαδρομή
+<select style="height: 48px; border: 2px solid #9ca3af; border-radius: 10px; padding: 0 8px; font-size: 15px; background: #ffffff"><option>Φάληρο–Αίγινα–Φάληρο</option></select></label>
+<label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600; color: #374151">Εκκίνηση
+<input type="text" value="Σαβ 11:00" style="height: 48px; border: 2px solid #9ca3af; border-radius: 10px; padding: 0 12px; font-size: 15px"></label>
+</div>
+<label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600; color: #374151">Βαθμολογία
+<select style="height: 48px; border: 2px solid #9ca3af; border-radius: 10px; padding: 0 8px; font-size: 15px; background: #ffffff"><option>Coastal/Long Distance — ToT</option><option>Coastal/Long Distance — ToD</option><option>Triple Coastal Medium — ToT</option></select></label>
+<div style="display: flex; align-items: baseline; justify-content: space-between; margin-top: 4px">
+<h2 style="margin: 0; font-size: 16px; font-weight: 700">Συμμετοχές ({{count}})</h2>
+<span style="font-size: 13px; color: #4b5563">στην ίδια κλάση</span>
+</div>
+<sc-for list="{{boats}}" as="b" hint-placeholder-count="4">
+<div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 12px; background: {{b.bg}}">
+<div style="display: flex; flex-direction: column; flex: 1; min-width: 0">
+<b style="font-size: 15px">{{b.name}}</b>
+<span style="font-size: 13px; color: #374151">{{b.detail}}</span>
+</div>
+<span style="font-size: 11px; font-weight: 800; padding: 4px 7px; border-radius: 6px; background: {{b.tagBg}}; color: {{b.tagFg}}">{{b.tag}}</span>
+</div>
+</sc-for>
+<sc-if value="{{pasting}}" hint-placeholder-val="{{false}}">
+<label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600; color: #374151">Επικόλλησε τη λίστα συμμετοχών
+<textarea rows="4" style="border: 2px solid #9ca3af; border-radius: 10px; padding: 10px; font-size: 14px; font-family: ui-monospace, monospace">ΑΣΤΑΡΤΗ, GRE-1234, MMSI 239112233
+ΝΗΡΕΑΣ, GRE-882, MMSI 239445566
+ΘΕΤΙΣ, GRE-301</textarea></label>
+<p style="margin: 0; font-size: 13px; line-height: 1.45; color: #4b5563">Μία γραμμή ανά σκάφος: όνομα, αριθμός πανιού, MMSI (αν έχει AIS). Όσα υπάρχουν ήδη στα «Σκάφη» αναγνωρίζονται· για τα υπόλοιπα θα σου ζητήσει πιστοποιητικό (PDF/JSON) ή συντελεστές.</p>
+<button type="button" onClick="{{addPasted}}" style="height: 48px; border: 0; border-radius: 12px; background: #0b2a4a; color: #ffffff; font-size: 16px; font-weight: 700; font-family: inherit; cursor: pointer">Πρόσθεσε στη λίστα</button>
+</sc-if>
+<sc-if value="{{notPasting}}" hint-placeholder-val="{{true}}">
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+<button type="button" onClick="{{paste}}" style="height: 48px; border: 2px dashed #0b2a4a; border-radius: 12px; background: #ffffff; color: #0b2a4a; font-size: 15px; font-weight: 700; font-family: inherit; cursor: pointer">Επικόλληση λίστας</button>
+<button type="button" style="height: 48px; border: 2px dashed #0b2a4a; border-radius: 12px; background: #ffffff; color: #0b2a4a; font-size: 15px; font-weight: 700; font-family: inherit; cursor: pointer">+ Από τα Σκάφη</button>
+</div>
+</sc-if>
+<div style="display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: 10px; background: #f3f4f6; font-size: 13px; line-height: 1.45; color: #374151">
+<b style="color: #000000">Θέσεις αντιπάλων</b>
+<span>AIS του σκάφους (χωρίς internet) → aisstream.io (με internet) → χειροκίνητα. Όσοι δεν έχουν MMSI μένουν χειροκίνητοι.</span>
+</div>
+</div>
+<div style="padding: 12px 16px 16px; border-top: 1px solid #e5e7eb">
+<a href="RaceLive.dc.html" style="display: flex; align-items: center; justify-content: center; height: 56px; border-radius: 12px; background: #0b2a4a; color: #ffffff; font-size: 18px; font-weight: 700; text-decoration: none">Αποθήκευση και έναρξη</a>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = { pasting: false, added: false };
+}
+renderVals() {
+const base = [
+{ name: 'TRE IRENE (εμείς)', detail: 'GRE-4711 · ToT 1.1882 · AIS', tag: 'ΕΜΕΙΣ', tagBg: '#0b2a4a', tagFg: '#ffffff', bg: '#f4f7fb' },
+{ name: 'ΑΣΤΑΡΤΗ', detail: 'GRE-1234 · ToT 1.1210 · MMSI 239112233', tag: 'AIS', tagBg: '#d1fae5', tagFg: '#065f46', bg: '#ffffff' }
+];
+const more = [
+{ name: 'ΝΗΡΕΑΣ', detail: 'GRE-882 · ToT 1.2044 · MMSI 239445566', tag: 'AIS', tagBg: '#d1fae5', tagFg: '#065f46', bg: '#ffffff' },
+{ name: 'ΘΕΤΙΣ', detail: 'GRE-301 · χρειάζεται πιστοποιητικό', tag: 'ΧΕΙΡΟΚ.', tagBg: '#fef3c7', tagFg: '#78350f', bg: '#ffffff' }
+];
+const boats = this.state.added ? base.concat(more) : base;
+return {
+boats: boats,
+count: boats.length,
+pasting: this.state.pasting,
+notPasting: !this.state.pasting,
+paste: () => this.setState({ pasting: true }),
+addPasted: () => this.setState({ pasting: false, added: true })
+};
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<title>Τοπική γνώση</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#0b2a4a}a:hover{color:#163f6b}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #ffffff; color: #000000; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', sans-serif; display: flex; flex-direction: column">
+<div style="display: flex; align-items: center; height: 56px; padding: 0 16px; background: #0b2a4a; color: #ffffff">
+<span style="font-size: 18px; font-weight: 700">Τοπική γνώση</span>
+</div>
+<div style="flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+<p style="margin: 0; font-size: 14px; line-height: 1.45; color: #374151">Ό,τι έχετε μάθει στη θάλασσα. Ο σύμβουλος τις λαμβάνει υπόψη όταν ταιριάζουν ο άνεμος και το σημείο, και λέει ότι προέρχονται από εσάς.</p>
+<div style="display: flex; gap: 6px; flex-wrap: wrap">
+<sc-for list="{{filters}}" as="f" hint-placeholder-count="5">
+<button type="button" onClick="{{f.pick}}" style="min-height: 40px; padding: 0 12px; border-radius: 20px; border: 2px solid {{f.border}}; background: {{f.bg}}; color: {{f.fg}}; font-size: 14px; font-weight: 700; font-family: inherit; cursor: pointer">{{f.label}}</button>
+</sc-for>
+</div>
+<sc-for list="{{notes}}" as="n" hint-placeholder-count="3">
+<div style="display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border: 1px solid #d1d5db; border-radius: 14px">
+<div style="display: flex; justify-content: space-between; gap: 8px"><b style="font-size: 15px">{{n.place}}</b><span style="font-size: 12px; color: #4b5563">{{n.who}}</span></div>
+<span style="font-size: 15px; line-height: 1.45">{{n.text}}</span>
+<div style="display: flex; gap: 6px; flex-wrap: wrap; font-size: 12px; font-weight: 600">
+<span style="background: #e8eef5; color: #0b2a4a; border-radius: 6px; padding: 3px 8px">{{n.wind}}</span>
+<span style="background: #e8eef5; color: #0b2a4a; border-radius: 6px; padding: 3px 8px">{{n.when}}</span>
+<span style="background: {{n.scopeBg}}; color: {{n.scopeFg}}; border-radius: 6px; padding: 3px 8px">{{n.scope}}</span>
+</div>
+</div>
+</sc-for>
+<sc-if value="{{empty}}" hint-placeholder-val="{{false}}">
+<p style="margin: 0; font-size: 14px; color: #4b5563; text-align: center; padding: 20px 0">Καμία σημείωση για αυτόν τον άνεμο.</p>
+</sc-if>
+</div>
+<div style="padding: 12px 16px 16px; border-top: 1px solid #e5e7eb">
+<a href="KnowledgeAdd.dc.html" style="display: flex; align-items: center; justify-content: center; gap: 8px; height: 56px; border-radius: 12px; background: #0b2a4a; color: #ffffff; font-size: 17px; font-weight: 700; text-decoration: none">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Νέα σημείωση</a>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = { f: 'all' };
+}
+renderVals() {
+const all = [
+{ k: 'N', place: 'Αίγινα, βόρεια ακτή', text: 'Με βοριά πάνω από 15 kt, κοντά στην ακτή ο άνεμος στρίβει ~15° δεξιά και πέφτει. Μένουμε 1 NM έξω.', wind: 'Β–ΒΑ, 15–25 kt', when: 'απόγευμα', who: 'Γιώργος · 3 φορές', scope: 'Πλήρωμα', scopeBg: '#d1fae5', scopeFg: '#065f46' },
+{ k: 'N', place: 'Μονή (νησίδα)', text: 'Σκιά ανέμου νότια της Μονής μέχρι ~1 NM με βοριά. Περνάμε ανατολικά.', wind: 'Β, κάθε ένταση', when: 'όλη μέρα', who: 'Γιώργος', scope: 'Πλήρωμα', scopeBg: '#d1fae5', scopeFg: '#065f46' },
+{ k: 'S', place: 'Φάληρο – Άγιος Κοσμάς', text: 'Μπάτης από ΝΔ μετά τις 13:00 τις ζεστές μέρες. Πριν από αυτό άπνοια κοντά στην ακτή.', wind: 'ΝΔ θερμικός, 8–14 kt', when: 'μεσημέρι', who: 'Νίκος', scope: 'Μόνο εγώ', scopeBg: '#f3f4f6', scopeFg: '#374151' }
+];
+const f = this.state.f;
+const notes = f === 'all' ? all : all.filter((n) => n.k === f);
+const filters = [['all', 'Όλες'], ['N', 'Βοριάς'], ['S', 'Νοτιάς / μπάτης'], ['E', 'Λεβάντες'], ['W', 'Πουνέντες']].map(([k, label]) => ({
+label: label,
+border: f === k ? '#0b2a4a' : '#d1d5db',
+bg: f === k ? '#0b2a4a' : '#ffffff',
+fg: f === k ? '#ffffff' : '#000000',
+pick: () => this.setState({ f: k })
+}));
+return { notes: notes, filters: filters, empty: notes.length === 0 };
+}
+}
+</script>
+</body>
+</html>

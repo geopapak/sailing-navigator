@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<title>Θέση αντιπάλου</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#0b2a4a}a:hover{color:#163f6b}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #ffffff; color: #000000; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', sans-serif; display: flex; flex-direction: column">
+<div style="display: flex; align-items: center; gap: 6px; height: 56px; padding: 0 8px; background: #0b2a4a; color: #ffffff">
+<a href="RaceLive.dc.html" aria-label="Πίσω" style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; color: #ffffff">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg></a>
+<span style="font-size: 18px; font-weight: 700">Θέση: ΘΕΤΙΣ</span>
+</div>
+<div style="flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+<p style="margin: 0; font-size: 14px; color: #374151">Τελευταία θέση πριν 14 λεπτά. Διάλεξε τον πιο γρήγορο τρόπο:</p>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px">
+<sc-for list="{{modes}}" as="m" hint-placeholder-count="3">
+<button type="button" onClick="{{m.pick}}" style="min-height: 48px; border-radius: 10px; border: 2px solid {{m.border}}; background: {{m.bg}}; color: {{m.fg}}; font-size: 14px; font-weight: 700; font-family: inherit; cursor: pointer">{{m.label}}</button>
+</sc-for>
+</div>
+<sc-if value="{{isRel}}" hint-placeholder-val="{{true}}">
+<div style="display: flex; flex-direction: column; gap: 12px">
+<p style="margin: 0; font-size: 14px; color: #374151">Πού τον βλέπεις από εμάς;</p>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+<sc-for list="{{sides}}" as="s" hint-placeholder-count="4">
+<button type="button" onClick="{{s.pick}}" style="min-height: 56px; border-radius: 12px; border: 2px solid {{s.border}}; background: {{s.bg}}; color: {{s.fg}}; font-size: 15px; font-weight: 700; font-family: inherit; cursor: pointer">{{s.label}}</button>
+</sc-for>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 14px; font-weight: 600; color: #374151">Απόσταση</span>
+<div style="display: grid; grid-template-columns: 56px minmax(0, 1fr) 56px; gap: 8px; align-items: center">
+<button type="button" onClick="{{less}}" aria-label="Λιγότερο" style="height: 56px; border-radius: 12px; border: 2px solid #9ca3af; background: #ffffff; font-size: 26px; font-weight: 700; font-family: inherit; cursor: pointer">−</button>
+<b style="text-align: center; font-size: 28px; font-variant-numeric: tabular-nums">{{dist}}</b>
+<button type="button" onClick="{{more}}" aria-label="Περισσότερο" style="height: 56px; border-radius: 12px; border: 2px solid #9ca3af; background: #ffffff; font-size: 26px; font-weight: 700; font-family: inherit; cursor: pointer">+</button>
+</div>
+<span style="font-size: 12px; color: #4b5563">Μια ματιά αρκεί· η εκτίμηση διορθώνεται όταν έρθει AIS ή στη σημαδούρα.</span>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{isMark}}" hint-placeholder-val="{{false}}">
+<div style="display: flex; flex-direction: column; gap: 10px">
+<p style="margin: 0; font-size: 14px; color: #374151">Πάτα τη στιγμή που ο αντίπαλος περνά τη σημαδούρα. Είναι η πιο ακριβής χειροκίνητη μέτρηση.</p>
+<button type="button" style="min-height: 72px; border-radius: 14px; border: 0; background: #0b2a4a; color: #ffffff; font-size: 18px; font-weight: 700; font-family: inherit; cursor: pointer">Πέρασε τώρα την «Αίγινα (κίτρινη)»</button>
+</div>
+</sc-if>
+<sc-if value="{{isNone}}" hint-placeholder-val="{{false}}">
+<p style="margin: 0; font-size: 14px; line-height: 1.5; color: #374151">Δεν τον βλέπεις; Η εφαρμογή συνεχίζει με εκτίμηση από την τελευταία του θέση και τα polars του, και το σημειώνει ως «παλιά θέση».</p>
+</sc-if>
+</div>
+<div style="padding: 12px 16px 16px; border-top: 1px solid #e5e7eb">
+<a href="RaceLive.dc.html" style="display: flex; align-items: center; justify-content: center; height: 56px; border-radius: 12px; background: #0b2a4a; color: #ffffff; font-size: 18px; font-weight: 700; text-decoration: none">Αποθήκευση</a>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = { mode: 'rel', side: 'ahead-r', dist: 0.4 };
+}
+renderVals() {
+const st = this.state;
+const on = (x) => ({ border: x ? '#0b2a4a' : '#d1d5db', bg: x ? '#0b2a4a' : '#ffffff', fg: x ? '#ffffff' : '#000000' });
+const modes = [['rel', 'Από εμάς'], ['mark', 'Σημαδούρα'], ['none', 'Δεν φαίνεται']].map(([k, label]) => Object.assign({ label: label, pick: () => this.setState({ mode: k }) }, on(st.mode === k)));
+const sides = [['ahead-l', 'Μπροστά αριστερά'], ['ahead-r', 'Μπροστά δεξιά'], ['behind-l', 'Πίσω αριστερά'], ['behind-r', 'Πίσω δεξιά']].map(([k, label]) => Object.assign({ label: label, pick: () => this.setState({ side: k }) }, on(st.side === k)));
+const d = Math.round(st.dist * 10) / 10;
+return {
+modes: modes,
+sides: sides,
+isRel: st.mode === 'rel',
+isMark: st.mode === 'mark',
+isNone: st.mode === 'none',
+dist: d.toFixed(1) + ' NM',
+less: () => this.setState({ dist: Math.max(0.1, st.dist - 0.1) }),
+more: () => this.setState({ dist: Math.min(5, st.dist + 0.1) })
+};
+}
+}
+</script>
+</body>
+</html>

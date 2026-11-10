@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<title>Οι αγώνες μου</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#0b2a4a}a:hover{color:#163f6b}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #ffffff; color: #000000; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', sans-serif; display: flex; flex-direction: column">
+<div style="display: flex; align-items: center; height: 56px; padding: 0 16px; background: #0b2a4a; color: #ffffff">
+<span style="font-size: 18px; font-weight: 700">Αγώνες</span>
+</div>
+<div style="flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+<a href="RaceSetup.dc.html" style="display: flex; align-items: center; justify-content: center; gap: 8px; height: 56px; border-radius: 12px; background: #0b2a4a; color: #ffffff; font-size: 17px; font-weight: 700; text-decoration: none">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Νέος αγώνας</a>
+<h2 style="margin: 6px 0 0; font-size: 15px; font-weight: 700; color: #374151">Ολοκληρωμένοι</h2>
+<sc-for list="{{races}}" as="r" hint-placeholder-count="3">
+<a href="Analysis.dc.html" style="display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border: 1px solid #d1d5db; border-radius: 14px; text-decoration: none; color: #000000">
+<div style="display: flex; justify-content: space-between; gap: 8px"><b style="font-size: 16px">{{r.name}}</b><b style="font-size: 16px">{{r.place}}</b></div>
+<span style="font-size: 13px; color: #374151">{{r.detail}}</span>
+<div style="display: flex; gap: 6px; flex-wrap: wrap; font-size: 12px; font-weight: 600">
+<span style="background: #e8eef5; color: #0b2a4a; border-radius: 6px; padding: 3px 8px">{{r.pct}}</span>
+<span style="background: #e8eef5; color: #0b2a4a; border-radius: 6px; padding: 3px 8px">{{r.src}}</span>
+</div>
+</a>
+</sc-for>
+<p style="margin: 0; font-size: 13px; line-height: 1.45; color: #4b5563">Κάθε αγώνας καταγράφεται αυτόματα από το «Έναρξη» μέχρι το «Τερματισμός»: θέση, άνεμος, ταχύτητα, πανιά, αντίπαλοι. Με όργανα κάθε δευτερόλεπτο, χωρίς όργανα από το GPS του κινητού και ό,τι γράφεις στο Live.</p>
+</div>
+<nav style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); border-top: 2px solid #9ca3af; background: #f3f4f6; height: 64px; font-size: 11px; font-weight: 600; color: #4b5563">
+<a href="LiveAuto.dc.html" style="display: flex; align-items: center; justify-content: center; color: #4b5563; text-decoration: none">Live</a>
+<span style="display: flex; align-items: center; justify-content: center">Χάρτης</span>
+<span style="display: flex; align-items: center; justify-content: center; color: #000000; box-shadow: inset 0 3px 0 #0b2a4a">Αγώνας</span>
+<span style="display: flex; align-items: center; justify-content: center">Σύμβουλος</span>
+<span style="display: flex; align-items: center; justify-content: center">Polar</span>
+<span style="display: flex; align-items: center; justify-content: center">Σκάφη</span>
+</nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+return {
+races: [
+{ name: 'Χειμερινό · 3η', place: '2ος / 4', detail: 'Σαβ 15/11 · Φάληρο–Αίγινα–Φάληρο · 22,4 NM · 3:12:40', pct: '94% target', src: 'όργανα' },
+{ name: 'Χειμερινό · 2η', place: '3ος / 5', detail: 'Σαβ 1/11 · Τρίγωνο Φλέβες · 14,1 NM · 2:05:12', pct: '91% target', src: 'GPS κινητού' }
+]
+};
+}
+}
+</script>
+</body>
+</html>

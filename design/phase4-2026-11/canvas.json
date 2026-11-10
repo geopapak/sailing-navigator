@@ -1,0 +1,39 @@
+{
+  "v": 3,
+  "createdOnFiles": { "v": 1, "at": "2026-11-10T09:20:00Z" },
+  "title": "Sailing Navigator — Φάση 4",
+  "launch": { "view": "canvas" },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": { "x": 0, "y": 300, "w": 390, "h": 844, "title": "1 · Όργανα σκάφους (σύνδεση)", "is_interactive": true },
+    "LiveAuto.dc.html": { "x": 470, "y": 300, "w": 390, "h": 844, "title": "2 · Live με όργανα + χειροκίνητα", "is_interactive": true },
+    "RaceSetup.dc.html": { "x": 0, "y": 1564, "w": 390, "h": 844, "title": "3 · Νέος αγώνας", "is_interactive": true },
+    "RaceLive.dc.html": { "x": 470, "y": 1564, "w": 390, "h": 844, "title": "4 · Αγώνας live (διορθωμένος χρόνος)", "is_interactive": true },
+    "OpponentManual.dc.html": { "x": 940, "y": 1564, "w": 390, "h": 844, "title": "5 · Θέση αντιπάλου χειροκίνητα", "is_interactive": true },
+    "RacesList.dc.html": { "x": 0, "y": 2828, "w": 390, "h": 844, "title": "6 · Οι αγώνες μου", "is_interactive": true },
+    "Analysis.dc.html": { "x": 470, "y": 2828, "w": 390, "h": 844, "title": "7 · Ανάλυση αγώνα", "is_interactive": true },
+    "KnowledgeList.dc.html": { "x": 0, "y": 4092, "w": 390, "h": 844, "title": "8 · Τοπική γνώση", "is_interactive": true },
+    "KnowledgeAdd.dc.html": { "x": 470, "y": 4092, "w": 390, "h": 844, "title": "9 · Νέα σημείωση", "is_interactive": true }
+  },
+  "order": [
+    "Main.dc.html",
+    "LiveAuto.dc.html",
+    "RaceSetup.dc.html",
+    "RaceLive.dc.html",
+    "OpponentManual.dc.html",
+    "RacesList.dc.html",
+    "Analysis.dc.html",
+    "KnowledgeList.dc.html",
+    "KnowledgeAdd.dc.html"
+  ],
+  "notes": {
+    "t_nmea": { "x": 0, "y": 40, "text": "1. Όργανα (NMEA / Signal K)", "kind": "title1", "maxW": 860 },
+    "t_race": { "x": 0, "y": 1304, "text": "2. Αγώνας και αντίπαλοι", "kind": "title1", "maxW": 1330 },
+    "t_anal": { "x": 0, "y": 2568, "text": "3. Ανάλυση μετά τον αγώνα", "kind": "title1", "maxW": 860 },
+    "t_know": { "x": 0, "y": 3832, "text": "4. Τοπική γνώση", "kind": "title1", "maxW": 860 },
+    "n_play": { "x": -420, "y": 300, "text": "Πάτα Play σε οποιαδήποτε οθόνη: τα κουμπιά δουλεύουν. Γράψε σχόλια πάνω στις οθόνες για αλλαγές.", "w": 320, "fill": "orange" },
+    "n_nmea": { "x": 940, "y": 300, "text": "Τα όργανα συνδέονται μέσω gateway στο σκάφος που δίνει Signal K ή NMEA 0183 πάνω από WebSocket. Χωρίς σύνδεση, ή αν χαθεί, όλα δουλεύουν χειροκίνητα όπως σήμερα. Κάθε τιμή μπορεί να «κλειδωθεί» χειροκίνητα.", "w": 360, "fill": "blue" },
+    "n_ais": { "x": 1410, "y": 1564, "text": "Θέσεις αντιπάλων: (1) AIS του δικού μας σκάφους μέσω gateway, χωρίς internet· (2) aisstream.io μέσω server (δωρεάν κλειδί)· (3) χειροκίνητα. Χωρίς scraping από VesselFinder / MarineTraffic.", "w": 360, "fill": "blue" }
+  },
+  "designSystems": []
+}
