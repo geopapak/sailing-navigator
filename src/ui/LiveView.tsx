@@ -19,6 +19,7 @@ import { modelLabel } from '../weather/models';
 import { openTab } from './openTab';
 import { setLiveSnapshot } from '../ai/snapshot';
 import { useInstruments } from './InstrumentsContext';
+import { knowledgeHints } from '../knowledge/match';
 import { InstrumentBar, type LockField } from './InstrumentBar';
 
 interface LiveState {
@@ -196,7 +197,10 @@ export function LiveView() {
         ...routeSnapshot(nav.liveRoute, boat),
         computedMinAgo: nav.liveStatus.at ? (Date.now() - nav.liveStatus.at) / 60_000 : undefined,
       };
-    return buildLiveContext({ boat, result, outlook, advice, currentSailId: s.sailId, nav: navSnap, question });
+    const ctx = buildLiveContext({ boat, result, outlook, advice, currentSailId: s.sailId, nav: navSnap, question });
+    const here = fix ? { lat: fix.lat, lon: fix.lon } : nav.course?.marks[nav.nextMark];
+    ctx.localKnowledge = knowledgeHints(here, { tws: result.tws, twd: observed?.twd });
+    return ctx;
 };
 
   buildRef.current = buildCtx;

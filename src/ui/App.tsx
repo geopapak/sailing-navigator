@@ -5,7 +5,9 @@ import { NavProvider } from './NavContext';
 import { InstrumentsProvider, useInstruments } from './InstrumentsContext';
 import { LiveView } from './LiveView';
 import { PolarView } from './PolarView';
-import { ScoringView } from './ScoringView';
+import { RaceView } from './RaceView';
+import { RaceProvider } from './RaceContext';
+import { KnowledgeProvider } from './KnowledgeContext';
 import { BoatsView } from './BoatsView';
 import { SettingsView } from './SettingsView';
 import { GuideView } from './GuideView';
@@ -24,9 +26,9 @@ type Tab = AppTab;
 const TABS: { id: Tab; label: string; icon: IconName }[] = [
   { id: 'live', label: 'Live', icon: 'live' },
   { id: 'map', label: 'Χάρτης', icon: 'map' },
+  { id: 'scoring', label: 'Αγώνας', icon: 'clock' },
   { id: 'chat', label: 'Σύμβουλος', icon: 'chat' },
   { id: 'polar', label: 'Polar', icon: 'polar' },
-  { id: 'scoring', label: 'Χρόνος', icon: 'clock' },
   { id: 'boats', label: 'Σκάφη', icon: 'boats' },
 ];
 
@@ -106,7 +108,7 @@ function Shell() {
               </>
             )}
             {nav.tab === 'chat' && <ChatView />}
-            {nav.tab === 'scoring' && <ScoringView />}
+            {nav.tab === 'scoring' && <RaceView />}
             {nav.tab === 'boats' && <BoatsView />}
             {nav.tab === 'settings' && <SettingsView />}
             {nav.tab === 'guide' && <GuideView />}
@@ -147,7 +149,11 @@ export function App() {
     <AppProvider>
       <InstrumentsProvider>
       <NavProvider>
-        <Shell />
+        <KnowledgeProvider>
+          <RaceProvider>
+            <Shell />
+          </RaceProvider>
+        </KnowledgeProvider>
       </NavProvider>
       </InstrumentsProvider>
     </AppProvider>

@@ -150,7 +150,7 @@ describe('accounts', () => {
     const me = await ok<{ user: { termsOk: boolean } }>(call(env, 'GET', '/me', undefined, r.token));
     expect(me.user.termsOk).toBe(false);
     await ok(call(env, 'POST', '/me/terms', { version: 99 }, r.token), 409);
-    const acc = await ok<{ user: { termsOk: boolean } }>(call(env, 'POST', '/me/terms', { version: 1 }, r.token));
+    const acc = await ok<{ user: { termsOk: boolean } }>(call(env, 'POST', '/me/terms', { version: 2 }, r.token));
     expect(acc.user.termsOk).toBe(true);
   });
 

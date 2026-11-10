@@ -160,6 +160,11 @@ scripts/         εικονίδια, CHANGELOG, ακτογραμμή
 | `POST /advice` | AI* | γρήγορη συμβουλή καρτών Live/Χάρτη (structured output) |
 | `POST /chat` | AI* | συνομιλία με τον σύμβουλο-agent |
 | `POST /windy` | εγκεκριμένοι | πρόγνωση Windy σε σημείο (θέλει `WINDY_KEY`) |
+| `POST /analysis` | AI* | `{summary}` (σύνοψη αγώνα) → `{lessons[]}` |
+| `POST /entrylist` | χρήστης | λίστα συμμετοχών PDF/εικόνα → `{event, entries[]}` (μετρά στις αναγνώσεις PDF) |
+| `GET /orc/boat?sailNo=` | χρήστης | πιστοποιητικό ORC ως προφίλ σκάφους (θέλει `ORC_API_KEY`, αλλιώς 501) |
+| `GET /ais?mmsi=a,b&wait=` | χρήστης | τελευταίες θέσεις AIS από aisstream.io (θέλει `AISSTREAM_KEY`, αλλιώς 501) |
+| `GET /notes/crew` | χρήστης | σημειώσεις «Πλήρωμα» άλλων χρηστών για σκάφη με ίδιο αριθμό πανιού |
 
 \* AI = `ACCESS_CODE` ή χρήστης με `ai_allowed`. Κάθε κλήση μετρά στο μηνιαίο όριο.
 
@@ -174,6 +179,8 @@ scripts/         εικονίδια, CHANGELOG, ακτογραμμή
 | `ACCESS_CODE` | secret | όχι | κωδικός ιδιοκτήτη για AI χωρίς λογαριασμό |
 | `CONTROLLER_NAME`, `CONTROLLER_EMAIL` | secret | ναι (GDPR) | εμφανίζονται στην Πολιτική απορρήτου |
 | `WINDY_KEY` | secret | όχι | Windy Point Forecast API |
+| `ORC_API_KEY` | secret | όχι | ORC API (sas.orc.org → Developers): συντελεστές/polars αντιπάλων |
+| `AISSTREAM_KEY` | secret | όχι | aisstream.io: θέσεις αντιπάλων από AIS μέσω internet |
 | `WEB_SEARCH` | var | όχι | `0` = ο σύμβουλος χωρίς αναζήτηση web |
 | `ALLOWED_ORIGINS` | var | ναι | origins της εφαρμογής (CORS) |
 | `DB` | binding D1 | ναι | η βάση |

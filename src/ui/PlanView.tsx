@@ -9,6 +9,7 @@ import { gridField } from '../weather/field';
 import { positionAt } from '../routing/geojson';
 import type { LegResult, Mark, RouteResult } from '../routing/isochrones';
 import { formatDM } from '../nav/geo';
+import { knowledgeHints } from '../knowledge/match';
 import { corrected, formatDuration } from '../scoring/corrected';
 import { STANDARD_SCORING_OPTIONS } from '../boat/scoringOptions';
 import { sailColor } from './PolarChart';
@@ -335,7 +336,7 @@ export function PlanView() {
             onOpenSettings={() => openTab('settings')}
             build={(question) => {
               const opt = boat.scoring.find((o) => o.id === plan.scoringOptionId);
-              return buildPlanContext(
+              const ctx = buildPlanContext(
                 boat,
                 {
                   courseName: course?.name ?? '',
@@ -353,6 +354,9 @@ export function PlanView() {
                 },
                 question,
               );
+              // The crew's notes along the course (any wind: the plan spans hours).
+              if (course?.marks.length) ctx.localKnowledge = knowledgeHints(course.marks);
+              return ctx;
             }}
           />
         )}

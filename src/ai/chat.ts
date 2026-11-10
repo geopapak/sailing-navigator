@@ -22,6 +22,8 @@ export interface ChatContext {
   live?: AdvisorContext['live'];
   nav?: AdvisorContext['nav'];
   plan?: AdvisorContext['plan'];
+  /** The crew's own local-knowledge notes that fit (place/wind). */
+  localKnowledge?: AdvisorContext['localKnowledge'];
   /** Model comparison at one point, hourly. */
   models?: {
     place: string;

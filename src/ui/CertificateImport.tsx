@@ -9,7 +9,7 @@ const MAX_BYTES = 10 * 1024 * 1024;
 const TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
 const STEPS = ['Στοιχεία σκάφους και GPH', 'Πίνακας ταχυτήτων (polars)', 'Γωνίες όρτσας και πρίμα', 'Επιλογές βαθμολογίας ToT / ToD', 'Έλεγχος συνέπειας τιμών'];
 
-function toBase64(file: File): Promise<string> {
+export function toBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
     r.onload = () => resolve(String(r.result).replace(/^data:[^,]*,/, ''));

@@ -15,6 +15,8 @@ export type LogEvent =
   | 'account_deleted'
   | 'sync'
   | 'ai'
+  | 'orc'
+  | 'ais'
   | 'error';
 
 export function log(evt: LogEvent, fields: Record<string, unknown> = {}): void {

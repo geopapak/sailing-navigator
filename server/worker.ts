@@ -20,6 +20,8 @@ import { CHAT_LIMITS, validateChat } from '../src/ai/chat';
 import { AgentError, runAgent } from './agent';
 import { log } from './log';
 import { MAX_CERT_BASE64, readCertificate, validateCertificateBody } from './certificate';
+import { aisPositions, orcBoat, readEntryList } from './race';
+import { MAX_SUMMARY_CHARS, crewNotes, raceLessons } from './analysis';
 import {
   HttpError,
   TERMS_VERSION,
@@ -47,6 +49,10 @@ export interface Env extends AccountEnv {
   /** Data controller shown in the Privacy policy (vars or secrets). */
   CONTROLLER_NAME?: string;
   CONTROLLER_EMAIL?: string;
+  /** ORC API key (sas.orc.org → Developers) for opponents' ratings and polars. */
+  ORC_API_KEY?: string;
+  /** aisstream.io key for opponents' AIS positions over the internet. */
+  AISSTREAM_KEY?: string;
   ACCESS_CODE: string;
   ALLOWED_ORIGINS?: string;
   WINDY_KEY?: string;
@@ -225,6 +231,59 @@ async function certificate(req: Request, env: Env, cors: Record<string, string>)
   }
 }
 
+/** Entry list (PDF/photo) → boats, counted like a certificate reading. */
+async function entryList(req: Request, env: Env, cors: Record<string, string>): Promise<Response> {
+  const s = await sessionUser(env, req);
+  if (!s) throw new HttpError(401, 'Χρειάζεται σύνδεση.');
+  canReadPdf(s.user);
+  if (!env.ANTHROPIC_API_KEY) throw new HttpError(500, 'Ο server δεν έχει κλειδί Claude API.');
+  const file = validateCertificateBody(await body(req, MAX_CERT_BASE64 + 1024));
+  const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY, maxRetries: 1, timeout: 110_000 });
+  try {
+    const t0 = Date.now();
+    const r = await readEntryList(client, file);
+    await countPdfRead(env, s.user);
+    log('ai', { kind: 'entrylist', user: s.user.id, model: r.model, ms: Date.now() - t0, entries: r.entries.length, ...r.usage });
+    return json({ event: r.event, entries: r.entries }, 200, cors);
+  } catch (e) {
+    if (e instanceof HttpError) throw e;
+    return apiError(e, cors);
+  }
+}
+
+/** /orc/boat?sailNo=…, /ais?mmsi=…,… — signed-in users. */
+async function raceData(req: Request, env: Env, cors: Record<string, string>, path: string): Promise<Response> {
+  const s = await sessionUser(env, req);
+  if (!s) throw new HttpError(401, 'Χρειάζεται σύνδεση.');
+  const q = new URL(req.url).searchParams;
+  if (path === '/orc/boat') {
+    const r = await orcBoat(env.ORC_API_KEY, q.get('sailNo') ?? '');
+    log('orc', { user: s.user.id, found: r.found });
+    return json(r, 200, cors);
+  }
+  const mmsis = (q.get('mmsi') ?? '').split(',').map((x) => x.trim());
+  const t0 = Date.now();
+  const positions = await aisPositions(env.AISSTREAM_KEY, mmsis, Math.min(20_000, Math.max(3_000, Number(q.get('wait') ?? 12_000))));
+  log('ais', { user: s.user.id, asked: mmsis.length, got: positions.length, ms: Date.now() - t0 });
+  return json({ positions }, 200, cors);
+}
+
+/** Post-race lessons from the app's race summary (counted like an AI question). */
+async function analysis(req: Request, env: Env, cors: Record<string, string>): Promise<Response> {
+  const r = await readJson(req, MAX_SUMMARY_CHARS + 2048);
+  if (!r.ok) return json({ error: r.error }, r.status, cors);
+  const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY, maxRetries: 1, timeout: 100_000 });
+  try {
+    const t0 = Date.now();
+    const out = await raceLessons(client, (r.body as { summary?: unknown }).summary);
+    log('ai', { kind: 'analysis', model: out.model, ms: Date.now() - t0, lessons: out.lessons.length, ...out.usage });
+    return json({ lessons: out.lessons, model: out.model }, 200, cors);
+  } catch (e) {
+    if (e instanceof HttpError) throw e;
+    return apiError(e, cors);
+  }
+}
+
 export default {
   /** Every request gets one log line: method, path, status, duration. */
   async fetch(req: Request, env: Env): Promise<Response> {
@@ -246,6 +305,13 @@ async function handle(req: Request, env: Env): Promise<Response> {
     try {
       if (ACCOUNT_PATHS.test(path)) return json(await accountRoutes(req, env, path), 200, cors);
       if (req.method === 'POST' && path === '/certificate') return await certificate(req, env, cors);
+      if (req.method === 'POST' && path === '/entrylist') return await entryList(req, env, cors);
+      if (req.method === 'GET' && (path === '/orc/boat' || path === '/ais')) return await raceData(req, env, cors, path);
+      if (req.method === 'GET' && path === '/notes/crew') {
+        const s = await sessionUser(env, req);
+        if (!s) throw new HttpError(401, 'Χρειάζεται σύνδεση.');
+        return json(await crewNotes(env, s.user), 200, cors);
+      }
       if (req.method === 'GET' && path === '/config') {
         return json(
           { termsVersion: TERMS_VERSION, controller: { name: env.CONTROLLER_NAME ?? '', email: env.CONTROLLER_EMAIL ?? '' } },
@@ -263,6 +329,8 @@ async function handle(req: Request, env: Env): Promise<Response> {
             codeOk,
             configured: Boolean(env.ANTHROPIC_API_KEY),
             windy: Boolean(env.WINDY_KEY),
+            orc: Boolean(env.ORC_API_KEY),
+            aisstream: Boolean(env.AISSTREAM_KEY),
             accounts: Boolean(env.DB),
             user: s ? publicUser(s.user) : undefined,
           },
@@ -270,7 +338,7 @@ async function handle(req: Request, env: Env): Promise<Response> {
           cors,
         );
       }
-      const aiRoute = req.method === 'POST' && (path === '/advice' || path === '/chat' || path === '/windy');
+      const aiRoute = req.method === 'POST' && (path === '/advice' || path === '/chat' || path === '/windy' || path === '/analysis');
       if (!aiRoute) return json({ error: 'Not found' }, 404, cors);
 
       // AI routes: the owner's access code, or a signed-in user approved by the admin (counted per month).
@@ -286,6 +354,7 @@ async function handle(req: Request, env: Env): Promise<Response> {
       if (path === '/windy') return windy(req, env, cors);
       if (!env.ANTHROPIC_API_KEY) return json({ error: 'Ο server δεν έχει κλειδί Claude API.' }, 500, cors);
       if (path === '/chat') return chat(req, env, cors);
+      if (path === '/analysis') return await analysis(req, env, cors);
       return advice(req, env, cors);
     } catch (e) {
       if (e instanceof HttpError) return json({ error: e.message }, e.status, cors);

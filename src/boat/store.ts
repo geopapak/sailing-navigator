@@ -2,6 +2,8 @@ import Dexie, { type Table } from 'dexie';
 import type { BoatProfile } from './types';
 import { newBoatId } from './ids';
 import type { Mark } from '../routing/isochrones';
+import type { Race } from '../race/types';
+import type { KnowledgeNote } from '../knowledge/types';
 
 export interface KV {
   key: string;
@@ -19,10 +21,15 @@ class NavDB extends Dexie {
   boats!: Table<BoatProfile, string>;
   kv!: Table<KV, string>;
   courses!: Table<Course, string>;
+  /** Races with their recorded tracks (on this device only). */
+  races!: Table<Race, string>;
+  /** Local-knowledge notes (synced with the account). */
+  notes!: Table<KnowledgeNote, string>;
   constructor() {
     super('sailing-navigator');
     this.version(1).stores({ boats: 'id, name', kv: 'key' });
     this.version(2).stores({ boats: 'id, name', kv: 'key', courses: 'id, name' });
+    this.version(3).stores({ boats: 'id, name', kv: 'key', courses: 'id, name', races: 'id, start', notes: 'id, updatedAt' });
   }
 }
 
@@ -46,7 +53,7 @@ const changed = () => {
 };
 
 export interface Tombstone {
-  kind: 'boat' | 'course';
+  kind: 'boat' | 'course' | 'note';
   id: string;
   at: number;
 }
@@ -79,6 +86,34 @@ export async function saveCourse(c: Course): Promise<void> {
 export async function deleteCourse(id: string): Promise<void> {
   await db.courses.delete(id);
   await addTombstone('course', id);
+  changed();
+}
+
+export async function listRaces(): Promise<Race[]> {
+  return (await db.races.toArray()).sort((a, b) => b.start - a.start);
+}
+
+export const getRace = (id: string) => db.races.get(id);
+
+/** Races stay on this device (tracks are large); only the notes sync. */
+export async function saveRace(r: Race): Promise<void> {
+  await db.races.put({ ...r, updatedAt: Date.now() });
+}
+
+export const deleteRace = (id: string) => db.races.delete(id);
+
+export async function listNotes(): Promise<KnowledgeNote[]> {
+  return (await db.notes.toArray()).sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+export async function saveNote(n: KnowledgeNote): Promise<void> {
+  await db.notes.put({ ...n, updatedAt: Date.now() });
+  changed();
+}
+
+export async function deleteNote(id: string): Promise<void> {
+  await db.notes.delete(id);
+  await addTombstone('note', id);
   changed();
 }
 

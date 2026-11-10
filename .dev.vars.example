@@ -16,3 +16,8 @@ CONTROLLER_EMAIL=privacy@test.local
 # Προαιρετικά: κλειδί Windy Point Forecast, και 0 για να κλείσει η αναζήτηση web του συμβούλου.
 # WINDY_KEY=
 # WEB_SEARCH=0
+
+# Προαιρετικά: ORC API (συντελεστές/polars αντιπάλων) και aisstream.io (AIS αντιπάλων μέσω internet).
+# Χωρίς αυτά, ο αγώνας δουλεύει με πιστοποιητικά PDF και θέσεις από το AIS του σκάφους ή χειροκίνητα.
+# ORC_API_KEY=
+# AISSTREAM_KEY=

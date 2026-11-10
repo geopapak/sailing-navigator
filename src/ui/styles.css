@@ -1416,3 +1416,68 @@ td.mc-poor { color: var(--bad); font-weight: 700; }
 .inst-row b { flex: 1; font-size: 1.15rem; font-variant-numeric: tabular-nums; }
 .inst-badge { font-size: 0.68rem; font-weight: 800; letter-spacing: 0.04em; padding: 3px 7px; border-radius: 6px; background: color-mix(in srgb, var(--good) 18%, var(--bg)); color: var(--good); }
 .inst-row.manual .inst-badge { background: color-mix(in srgb, var(--fair) 18%, var(--bg)); color: var(--fair); }
+
+/* ---- Race (Phase 4) ---- */
+.race-seg { margin-bottom: 12px; }
+.race-seg button { font-size: 0.85rem; }
+.row.between { justify-content: space-between; align-items: center; gap: 10px; }
+.btn.wide { width: 100%; }
+.link-btn { background: none; border: 0; padding: 6px 0; min-height: 36px; color: var(--accent); font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
+:root[data-theme='dark'] .link-btn, :root[data-theme='night'] .link-btn { color: var(--fg); }
+.small { font-size: 0.85rem; }
+.badge.ok { background: var(--good); color: #fff; }
+.rows.compact li { min-height: 36px; }
+.rows .entry { display: block; padding: 8px 12px; }
+.entry-main { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.entry .btn-row { margin: 6px 0 0; }
+label.inline { display: flex; align-items: center; gap: 8px; }
+label.inline input { max-width: 12ch; }
+.entry-import { border: 1px solid var(--line); border-radius: 12px; padding: 10px; margin-bottom: 10px; }
+.sticky-actions { position: sticky; bottom: 76px; background: var(--bg); padding: 8px 0; z-index: 2; }
+.race-hero { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 10px 0; }
+.stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); gap: 10px; margin-top: 10px; text-align: center; }
+table.leader { width: 100%; border-collapse: collapse; }
+table.leader th { text-align: left; font-size: 0.8rem; color: var(--muted); font-weight: 600; padding: 4px 6px; border-bottom: 1px solid var(--line); }
+table.leader td { padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: top; cursor: pointer; }
+table.leader tr.own td { font-weight: 700; background: var(--bg); cursor: default; }
+table.leader .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rec { display: flex; align-items: center; gap: 8px; justify-content: center; }
+.rec-dot { width: 10px; height: 10px; border-radius: 5px; background: var(--now); animation: rec 1.4s infinite; }
+@keyframes rec { 50% { opacity: 0.3; } }
+@media (prefers-reduced-motion: reduce) { .rec-dot { animation: none; } }
+.quad { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+.track-map svg, .pct-chart svg { width: 100%; height: auto; display: block; background: var(--bg); border-radius: 10px; border: 1px solid var(--line); touch-action: pan-y; }
+.track-map, .pct-chart { margin: 8px 0; }
+.trk { fill: none; stroke: var(--muted); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.trk.up { stroke: var(--accent); }
+.trk.down { stroke: var(--opt); }
+.trk.opt { stroke: var(--fg); stroke-dasharray: 4 4; stroke-width: 1.5; opacity: 0.6; }
+:root[data-theme='dark'] .trk.up, :root[data-theme='night'] .trk.up { stroke: var(--curve-hl); }
+.man { fill: var(--bg); stroke: var(--fg); stroke-width: 1.5; }
+.mk { fill: var(--fair); stroke: var(--bg); stroke-width: 2; }
+.track-map text, .pct-chart text { font-size: 10px; fill: var(--fg); }
+.pct-chart .axis { fill: var(--muted); }
+.pct-chart .grid { stroke: var(--line); stroke-width: 1; opacity: 0.5; }
+.pct-line { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; }
+:root[data-theme='dark'] .pct-line, :root[data-theme='night'] .pct-line { stroke: var(--curve-hl); }
+.pct-chart .cross { stroke: var(--muted); stroke-width: 1; }
+.pct-dot { fill: var(--accent); stroke: var(--bg); stroke-width: 2; }
+.legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; color: var(--muted); }
+.legend .up { color: var(--accent); }
+.legend .down { color: var(--opt); }
+.lessons { padding-left: 18px; margin: 0 0 10px; }
+.lessons li { margin-bottom: 8px; }
+.time-input { max-width: 10ch; }
+.rows.notes li { padding: 0; }
+.row-btn.note { align-items: flex-start; }
+.row-btn.note > span { display: flex; flex-direction: column; gap: 2px; }
+.note-text { white-space: pre-wrap; }
+.row-btn:disabled { opacity: 1; cursor: default; }
+fieldset { border: 0; padding: 0; margin: 0; }
+legend { font-weight: 600; margin-bottom: 6px; }
+/* Header fits a 360px phone with the instruments pill: the boat name shrinks first. */
+.topbar { gap: 4px; }
+.boat-select { min-width: 0; text-overflow: ellipsis; }
+.topbar .top-btn { min-width: 40px; flex-shrink: 0; }
+.topbar .inst-pill { flex-shrink: 0; padding: 0 8px; }
+.tabbar button { min-width: 0; }

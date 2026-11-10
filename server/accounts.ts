@@ -67,7 +67,7 @@ export interface PublicUser {
 }
 
 /** Bump when the Terms or Privacy policy change: everyone accepts again. */
-export const TERMS_VERSION = 1;
+export const TERMS_VERSION = 2;
 /** Free certificate readings for users not (yet) approved for AI. */
 export const FREE_PDF_READS = 3;
 
@@ -75,7 +75,7 @@ const SESSION_DAYS = 120;
 const PBKDF2_ITER = 100_000; // Workers' maximum for PBKDF2.
 const MAX_ITEMS = 500;
 const MAX_ITEM_BYTES = 200 * 1024;
-export const SYNC_KINDS = ['boat', 'course'] as const;
+export const SYNC_KINDS = ['boat', 'course', 'note'] as const;
 
 const enc = new TextEncoder();
 const hex = (buf: ArrayBuffer | Uint8Array) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
@@ -282,6 +282,7 @@ export async function exportData(env: AccountEnv, u: UserRow) {
     },
     boats: items.results.filter((r) => r.kind === 'boat').map((r) => (r.data ? JSON.parse(r.data) : null)),
     courses: items.results.filter((r) => r.kind === 'course').map((r) => (r.data ? JSON.parse(r.data) : null)),
+    notes: items.results.filter((r) => r.kind === 'note').map((r) => (r.data ? JSON.parse(r.data) : null)),
   };
 }
 

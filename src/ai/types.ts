@@ -104,6 +104,8 @@ export interface AdvisorContext {
   plan?: PlanSnapshot;
   /** Free-text question from the crew (Greek). */
   question?: string;
+  /** The crew's own local-knowledge notes that fit here and this wind. */
+  localKnowledge?: import('../knowledge/match').KnowledgeHint[];
 }
 
 export type AdvisorWhen = 'now' | 'soon' | 'watch';

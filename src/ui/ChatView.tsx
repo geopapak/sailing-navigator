@@ -1,3 +1,4 @@
+import { knowledgeHints } from '../knowledge/match';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useApp } from './AppContext';
 import { useNav } from './NavContext';
@@ -120,6 +121,11 @@ export function ChatView() {
       }).plan;
     }
     if (useData.models && comparison) ctx.models = modelsContext(comparison);
+    // Local knowledge near us (or along the course) that fits the wind we know.
+    const pos = live?.ctx.nav?.position;
+    const where = pos ? pos : nav.course?.marks.length ? nav.course.marks : undefined;
+    const wind = live?.ctx.live ? { tws: live.ctx.live.tws, twd: live.ctx.nav?.observedTwd } : undefined;
+    ctx.localKnowledge = knowledgeHints(where, wind);
     return ctx;
   };
 

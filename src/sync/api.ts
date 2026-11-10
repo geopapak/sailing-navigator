@@ -23,7 +23,7 @@ export interface ServerConfig {
 }
 
 export interface SyncItem {
-  kind: 'boat' | 'course';
+  kind: 'boat' | 'course' | 'note';
   id: string;
   data?: unknown;
   updatedAt: number;
@@ -89,6 +89,19 @@ export const accountApi = {
   sync: (server: string, token: string, since: number, changes: SyncItem[]) =>
     api<{ now: number; items: SyncItem[] }>(server, '/sync', { body: { since, changes }, token, timeoutMs: 40_000 }),
   users: (server: string, token: string) => api<{ users: AdminUser[] }>(server, '/admin/users', { token }),
+  entryList: (server: string, token: string, data: string, mediaType: string) =>
+    api<{ event: string; entries: import('../race/entrylist').CleanEntry[] }>(server, '/entrylist', { body: { data, mediaType }, token, timeoutMs: 150_000 }),
+  orcBoat: (server: string, token: string, sailNo: string) =>
+    api<{ found: boolean; sailNo: string; boat?: import('../boat/types').BoatProfile }>(server, `/orc/boat?sailNo=${encodeURIComponent(sailNo)}`, { token, timeoutMs: 30_000 }),
+  ais: (server: string, token: string, mmsis: string[]) =>
+    api<{ positions: { mmsi: string; lat: number; lon: number; sog?: number; cog?: number; name?: string; t: number }[] }>(
+      server,
+      `/ais?mmsi=${mmsis.join(',')}&wait=12000`,
+      { token, timeoutMs: 30_000 },
+    ),
+  analysis: (server: string, token: string, summary: unknown) =>
+    api<{ lessons: { text: string; impact?: string }[]; model: string }>(server, '/analysis', { body: { summary }, token, timeoutMs: 120_000 }),
+  crewNotes: (server: string, token: string) => api<{ notes: import('../knowledge/types').KnowledgeNote[] }>(server, '/notes/crew', { token }),
   updateUser: (server: string, token: string, id: string, patch: { aiAllowed?: boolean; aiLimit?: number; resetPassword?: boolean }) =>
     api<{ user: PublicUser; tempPassword?: string }>(server, `/admin/users/${id}`, { body: patch, token }),
 };

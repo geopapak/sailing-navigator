@@ -35,9 +35,11 @@ export async function getSyncState(): Promise<SyncState> {
 export async function adoptAccount(userId: string): Promise<void> {
   const st = await getSyncState();
   if (st.owner && st.owner !== userId) {
-    await db.transaction('rw', db.boats, db.courses, db.kv, async () => {
+    await db.transaction('rw', [db.boats, db.courses, db.kv, db.races, db.notes], async () => {
       await db.boats.clear();
       await db.courses.clear();
+      await db.races.clear();
+      await db.notes.clear();
       await setKV('tombstones', []);
       await setKV<SyncState>(KEY, { since: 0, pushedAt: 0, owner: userId });
     });
@@ -66,18 +68,19 @@ export function syncNow(server: string, token: string): Promise<SyncResult> {
 async function doSync(server: string, token: string): Promise<SyncResult> {
   const st = await getSyncState();
   const startedAt = Date.now();
-  const [boats, courses, tombs] = await Promise.all([db.boats.toArray(), db.courses.toArray(), getKV<Tombstone[]>('tombstones', [])]);
+  const [boats, courses, notes, tombs] = await Promise.all([db.boats.toArray(), db.courses.toArray(), db.notes.toArray(), getKV<Tombstone[]>('tombstones', [])]);
   const changes: SyncItem[] = [
     ...boats.filter((b) => b.updatedAt > st.pushedAt).map((b) => ({ kind: 'boat' as const, id: b.id, data: b, updatedAt: b.updatedAt })),
     ...courses.filter((c) => c.updatedAt > st.pushedAt).map((c) => ({ kind: 'course' as const, id: c.id, data: c, updatedAt: c.updatedAt })),
+    ...notes.filter((n) => n.updatedAt > st.pushedAt).map((n) => ({ kind: 'note' as const, id: n.id, data: n, updatedAt: n.updatedAt })),
     ...tombs.map((t) => ({ kind: t.kind, id: t.id, deleted: true, updatedAt: t.at })),
   ];
   const res = await accountApi.sync(server, token, st.since, changes);
 
   let pulled = 0;
-  await db.transaction('rw', db.boats, db.courses, db.kv, async () => {
+  await db.transaction('rw', [db.boats, db.courses, db.notes, db.kv], async () => {
     for (const it of res.items) {
-      const table = it.kind === 'boat' ? db.boats : it.kind === 'course' ? db.courses : undefined;
+      const table = it.kind === 'boat' ? db.boats : it.kind === 'course' ? db.courses : it.kind === 'note' ? db.notes : undefined;
       if (!table) continue;
       const local = (await table.get(it.id)) as { updatedAt: number } | undefined;
       if (local && local.updatedAt > it.updatedAt) continue; // ours is newer: it goes up next time

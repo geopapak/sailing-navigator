@@ -83,6 +83,13 @@ npx wrangler secret put ADMIN_EMAIL
 npx wrangler secret put WINDY_KEY
 ```
 
+Αγώνας (0.7): όργανα σκάφους (`src/instruments/`: Signal K, NMEA 0183, AIS, προσομοιωτής — η σελίδα https δέχεται μόνο `wss://`), αγώνας live και ανάλυση (`src/race/`, `src/ui/Race*.tsx`), τοπική γνώση (`src/knowledge/`). Προαιρετικά κλειδιά για τον server:
+
+```bash
+npx wrangler secret put ORC_API_KEY
+npx wrangler secret put AISSTREAM_KEY
+```
+
 Σύνδεση, όροι και πιστοποιητικά (0.6): η εφαρμογή ξεκινά με σύνδεση/εγγραφή (`src/ui/AuthFlow.tsx`), με αποδοχή Όρων και Πολιτικής απορρήτου (`src/ui/legal.tsx`, έκδοση `TERMS_VERSION` και στο `server/accounts.ts`). Τα στοιχεία του υπεύθυνου επεξεργασίας δεν είναι στο αποθετήριο· ο server τα δίνει από τα secrets:
 
 ```bash

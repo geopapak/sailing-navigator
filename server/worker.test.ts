@@ -45,7 +45,7 @@ describe('advisor worker', () => {
 
   it('reports health and whether the access code matches', async () => {
     const r = await worker.fetch(req('/health', { method: 'GET' }, 'wrong'), env);
-    expect(await r.json()).toEqual({ ok: true, codeOk: false, configured: true, windy: false, accounts: false });
+    expect(await r.json()).toEqual({ ok: true, codeOk: false, configured: true, windy: false, orc: false, aisstream: false, accounts: false });
   });
 
   it('rejects a wrong access code without calling the API', async () => {
