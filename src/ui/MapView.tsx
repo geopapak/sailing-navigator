@@ -36,18 +36,24 @@ function fallbackStyle(): StyleSpecification {
   };
 }
 
-async function loadStyle(): Promise<StyleSpecification | string> {
+/** Waits generously: on a phone at sea the style can take well over 5 s. */
+const STYLE_TIMEOUT_MS = 15_000;
+
+async function loadStyle(): Promise<{ style: StyleSpecification; online: boolean }> {
+  if (navigator.onLine === false) return { style: fallbackStyle(), online: false };
   try {
     const ctl = new AbortController();
-    const timer = setTimeout(() => ctl.abort(), 5000);
+    const timer = setTimeout(() => ctl.abort(), STYLE_TIMEOUT_MS);
     const res = await fetch(STYLE_URL, { signal: ctl.signal });
     clearTimeout(timer);
     if (!res.ok) throw new Error(String(res.status));
-    return (await res.json()) as StyleSpecification;
+    return { style: (await res.json()) as StyleSpecification, online: true };
   } catch {
-    return fallbackStyle();
+    return { style: fallbackStyle(), online: false };
   }
 }
+
+type BaseState = 'loading' | 'ok' | 'fallback' | 'slow';
 
 export interface WindArrow extends LatLon {
   tws: number;
@@ -102,15 +108,27 @@ export function MapView(p: Props) {
   const el = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MLMap>();
   const [ready, setReady] = useState(false);
+  const [base, setBase] = useState<BaseState>('loading');
+  const [attempt, setAttempt] = useState(0);
   const markers = useRef<Marker[]>([]);
   const propsRef = useRef(p);
   propsRef.current = p;
 
-  // Create map once.
+  // Without the base map, try again by itself when the connection comes back.
+  useEffect(() => {
+    if (base !== 'fallback') return;
+    const retry = () => setAttempt((a) => a + 1);
+    window.addEventListener('online', retry);
+    return () => window.removeEventListener('online', retry);
+  }, [base]);
+
+  // Create the map (again on "retry").
   useEffect(() => {
     let disposed = false;
+    setReady(false);
+    setBase('loading');
     (async () => {
-      const style = await loadStyle();
+      const { style, online } = await loadStyle();
       if (disposed || !el.current) return;
       const map = new MLMap({
         container: el.current,
@@ -120,6 +138,15 @@ export function MapView(p: Props) {
         attributionControl: { compact: true },
       });
       mapRef.current = map;
+      if (!online) setBase('fallback');
+      else {
+        // The base map counts as loaded once all visible tiles are drawn.
+        const slow = window.setTimeout(() => !disposed && setBase((b) => (b === 'loading' ? 'slow' : b)), 12_000);
+        map.once('idle', () => {
+          window.clearTimeout(slow);
+          if (!disposed) setBase('ok');
+        });
+      }
       map.addControl(new NavigationControl({ visualizePitch: false }), 'top-right');
       map.addControl(new ScaleControl({ unit: 'nautical' }), 'bottom-left');
       map.on('click', (e) => {
@@ -169,7 +196,7 @@ export function MapView(p: Props) {
       mapRef.current?.remove();
       mapRef.current = undefined;
     };
-  }, []);
+  }, [attempt]);
 
   const set = (id: string, data: unknown) => {
     const src = mapRef.current?.getSource(id) as GeoJSONSource | undefined;
@@ -258,6 +285,15 @@ export function MapView(p: Props) {
     <div className={`map-wrap ${p.addMode ? 'adding' : ''}`}>
       <div ref={el} className="map" />
       {p.addMode && <div className="map-hint">Άγγιξε τον χάρτη για νέα σημαδούρα</div>}
+      {base === 'loading' && <div className="map-status">Φόρτωση χάρτη…</div>}
+      {(base === 'fallback' || base === 'slow') && (
+        <div className="map-status warn" role="status">
+          {base === 'fallback' ? 'Χωρίς σύνδεση: μόνο ακτογραμμή.' : 'Ο χάρτης αργεί (αργή σύνδεση).'}
+          <button type="button" onClick={() => setAttempt((a) => a + 1)}>
+            Ξανά
+          </button>
+        </div>
+      )}
       {p.children}
     </div>
   );

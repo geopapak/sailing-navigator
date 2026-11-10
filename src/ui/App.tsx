@@ -121,7 +121,7 @@ function Shell() {
             <span className="tab-icon">
               <Icon name={t.icon} />
             </span>
-            {t.label}
+            <span className="tab-label">{t.label}</span>
           </button>
         ))}
       </nav>

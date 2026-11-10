@@ -315,11 +315,12 @@ h3 {
 /* Live */
 .live {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
 }
 @media (min-width: 900px) {
   .live {
-    grid-template-columns: 1.1fr 1fr;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
     align-items: start;
   }
   .live .results,
@@ -603,11 +604,12 @@ table.data.edit select {
 /* Forms */
 .form-grid {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px;
 }
 @media (min-width: 640px) {
   .form-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
   .form-grid h3,
   .form-grid .full {
@@ -745,6 +747,8 @@ details > summary {
 /* Plan layout: map on top (phone), side by side (desktop) */
 .plan {
   display: grid;
+  /* minmax(0, …): wide content in the panel must not make the map wider than the screen */
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
 }
 .app.tab-map .content {
@@ -1481,3 +1485,39 @@ legend { font-weight: 600; margin-bottom: 6px; }
 .topbar .top-btn { min-width: 40px; flex-shrink: 0; }
 .topbar .inst-pill { flex-shrink: 0; padding: 0 8px; }
 .tabbar button { min-width: 0; }
+/* Tab names fit a 360px phone ("Σύμβουλος" is the longest). */
+.tab-label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: clamp(0.6rem, 2.9vw, 0.74rem);
+}
+.map-status {
+  position: absolute;
+  left: 50%;
+  top: 10px;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100% - 24px);
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(11, 42, 74, 0.85);
+  color: #fff;
+  font-size: 0.85rem;
+  pointer-events: none;
+  z-index: 2;
+}
+.map-status.warn { pointer-events: auto; }
+.map-status button {
+  border: 1px solid #fff;
+  background: none;
+  color: #fff;
+  border-radius: 999px;
+  padding: 2px 10px;
+  min-height: 32px;
+  font-weight: 600;
+}

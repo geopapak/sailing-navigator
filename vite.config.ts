@@ -46,6 +46,13 @@ export default defineConfig({
             options: { cacheName: 'map-styles' },
           },
           {
+            // The tileset description names the current tile version: take it fresh
+            // when online (the cached copy only offline), so tiles never point to an old set.
+            urlPattern: /^https:\/\/tiles\.openfreemap\.org\/planet\/?$/,
+            handler: 'NetworkFirst',
+            options: { cacheName: 'map-tilejson', networkTimeoutSeconds: 6 },
+          },
+          {
             urlPattern: /^https:\/\/tiles\.openfreemap\.org\//,
             handler: 'CacheFirst',
             options: { cacheName: 'map-tiles', expiration: { maxEntries: 4000, maxAgeSeconds: 60 * 86400 } },
