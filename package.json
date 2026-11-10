@@ -1,7 +1,7 @@
 {
   "name": "sailing-navigator",
   "private": true,
-  "version": "0.6.1",
+  "version": "0.6.2",
   "type": "module",
   "scripts": {
     "dev": "vite --host",
@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "icons": "node scripts/make-icons.mjs",
-    "changelog": "node scripts/changelog.mjs"
+    "changelog": "node scripts/changelog.mjs",
+    "reset-password": "node scripts/reset-password.mjs"
   },
   "dependencies": {
     "dexie": "^4.0.10",
