@@ -1,3 +1,5 @@
+import { DEFAULT_INSTRUMENTS } from '../instruments/types';
+
 export type Theme = 'day' | 'dark' | 'night';
 
 export interface Settings {
@@ -14,6 +16,8 @@ export interface Settings {
   /** Signed-in account (session token from the server) and its cached profile. */
   authToken: string;
   account?: import('../sync/api').PublicUser;
+  /** Boat instruments (Signal K / NMEA 0183 gateway, or the simulator). */
+  instruments: import('../instruments/types').InstrumentSettings;
 }
 
 /** The project's own server; users can point the app elsewhere in Settings. */
@@ -29,4 +33,5 @@ export const DEFAULT_SETTINGS: Settings = {
   aiUrl: DEFAULT_SERVER,
   aiCode: '',
   authToken: '',
+  instruments: DEFAULT_INSTRUMENTS,
 };

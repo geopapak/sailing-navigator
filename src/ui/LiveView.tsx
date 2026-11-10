@@ -18,6 +18,8 @@ import { gridField } from '../weather/field';
 import { modelLabel } from '../weather/models';
 import { openTab } from './openTab';
 import { setLiveSnapshot } from '../ai/snapshot';
+import { useInstruments } from './InstrumentsContext';
+import { InstrumentBar, type LockField } from './InstrumentBar';
 
 interface LiveState {
   windInput: 'twa' | 'twd';
@@ -61,6 +63,29 @@ export function LiveView() {
   const { activeBoat: boat, settings } = useApp();
   const [s, setS] = useStoredState<LiveState>('live-state', INITIAL);
   const set = (patch: Partial<LiveState>) => setS((p) => ({ ...p, ...patch }));
+  // Instruments fill TWS / TWA / BSP while they are live; a field the user edits is locked to manual.
+  const inst = useInstruments();
+  const instOn = settings.instruments?.enabled ?? false;
+  const [locks, setLocks] = useStoredState<Record<LockField, boolean>>('live-locks', { tws: false, twa: false, bsp: false });
+  const lock = (f: LockField) => inst.live && !locks[f] && setLocks({ ...locks, [f]: true });
+  const setManual = (f: LockField, patch: Partial<LiveState>) => {
+    lock(f);
+    set(patch);
+  };
+  const iv = inst.values;
+  useEffect(() => {
+    if (!inst.live) return;
+    const patch: Partial<LiveState> = {};
+    if (!locks.tws && iv.tws !== undefined) patch.tws = Math.round(iv.tws * 10) / 10;
+    if (!locks.twa && iv.twa !== undefined) {
+      patch.windInput = 'twa';
+      patch.twa = Math.round(Math.abs(iv.twa));
+      patch.side = iv.twa < 0 ? 'port' : 'stbd';
+    }
+    if (!locks.bsp && iv.bsp !== undefined) patch.bsp = Math.round(iv.bsp * 100) / 100;
+    if (Object.keys(patch).length) setS((p) => ({ ...p, ...patch }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inst.live, iv.tws, iv.twa, iv.bsp, locks.tws, locks.twa, locks.bsp]);
   const nav = useNav();
   const gps = nav.gps;
   const wake = useWakeLock(settings.keepAwake);
@@ -266,8 +291,17 @@ export function LiveView() {
         </ul>
       )}
 
+      {instOn && (
+        <InstrumentBar
+          inst={inst}
+          locks={locks}
+          manual={{ tws: s.tws ?? undefined, twa: s.twa === null ? undefined : s.side === 'port' ? -s.twa : s.twa, bsp: s.bsp ?? undefined }}
+          onToggle={(f) => setLocks({ ...locks, [f]: !locks[f] })}
+        />
+      )}
+
       <section className="inputs">
-        <NumberStepper label="TWS" unit="kt" value={s.tws} onChange={(v) => set({ tws: v })} small={1} big={3} min={0} max={60} decimals={0} />
+        <NumberStepper label="TWS" unit="kt" value={s.tws} onChange={(v) => setManual('tws', { tws: v })} small={1} big={3} min={0} max={60} decimals={0} />
 
         <div className="seg" role="group" aria-label="Είσοδος ανέμου">
           <button className={s.windInput === 'twa' ? 'on' : ''} onClick={() => set({ windInput: 'twa' })}>
@@ -280,12 +314,12 @@ export function LiveView() {
 
         {s.windInput === 'twa' ? (
           <>
-            <NumberStepper label="TWA" unit="°" value={s.twa} onChange={(v) => set({ twa: v })} small={1} big={5} min={0} max={180} />
+            <NumberStepper label="TWA" unit="°" value={s.twa} onChange={(v) => setManual('twa', { twa: v })} small={1} big={5} min={0} max={180} />
             <div className="seg" role="group" aria-label="Αναστροφές">
-              <button className={`stbd ${s.side === 'stbd' ? 'on' : ''}`} onClick={() => set({ side: 'stbd' })}>
+              <button className={`stbd ${s.side === 'stbd' ? 'on' : ''}`} onClick={() => setManual('twa', { side: 'stbd' })}>
                 Δεξιές (stbd)
               </button>
-              <button className={`port ${s.side === 'port' ? 'on' : ''}`} onClick={() => set({ side: 'port' })}>
+              <button className={`port ${s.side === 'port' ? 'on' : ''}`} onClick={() => setManual('twa', { side: 'port' })}>
                 Αριστερές (port)
               </button>
             </div>
@@ -328,7 +362,7 @@ export function LiveView() {
           </>
         )}
 
-        <NumberStepper label="BSP" unit="kt" value={s.bsp} onChange={(v) => set({ bsp: v })} small={0.1} big={1} min={0} max={40} decimals={1} />
+        <NumberStepper label="BSP" unit="kt" value={s.bsp} onChange={(v) => setManual('bsp', { bsp: v })} small={0.1} big={1} min={0} max={40} decimals={1} />
 
         <div className="field-label">Πανί που έχουμε</div>
         <div className="chips">

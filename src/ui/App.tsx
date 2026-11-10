@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useRef } from 'react';
 import { onOpenTab, type AppTab } from './openTab';
 import { AppProvider, useApp } from './AppContext';
 import { NavProvider } from './NavContext';
+import { InstrumentsProvider, useInstruments } from './InstrumentsContext';
 import { LiveView } from './LiveView';
 import { PolarView } from './PolarView';
 import { ScoringView } from './ScoringView';
@@ -69,6 +70,7 @@ function Shell() {
             </option>
           ))}
         </select>
+        <InstrumentPill />
         {activeBoat && activeBoat.performanceFactor !== 1 && (
           <span className="badge">{Math.round(activeBoat.performanceFactor * 100)}%</span>
         )}
@@ -125,12 +127,29 @@ function Shell() {
   );
 }
 
+/** Header pill: instruments OK / lost (only when instruments are switched on). */
+function InstrumentPill() {
+  const { settings } = useApp();
+  const inst = useInstruments();
+  if (!settings.instruments?.enabled) return null;
+  return (
+    <button type="button" className={`inst-pill ${inst.live ? 'ok' : 'bad'}`} onClick={() => onOpenSettings()} aria-label="Κατάσταση οργάνων">
+      <span className="dot" aria-hidden="true" />
+      {inst.live ? 'Όργανα' : 'Όργανα ✕'}
+    </button>
+  );
+}
+
+const onOpenSettings = () => window.dispatchEvent(new CustomEvent('nav-open-tab', { detail: 'settings' }));
+
 export function App() {
   return (
     <AppProvider>
+      <InstrumentsProvider>
       <NavProvider>
         <Shell />
       </NavProvider>
+      </InstrumentsProvider>
     </AppProvider>
   );
 }

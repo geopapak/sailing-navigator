@@ -11,6 +11,7 @@ import { SARONIKOS_BOX, type GridForecast, type WindSample } from '../weather/ty
 import { calibrationFrom, gridField } from '../weather/field';
 import { useApp } from './AppContext';
 import { useGps, useStoredState, type GpsFix, type GpsStatus } from './hooks';
+import { useInstruments } from './InstrumentsContext';
 
 export interface PlanSettings {
   /** datetime-local value (device local time). */
@@ -112,7 +113,20 @@ export function NavProvider({ children }: { children: ReactNode }) {
   const [planStatus, setPlanStatus] = useState<{ busy: boolean; error?: string }>({ busy: false });
   const [liveRoute, setLiveRoute] = useState<RouteResult>();
   const [liveStatus, setLiveStatus] = useState<NavState['liveStatus']>({ busy: false });
-  const gps = useGps(ui.gps);
+  const phoneGps = useGps(ui.gps);
+  // Position from the boat's instruments when they are live; the phone's GPS otherwise.
+  const inst = useInstruments();
+  const iv = inst.values;
+  const instFix = inst.live && iv.lat !== undefined && iv.lon !== undefined;
+  const instT = instFix ? (inst.at.lat ?? Date.now()) : 0;
+  const gps = useMemo(
+    () =>
+      instFix
+        ? { status: 'ok' as const, fix: { lat: iv.lat!, lon: iv.lon!, accuracy: 5, t: instT, sog: iv.sog, cog: iv.cog }, message: undefined }
+        : phoneGps,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [instFix, instT, phoneGps],
+  );
   const saveTimer = useRef<number>();
 
   useEffect(() => {

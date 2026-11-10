@@ -46,7 +46,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const s = await getKV<Partial<Settings>>('settings', {});
         // Older installs stored an empty server address: use the project's server.
         if (!s.aiUrl) delete s.aiUrl;
-        setSettings({ ...DEFAULT_SETTINGS, ...s });
+        setSettings({ ...DEFAULT_SETTINGS, ...s, instruments: { ...DEFAULT_SETTINGS.instruments, ...(s.instruments ?? {}) } });
         await reload();
       } catch (e) {
         setError(`Αποτυχία τοπικής αποθήκευσης: ${(e as Error).message}`);

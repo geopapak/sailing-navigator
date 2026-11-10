@@ -1398,3 +1398,21 @@ td.mc-poor { color: var(--bad); font-weight: 700; }
 .review-flags ul { list-style: none; margin: 8px 0 0; padding: 0; }
 .review-flags li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid color-mix(in srgb, var(--fair) 35%, transparent); }
 .ok-box { border: 2px solid var(--good); }
+
+/* Instruments */
+.inst-status { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; border: 2px solid var(--line); background: var(--card); }
+.inst-status .dot, .inst-pill .dot { width: 12px; height: 12px; border-radius: 6px; background: var(--line); flex-shrink: 0; }
+.inst-status.ok { border-color: var(--good); }
+.inst-status.ok .dot, .inst-pill.ok .dot { background: var(--good); }
+.inst-status.bad { border-color: var(--fair); }
+.inst-status.bad .dot, .inst-pill.bad .dot { background: var(--fair); }
+.inst-pill { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 10px; border-radius: 18px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); font: inherit; font-size: 0.8rem; font-weight: 700; cursor: pointer; }
+.inst-bar { margin: 8px 0; }
+.inst-lost { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: 10px; border: 2px solid var(--fair); background: color-mix(in srgb, var(--fair) 12%, var(--bg)); }
+.inst-rows { display: flex; flex-direction: column; gap: 6px; }
+.inst-row { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 6px 12px; border-radius: 12px; border: 2px solid var(--good); background: var(--bg); color: var(--fg); font: inherit; text-align: left; cursor: pointer; }
+.inst-row.manual { border-color: var(--fair); }
+.inst-row .inst-label { color: var(--muted); font-weight: 600; width: 42px; }
+.inst-row b { flex: 1; font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+.inst-badge { font-size: 0.68rem; font-weight: 800; letter-spacing: 0.04em; padding: 3px 7px; border-radius: 6px; background: color-mix(in srgb, var(--good) 18%, var(--bg)); color: var(--good); }
+.inst-row.manual .inst-badge { background: color-mix(in srgb, var(--fair) 18%, var(--bg)); color: var(--fair); }

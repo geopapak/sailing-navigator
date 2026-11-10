@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useApp } from './AppContext';
 import { advisorConfig, checkAdvisor, AdvisorError } from '../ai/client';
 import { AccountCard } from './AccountCard';
+import { InstrumentsCard } from './InstrumentsCard';
 import { DEFAULT_SERVER } from './settings';
 import { NumField } from './NumberStepper';
 import type { Theme } from './settings';
@@ -19,6 +20,7 @@ export function SettingsView() {
   return (
     <div className="settings">
       <AccountCard />
+      <InstrumentsCard />
       <section className="card form-grid">
         <label>
           Θέμα
