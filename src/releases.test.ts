@@ -17,8 +17,7 @@ describe('release notes', () => {
 
   it('keeps CHANGELOG.md in sync with releases.json', () => {
     // Line endings may be CRLF in a Windows checkout; compare the text only.
-    const lf = (t: string) => t.split(String.fromCharCode(13) + String.fromCharCode(10)).join(String.fromCharCode(10));
-');
+    const lf = (t: string) => t.split('\r\n').join('\n');
     const before = lf(readFileSync('CHANGELOG.md', 'utf8'));
     execFileSync(process.execPath, ['scripts/changelog.mjs']);
     expect(lf(readFileSync('CHANGELOG.md', 'utf8'))).toBe(before);
