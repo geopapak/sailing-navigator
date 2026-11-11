@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Διαδρομή στον νέο αγώνα</title>
+<style>
+  /* Canvas around the phone (not part of the design). */
+  body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans",sans-serif; background:#e5e7eb; color:#111; }
+  .controls { position:sticky; top:0; z-index:50; background:#fff; border-bottom:1px solid #d1d5db; padding:8px 16px; display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center; }
+  .controls label { font-size:.8rem; font-weight:700; color:#374151; margin-right:4px; }
+  .pick { display:inline-flex; border:1px solid #9ca3af; border-radius:999px; overflow:hidden; }
+  .pick button { border:0; background:#fff; padding:8px 12px; font:inherit; font-size:.85rem; font-weight:600; min-height:40px; cursor:pointer; }
+  .pick button + button { border-left:1px solid #d1d5db; }
+  .pick button.on { background:#0b2a4a; color:#fff; }
+  .page { display:flex; flex-wrap:wrap; gap:24px; padding:20px 16px 40px; justify-content:center; align-items:flex-start; }
+  .notes { width:440px; max-width:100%; background:#fff; border-radius:16px; padding:16px 20px; line-height:1.5; font-size:.95rem; box-sizing:border-box; }
+  .notes h2 { margin:.1em 0 .4em; font-size:1.2rem; } .notes h3 { margin:1em 0 .3em; font-size:1rem; }
+  .notes ul, .notes ol { padding-left:1.2em; margin:.3em 0; }
+  .tag { display:inline-block; font-size:.72rem; font-weight:800; padding:2px 7px; border-radius:6px; background:#dcfce7; color:#14532d; margin-right:4px; }
+  .was { background:#f3f4f6; border-left:4px solid #6b7280; padding:8px 10px; border-radius:6px; font-size:.88rem; }
+
+  /* ---------- Phone & app tokens (as src/ui/styles.css, 0.9.0) ---------- */
+  .phone { width:var(--pw,390px); height:844px; max-width:100%; border-radius:34px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,.28); border:10px solid #111; position:relative; display:flex; flex-direction:column; }
+  .phone[data-theme='day']  { --bg:#fff; --fg:#000; --muted:#4b5563; --card:#f3f4f6; --line:#6b7280; --accent:#0b2a4a; --accent-fg:#fff; --good:#047857; --fair:#b45309; --bad:#b91c1c; --sea:#e0ecf8; --grid:#9fb6cf; }
+  .phone[data-theme='dark'] { --bg:#0b1220; --fg:#f9fafb; --muted:#9ca3af; --card:#162033; --line:#64748b; --accent:#60a5fa; --accent-fg:#0b1220; --good:#34d399; --fair:#fbbf24; --bad:#f87171; --sea:#0d1b30; --grid:#24364f; }
+  .phone[data-theme='night']{ --bg:#000; --fg:#ff3b30; --muted:#d8372c; --card:#140303; --line:#b02a20; --accent:#ff3b30; --accent-fg:#000; --good:#ff6b5e; --fair:#d1342a; --bad:#ff3b30; --sea:#050000; --grid:#3a0805; }
+  .phone { background:var(--bg); color:var(--fg); font-size:17px; }
+  .phone * { box-sizing:border-box; }
+  .phone button, .phone input, .phone select { font:inherit; color:inherit; }
+  .topbar { display:flex; align-items:center; gap:6px; padding:8px 8px; background:var(--accent); color:var(--accent-fg); }
+  .topbar b { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tb { background:none; border:0; color:inherit; min-width:52px; min-height:52px; border-radius:10px; cursor:pointer; font-weight:800; font-size:1.1em; }
+  .phone[data-theme='night'] .topbar { background:#000; color:var(--fg); border-bottom:2px solid var(--line); }
+  .scr { flex:1; overflow-y:auto; overflow-x:hidden; padding:10px 12px 16px; }
+  .card { background:var(--card); border-radius:12px; padding:12px; margin-bottom:10px; }
+  .muted { color:var(--muted); } .small { font-size:.85em; }
+  h3 { margin:0 0 8px; font-size:1em; }
+  label.f { display:block; font-weight:800; font-size:.9em; margin-bottom:8px; }
+  label.f input, label.f select { display:block; width:100%; margin-top:4px; min-height:52px; border:2px solid var(--line); border-radius:10px; background:var(--bg); padding:0 10px; font-weight:600; }
+  .btn { min-height:48px; padding:8px 14px; border-radius:10px; border:2px solid var(--line); background:var(--bg); font-weight:700; cursor:pointer; }
+  .btn.primary { background:var(--accent); color:var(--accent-fg); border-color:var(--accent); }
+  .phone[data-theme='night'] .btn.primary, .phone[data-theme='night'] .crs.on { background:#000; color:var(--fg); border-color:var(--fg); box-shadow:inset 0 0 0 2px var(--fg); }
+  .btn.big { width:100%; min-height:56px; font-size:1.05em; }
+  .btn:disabled { opacity:.45; cursor:default; }
+  .row { display:flex; gap:8px; align-items:center; } .grow { flex:1; min-width:0; }
+
+  .crs { display:grid; grid-template-columns:84px minmax(0,1fr); gap:10px; align-items:center; width:100%; text-align:left; padding:8px; margin-bottom:8px; border-radius:12px; border:3px solid var(--line); background:var(--bg); cursor:pointer; }
+  .crs.on { border-color:var(--accent); }
+  .crs svg { width:84px; height:64px; border-radius:8px; background:var(--sea); display:block; }
+  .crs b { display:block; } .crs .ts { font-size:.82em; color:var(--muted); }
+  .crs .chk { font-weight:900; color:var(--accent); }
+  .newc { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; min-height:64px; border-radius:12px; border:3px dashed var(--accent); background:var(--bg); font-weight:800; cursor:pointer; margin-bottom:8px; }
+  .chain { font-weight:700; font-size:.92em; margin:4px 0 8px; }
+  .map { display:block; width:100%; border-radius:12px; border:2px solid var(--line); background:var(--sea); margin-bottom:8px; cursor:crosshair; touch-action:manipulation; }
+  .map text { font-family:inherit; }
+  .hint { font-size:.88em; font-weight:700; padding:8px 10px; border-radius:8px; border-left:6px solid var(--accent); background:var(--card); margin-bottom:8px; }
+  .mk { display:grid; grid-template-columns:30px minmax(0,1fr) 48px 48px; gap:6px; align-items:center; padding:6px 0; border-top:1px solid var(--line); }
+  .mk:first-child { border-top:0; }
+  .mk .n { width:26px; height:26px; border-radius:13px; background:var(--fair); color:var(--bg); font-weight:900; font-size:.8em; display:flex; align-items:center; justify-content:center; }
+  .mk .nm { font-weight:800; } .mk .cc { font-size:.78em; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .mk button { min-height:48px; border-radius:10px; border:2px solid var(--line); background:var(--bg); font-weight:800; cursor:pointer; }
+  .switch { display:flex; gap:10px; align-items:center; min-height:56px; width:100%; border:2px solid var(--line); border-radius:12px; background:var(--bg); padding:6px 12px; cursor:pointer; text-align:left; margin-bottom:10px; }
+  .switch .knob { width:48px; height:28px; border-radius:14px; border:2px solid var(--line); position:relative; flex-shrink:0; }
+  .switch .knob::after { content:''; position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:9px; background:var(--line); transition:left .15s; }
+  .switch.on .knob { border-color:var(--accent); } .switch.on .knob::after { left:23px; background:var(--accent); }
+  .msg { font-size:.88em; font-weight:700; padding:6px 10px; border-radius:8px; margin:0 0 8px; border-left:6px solid var(--good); background:var(--card); }
+  .msg.warn { border-left-color:var(--fair); }
+  .toast { position:absolute; left:12px; right:12px; bottom:14px; border-radius:12px; padding:10px 14px; font-weight:800; background:var(--fg); color:var(--bg); z-index:5; }
+  .phone[data-theme='night'] .toast { background:#000; color:var(--fg); border:2px solid var(--fg); }
+</style>
+</head>
+<body>
+<div class="controls">
+  <span><label>Θέμα</label><span class="pick" id="pTheme"><button data-v="day">Μέρα</button><button data-v="dark">Σκοτεινό</button><button data-v="night">Νύχτα</button></span></span>
+  <span><label>Πλάτος</label><span class="pick" id="pWidth"><button data-v="390">390</button><button data-v="320">320</button></span></span>
+  <span><button class="pick" style="padding:0" id="reset"><span style="padding:8px 12px;display:inline-block;font-weight:600;font-size:.85rem">↺ Από την αρχή</span></button></span>
+</div>
+
+<div class="page">
+  <div class="phone" id="phone" data-theme="day"></div>
+  <div class="notes">
+    <h2>Διαδρομή μέσα στον «Νέο αγώνα»</h2>
+    <p class="small">P-012 — πρωτότυπο προς έγκριση. Δοκίμασέ το μέσα στο κινητό.</p>
+    <p class="was"><b>Σήμερα:</b> στο «Νέος αγώνας» υπάρχει μόνο ένα dropdown με τις έτοιμες διαδρομές. Για καινούρια πρέπει να βγεις, να πας στον Χάρτη, να τη φτιάξεις και να ξαναγυρίσεις.</p>
+    <h3>Τι αλλάζει</h3>
+    <ul>
+      <li><span class="tag">νέο</span><b>Οι διαδρομές μου</b> ως κάρτες με μικρό χάρτη και τη σειρά των σημείων. Πρώτη η τελευταία που χρησιμοποίησες.</li>
+      <li><span class="tag">νέο</span><b>+ Νέα διαδρομή εδώ</b>: ανοίγει χάρτης μέσα στον αγώνα. Αγγίζεις με τη σειρά εκκίνηση, σημαδούρες και τερματισμό. Υπάρχουν ↑ / ✕ για σειρά και διαγραφή, και κουμπί <b>⌖ Στίγμα / μοίρες</b> για κάθε σημείο (από την P-010).</li>
+      <li><span class="tag">νέο</span><b>✎ Άλλαξέ τη για αυτόν τον αγώνα</b>: αλλάζεις μια έτοιμη (π.χ. άλλη σημαδούρα σήμερα) χωρίς να χαλάσεις την αποθηκευμένη.</li>
+      <li>Διακόπτης «Κράτα τη στις διαδρομές μου»: ναι για νέα διαδρομή, όχι για αλλαγή μόνο για σήμερα.</li>
+      <li>Ο Χάρτης παραμένει όπως είναι. Οι διαδρομές είναι οι ίδιες και στα δύο σημεία.</li>
+    </ul>
+    <h3>Θέλω την απόφασή σου</h3>
+    <ol>
+      <li>Νέα διαδρομή μέσα στον αγώνα: προεπιλογή <b>να αποθηκεύεται</b> και στις διαδρομές μου;</li>
+      <li>Να μπει και επιλογή «Η διαδρομή θα ανακοινωθεί αργότερα» (ξεκινάς τον αγώνα χωρίς διαδρομή και τη βάζεις πριν την εκκίνηση);</li>
+    </ol>
+  </div>
+</div>
+
+<script>
+/* ---------- geometry (local flat projection, nm) ---------- */
+const LAT0 = 37 + 54.2 / 60, LON0 = 23 + 40.1 / 60, KX = 60 * Math.cos(LAT0 * Math.PI / 180);
+const toLL = (p) => ({ lat: LAT0 + p.y / 60, lon: LON0 + p.x / KX });
+const pad = (n, w) => String(n).padStart(w, '0');
+function dm(v, isLat) { const h = isLat ? 'Β' : 'Α'; v = Math.abs(v); const d = Math.floor(v), m = (v - d) * 60; return `${pad(d, isLat ? 2 : 3)}° ${m.toFixed(2).replace('.', ',')}′ ${h}`; }
+const dmLL = (p) => { const q = toLL(p); return `${dm(q.lat, true)} ${dm(q.lon, false)}`; };
+
+const SAVED = [
+  { id: 'tri', name: 'Τρίγωνο Φαλήρου', used: 'χρησιμοποιήθηκε 2/11', pts: [{ x: 0.04, y: -0.03 }, { x: -0.957, y: -1.767 }, { x: -1.876, y: -0.996 }, { x: -0.3, y: 0.4 }] },
+  { id: 'wl', name: 'Όρτσα–πρίμα Φλοίσβου', used: 'χρησιμοποιήθηκε 19/10', pts: [{ x: 0.2, y: 0.1 }, { x: -0.8, y: -1.6 }, { x: 0.3, y: 0.2 }] },
+  { id: 'aeg', name: 'Φάληρο – Αίγινα – Φάληρο', used: 'χρησιμοποιήθηκε 28/9', pts: [{ x: 0, y: 0 }, { x: -7.5, y: -13.8 }, { x: 0.1, y: 0.1 }] },
+];
+const S = { theme: 'day', width: 390, screen: 'race', sel: 'tri', custom: null, ed: null, toast: null, name: 'Χειμερινό · 3η' };
+const ptName = (i, n) => i === 0 ? 'Εκκίνηση' : i === n - 1 && n >= 2 ? 'Τερματισμός' : `Σημ. ${i}`;
+const current = () => S.custom || SAVED.find((c) => c.id === S.sel);
+
+function mini(pts) {
+  const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y), W = 84, H = 64, pd = 9;
+  const k = Math.min((W - 2 * pd) / ((Math.max(...xs) - Math.min(...xs)) || 1), (H - 2 * pd) / ((Math.max(...ys) - Math.min(...ys)) || 1));
+  const cx = (Math.max(...xs) + Math.min(...xs)) / 2, cy = (Math.max(...ys) + Math.min(...ys)) / 2;
+  const P = (p) => `${(W / 2 + (p.x - cx) * k).toFixed(1)},${(H / 2 - (p.y - cy) * k).toFixed(1)}`;
+  return `<svg viewBox="0 0 ${W} ${H}" aria-hidden="true"><polyline points="${pts.map(P).join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2"/>${pts.map((p, i) => `<circle cx="${P(p).split(',')[0]}" cy="${P(p).split(',')[1]}" r="${i === 0 ? 4 : 3}" fill="${i === 0 ? 'var(--good)' : 'var(--fair)'}"/>`).join('')}</svg>`;
+}
+
+/* ---------- editor map ---------- */
+let VIEW = null;
+function editMap(pts) {
+  const W = 370, H = 300;
+  if (!VIEW) VIEW = { cx: -0.8, cy: -0.6, k: 72 };
+  const { cx, cy, k } = VIEW;
+  const X = (p) => (W / 2 + (p.x - cx) * k).toFixed(1), Y = (p) => (H / 2 - (p.y - cy) * k).toFixed(1);
+  let g = '';
+  for (let m = Math.ceil((LAT0 * 60 + cy - H / 2 / k) * 2) / 2; m <= LAT0 * 60 + cy + H / 2 / k; m += 0.5) { const y = Y({ y: m - LAT0 * 60 }); g += `<line x1="0" x2="${W}" y1="${y}" y2="${y}" stroke="var(--grid)"/><text x="${W - 4}" y="${y - 3}" text-anchor="end" font-size="9" fill="var(--muted)">37°${(m - 2220).toFixed(1).replace('.', ',')}′</text>`; }
+  // indicative coastline to the north-east
+  const coast = [{ x: -3, y: 2.2 }, { x: -1.6, y: 1.6 }, { x: -0.6, y: 1.25 }, { x: 0.4, y: 1.0 }, { x: 1.2, y: 0.5 }, { x: 1.9, y: -0.4 }, { x: 2.6, y: -1.6 }, { x: 3.5, y: -2.8 }];
+  g += `<polygon points="${[...coast, { x: 4, y: 3 }, { x: -3, y: 3 }].map((p) => `${X(p)},${Y(p)}`).join(' ')}" fill="var(--card)" stroke="var(--line)" stroke-width="1.5"/><text x="${X({ x: 0.9, y: 1.35 })}" y="${Y({ x: 0, y: 1.35 })}" font-size="11" font-weight="700" fill="var(--muted)">Φάληρο</text>`;
+  if (pts.length > 1) g += `<polyline points="${pts.map((p) => `${X(p)},${Y(p)}`).join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-dasharray="6 4"/>`;
+  pts.forEach((p, i) => {
+    const n = ptName(i, pts.length);
+    g += `<circle cx="${X(p)}" cy="${Y(p)}" r="10" fill="${i === 0 ? 'var(--good)' : 'var(--fair)'}" stroke="var(--bg)" stroke-width="2"/><text x="${X(p)}" y="${+Y(p) + 4}" text-anchor="middle" font-size="11" font-weight="900" fill="var(--bg)">${i + 1}</text>
+      <text x="${+X(p) + 14}" y="${+Y(p) + 4}" font-size="12" font-weight="800" fill="var(--fg)" stroke="var(--sea)" stroke-width="3" paint-order="stroke">${n}</text>`;
+  });
+  return `<svg class="map" id="emap" viewBox="0 0 ${W} ${H}" role="img" aria-label="Χάρτης: άγγιξε για να βάλεις σημείο">${g}</svg>`;
+}
+
+/* ---------- screens ---------- */
+const phone = document.getElementById('phone');
+const topBar = (t, back) => `<div class="topbar">${back ? `<button class="tb" data-act="${back}" aria-label="Πίσω">←</button>` : '<span style="width:8px"></span>'}<b>${t}</b></div>`;
+function raceForm() {
+  const c = current();
+  const list = SAVED.map((x) => `<button class="crs ${!S.custom && S.sel === x.id ? 'on' : ''}" data-act="sel:${x.id}">${mini(x.pts)}<span><b>${x.name} ${!S.custom && S.sel === x.id ? '<span class="chk">✓</span>' : ''}</b><span class="ts">${x.pts.length} σημεία · ${x.used}</span></span></button>`).join('');
+  return topBar('Νέος αγώνας', 'noop') + `<div class="scr">
+    <div class="card"><label class="f">Όνομα<input value="${S.name}" id="rname"></label></div>
+    <div class="card"><h3>Διαδρομή</h3>
+      ${S.custom ? `<button class="crs on" data-act="edit">${mini(S.custom.pts)}<span><b>${S.custom.name} <span class="chk">✓</span></b><span class="ts">${S.custom.pts.length} σημεία · ${S.custom.keep ? 'αποθηκεύτηκε στις διαδρομές μου' : 'μόνο για αυτόν τον αγώνα'}</span></span></button>` : ''}
+      ${list}
+      <button class="newc" data-act="new">＋ Νέα διαδρομή εδώ</button>
+      ${c ? `<div class="chain">${c.pts.map((p, i) => ptName(i, c.pts.length)).join(' → ')}</div>
+      <button class="btn" style="width:100%" data-act="edit">✎ Άλλαξέ τη για αυτόν τον αγώνα</button>` : ''}
+    </div>
+    <div class="card"><label class="f">Εκκίνηση<input type="datetime-local" value="2026-11-14T11:00"></label>
+      <label class="f" style="margin:0">Βαθμολογία<select><option>ORC Inshore · μεσαίος — ToT</option></select></label></div>
+    <div class="card small muted">Συμμετοχές — όπως σήμερα (λίστα PDF, σκάφη μου, χειροκίνητα).</div>
+    <button class="btn primary big" data-act="start">Αποθήκευση αγώνα</button>
+  </div>`;
+}
+function editor() {
+  const E = S.ed, n = E.pts.length;
+  return topBar(E.fromId ? 'Αλλαγή διαδρομής' : 'Νέα διαδρομή', 'cancel') + `<div class="scr">
+    <label class="f">Όνομα διαδρομής<input id="cname" value="${E.name}" placeholder="π.χ. Τρίγωνο Φαλήρου"></label>
+    <div class="hint">${n === 0 ? 'Άγγιξε τον χάρτη για την <b>Εκκίνηση</b>.' : n === 1 ? 'Άγγιξε για την πρώτη σημαδούρα.' : 'Άγγιξε για ακόμα ένα σημείο. Το τελευταίο είναι ο <b>Τερματισμός</b>.'}</div>
+    ${editMap(E.pts)}
+    ${n ? `<div class="card">${E.pts.map((p, i) => `<div class="mk"><span class="n">${i + 1}</span><span><span class="nm">${ptName(i, n)}</span><br><span class="cc">${dmLL(p)}</span></span>
+      <button data-act="up:${i}" aria-label="Πιο πάνω" ${i === 0 ? 'disabled' : ''}>↑</button><button data-act="del:${i}" aria-label="Διαγραφή">✕</button></div>`).join('')}
+      <div class="row" style="margin-top:8px"><button class="btn grow" data-act="fix">⌖ Στίγμα / μοίρες</button><button class="btn" data-act="rev">⇅ Αντίστροφα</button></div></div>` : ''}
+    <button class="switch ${E.keep ? 'on' : ''}" data-act="keep"><span class="knob"></span><span><b>Κράτα τη στις διαδρομές μου</b><br><span class="small muted">${E.keep ? 'θα τη βρίσκεις και στον Χάρτη' : 'μόνο για αυτόν τον αγώνα'}</span></span></button>
+    ${n < 2 ? '<div class="msg warn">Βάλε τουλάχιστον εκκίνηση και μία σημαδούρα ή τερματισμό.</div>' : ''}
+    <button class="btn primary big" data-act="done" ${n < 2 ? 'disabled' : ''}>Έτοιμο — πίσω στον αγώνα</button>
+  </div>`;
+}
+function render() {
+  phone.dataset.theme = S.theme; phone.style.setProperty('--pw', S.width + 'px');
+  const sc = phone.querySelector('.scr'), y = sc && render.last === S.screen ? sc.scrollTop : 0; render.last = S.screen;
+  phone.innerHTML = (S.screen === 'race' ? raceForm() : editor()) + (S.toast ? `<div class="toast" role="status">${S.toast}</div>` : '');
+  const sc2 = phone.querySelector('.scr'); if (sc2) sc2.scrollTop = y;
+  document.querySelectorAll('.pick[id]').forEach((p) => p.querySelectorAll('button').forEach((b) => b.classList.toggle('on', String(S[p.id === 'pTheme' ? 'theme' : 'width']) === b.dataset.v)));
+}
+function toast(t) { S.toast = t; clearTimeout(toast.h); toast.h = setTimeout(() => { S.toast = null; render(); }, 3000); }
+function keepNames() { const a = document.getElementById('cname'); if (a && S.ed) S.ed.name = a.value; const b = document.getElementById('rname'); if (b) S.name = b.value; }
+
+phone.addEventListener('click', (e) => {
+  keepNames();
+  const svg = e.target.closest('#emap');
+  if (svg && S.ed) {
+    const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY; const q = pt.matrixTransform(svg.getScreenCTM().inverse());
+    S.ed.pts.push({ x: VIEW.cx + (q.x - 185) / VIEW.k, y: VIEW.cy - (q.y - 150) / VIEW.k }); render(); return;
+  }
+  const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
+  const [a, v] = b.dataset.act.split(':');
+  if (a === 'sel') { S.sel = v; S.custom = null; }
+  if (a === 'new') { S.ed = { name: '', pts: [], keep: true }; VIEW = null; S.screen = 'edit'; }
+  if (a === 'edit') { const c = current(); S.ed = { name: S.custom ? c.name : `${c.name} (σήμερα)`, pts: c.pts.map((p) => ({ ...p })), keep: S.custom ? !!S.custom.keep : false, fromId: c.id || 'custom' }; VIEW = null; S.screen = 'edit'; }
+  if (a === 'cancel') { S.screen = 'race'; }
+  if (a === 'up') { const i = +v; [S.ed.pts[i - 1], S.ed.pts[i]] = [S.ed.pts[i], S.ed.pts[i - 1]]; }
+  if (a === 'del') { S.ed.pts.splice(+v, 1); }
+  if (a === 'rev') { S.ed.pts.reverse(); }
+  if (a === 'keep') { S.ed.keep = !S.ed.keep; }
+  if (a === 'fix') { toast('Ανοίγει το φύλλο σημαδούρας της P-010 (μοίρες · διόπτευση · πάρε στίγμα).'); }
+  if (a === 'done') {
+    const name = S.ed.name.trim() || 'Νέα διαδρομή';
+    if (S.ed.keep && !S.ed.fromId) { const id = 'c' + Date.now(); SAVED.unshift({ id, name, used: 'νέα', pts: S.ed.pts }); S.sel = id; S.custom = null; toast(`Η «${name}» μπήκε στον αγώνα και στις διαδρομές μου.`); }
+    else { S.custom = { name, pts: S.ed.pts, keep: S.ed.keep }; if (S.ed.keep) SAVED.unshift({ id: 'c' + Date.now(), name, used: 'νέα', pts: S.ed.pts }); toast(S.ed.keep ? `Η «${name}» μπήκε στον αγώνα και στις διαδρομές μου.` : `Η «${name}» μπήκε μόνο σε αυτόν τον αγώνα.`); }
+    S.screen = 'race';
+  }
+  if (a === 'start') { toast(`Ο αγώνας αποθηκεύτηκε με διαδρομή «${current().name}».`); }
+  render();
+});
+document.querySelector('.controls').addEventListener('click', (e) => {
+  if (e.target.closest('#reset')) { location.reload(); return; }
+  const b = e.target.closest('.pick button'); if (!b) return;
+  if (b.parentElement.id === 'pTheme') S.theme = b.dataset.v; else S.width = +b.dataset.v; render();
+});
+render();
+</script>
+</body>
+</html>

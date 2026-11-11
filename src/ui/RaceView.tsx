@@ -10,6 +10,7 @@ import { KnowledgeView } from './KnowledgeView';
 import { RaceAnalysisView } from './RaceAnalysisView';
 import { CertificateImport, toBase64 } from './CertificateImport';
 import { NumberStepper } from './NumberStepper';
+import { CourseEditor, CoursePicker } from './RaceCourse';
 import { DEFAULT_SERVER } from './settings';
 import { accountApi, ApiError } from '../sync/api';
 import { STANDARD_SCORING_OPTIONS } from '../boat/scoringOptions';
@@ -240,12 +241,18 @@ function RaceSetup({ id, onDone, onCancel }: { id?: string; onDone: (started: bo
   const [certFor, setCertFor] = useState<string>();
   const [addBoatId, setAddBoatId] = useState('');
   const [mmsiFor, setMmsiFor] = useState<string>();
+  const [courseEd, setCourseEdState] = useState<'new' | 'edit'>();
+  // Open the editor at the top; come back to the course picker, not to where the page was.
+  const setCourseEd = (v?: 'new' | 'edit') => {
+    setCourseEdState(v);
+    requestAnimationFrame(() => (v ? window.scrollTo(0, 0) : document.querySelector('.course-picker')?.scrollIntoView({ block: 'center' })));
+  };
 
   const own = r.entries.find((e) => e.own);
   const options = own?.boat?.scoring ?? activeBoat?.scoring ?? [];
   const problems: string[] = [];
   if (!r.name.trim()) problems.push('Δώσε όνομα αγώνα.');
-  if (r.marks.length < 2) problems.push('Διάλεξε διαδρομή με τουλάχιστον 2 σημεία (Χάρτης).');
+  if (r.marks.length < 2) problems.push('Διάλεξε ή φτιάξε διαδρομή με τουλάχιστον 2 σημεία.');
   if (!own) problems.push('Λείπει το σκάφος μας.');
   else if (!own.boat?.scoring.some((o) => o.id === r.scoringOptionId)) problems.push('Το σκάφος μας δεν έχει αυτή την επιλογή βαθμολογίας.');
 
@@ -255,6 +262,28 @@ function RaceSetup({ id, onDone, onCancel }: { id?: string; onDone: (started: bo
     race.setActiveId(out.id);
     onDone(start || out.status === 'running');
   };
+
+  if (courseEd) {
+    const editing = courseEd === 'edit';
+    const fromSaved = editing && !!r.courseId;
+    return (
+      <CourseEditor
+        title={editing ? 'Αλλαγή διαδρομής' : 'Νέα διαδρομή'}
+        initial={editing ? { name: fromSaved ? `${r.courseName ?? 'Διαδρομή'} (σήμερα)` : (r.courseName ?? ''), marks: r.marks } : { name: '', marks: [] }}
+        keepDefault={!editing}
+        onCancel={() => setCourseEd(undefined)}
+        onDone={(v) => {
+          if (v.keep) {
+            // Always a new saved course: changing a course for one race never overwrites the original.
+            const c = { id: `c-${Date.now().toString(36)}`, name: v.name, marks: v.marks, updatedAt: Date.now() };
+            nav.updateCourse(c);
+            set({ courseId: c.id, courseName: c.name, marks: c.marks });
+          } else set({ courseId: undefined, courseName: v.name, marks: v.marks });
+          setCourseEd(undefined);
+        }}
+      />
+    );
+  }
 
   if (certFor) {
     return (
@@ -283,24 +312,10 @@ function RaceSetup({ id, onDone, onCancel }: { id?: string; onDone: (started: bo
           Όνομα
           <input value={r.name} onChange={(e) => set({ name: e.target.value })} placeholder="π.χ. Χειμερινό · 3η" maxLength={80} />
         </label>
-        <label>
-          Διαδρομή
-          <select
-            value={r.courseId ?? ''}
-            onChange={(e) => {
-              const c = nav.courses.find((x) => x.id === e.target.value);
-              set({ courseId: c?.id, courseName: c?.name, marks: c?.marks ?? [] });
-            }}
-          >
-            <option value="">— διάλεξε —</option>
-            {nav.courses.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name} ({c.marks.length} σημεία)
-              </option>
-            ))}
-          </select>
-        </label>
-        {r.marks.length > 0 && <p className="muted small">{r.marks.map((m) => m.name).join(' → ')}</p>}
+        <div className="field-group full">
+          <span className="field-label">Διαδρομή</span>
+          <CoursePicker value={r} onChange={(v) => set(v)} onNew={() => setCourseEd('new')} onEdit={() => setCourseEd('edit')} />
+        </div>
         <label>
           Εκκίνηση
           <input type="datetime-local" value={toLocalInput(r.start)} onChange={(e) => set({ start: localToMs(e.target.value) })} />
