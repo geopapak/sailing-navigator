@@ -148,3 +148,61 @@ describe('CORS and headers', () => {
     expect(r.headers.get('referrer-policy')).toBe('no-referrer');
   });
 });
+
+describe('AI cost brakes (P-016)', () => {
+  const ask = (env: Env, opts: { code?: string; token?: string; ip?: string; path?: string } = {}) => {
+    const headers: Record<string, string> = { Origin: ORIGIN, 'content-type': 'application/json', 'CF-Connecting-IP': opts.ip ?? '203.0.113.9' };
+    if (opts.code) headers['x-access-code'] = opts.code;
+    if (opts.token) headers.Authorization = `Bearer ${opts.token}`;
+    return worker.fetch(new Request(`https://w${opts.path ?? '/advice'}`, { method: 'POST', headers, body: '{}' }), env);
+  };
+
+  it('kill switch stops paid calls before anything else, even with the access code', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const env = { ...mkEnv(), AI_DISABLED: '1' };
+    const r = await ask(env, { code: 'owner' });
+    expect(r.status).toBe(503);
+    expect((await r.json()).error).toMatch(/προσωρινά κλειστός/);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('the access code is paced per connection (no longer unlimited)', async () => {
+    const env = mkEnv();
+    const { ipKey } = await import('./rateLimit');
+    const { AI_LIMITS } = await import('./aiBrakes');
+    const id = await ipKey('203.0.113.9');
+    for (let i = 0; i < AI_LIMITS.codePerHour.max; i++) await hit(env.DB, AI_LIMITS.codePerHour, id);
+    const r = await ask(env, { code: 'owner' });
+    expect(r.status).toBe(429);
+    // Another connection is not affected by this counter (it fails later, on the empty body).
+    expect((await ask(env, { code: 'owner', ip: '198.51.100.7' })).status).not.toBe(429);
+  });
+
+  it('server-wide monthly cap returns 503 and is read from the env', async () => {
+    const env = { ...mkEnv(), AI_GLOBAL_MONTHLY_LIMIT: '2' };
+    const { useGlobalBudget } = await import('./aiBrakes');
+    await useGlobalBudget(env);
+    await useGlobalBudget(env);
+    const r = await ask(env, { code: 'owner' });
+    expect(r.status).toBe(503);
+    expect((await r.json()).error).toMatch(/μηνιαίο όριο της υπηρεσίας/);
+  });
+
+  it('one account can ask at most a few times per minute', async () => {
+    const { assertCallerPace, AI_LIMITS } = await import('./aiBrakes');
+    const env = mkEnv();
+    const now = 1_800_000_000_000;
+    for (let i = 0; i < AI_LIMITS.perMinute.max; i++) await assertCallerPace(env, { user: 'u1' }, now);
+    await expect(assertCallerPace(env, { user: 'u1' }, now)).rejects.toMatchObject({ status: 429 });
+    await expect(assertCallerPace(env, { user: 'u2' }, now)).resolves.toBeUndefined();
+    // A minute later the counter starts again.
+    await expect(assertCallerPace(env, { user: 'u1' }, now + 61_000)).resolves.toBeUndefined();
+  });
+
+  it('defaults: global cap 1000, anything not "1" keeps AI on', async () => {
+    const { globalMonthlyLimit, aiDisabled } = await import('./aiBrakes');
+    expect(globalMonthlyLimit({})).toBe(1000);
+    expect(globalMonthlyLimit({ AI_GLOBAL_MONTHLY_LIMIT: 'abc' })).toBe(1000);
+    expect(aiDisabled({ AI_DISABLED: '0' })).toBe(false);
+  });
+});
