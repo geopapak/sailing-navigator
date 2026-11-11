@@ -20,6 +20,7 @@ import { AdvisorCard } from './AdvisorCard';
 import { buildPlanContext, localIso } from '../ai/context';
 import { openTab } from './openTab';
 import type { BoatProfile } from '../boat/types';
+import { useLaylines } from './useLaylines';
 
 const fmtTime = (ms: number) =>
   new Date(ms).toLocaleString('el-GR', { weekday: 'short', hour: '2-digit', minute: '2-digit' });
@@ -32,6 +33,7 @@ const pct = (x: number) => `${Math.round(x * 100)}%`;
 export function PlanView() {
   const { activeBoat: boat } = useApp();
   const nav = useNav();
+  const lay = useLaylines();
   const { course, plan, setPlan, forecast } = nav;
   const [addMode, setAddMode] = useState(false);
   const [simT, setSimT] = useState<number>();
@@ -97,6 +99,7 @@ export function PlanView() {
           showDepth={plan.showDepth}
           wind={windArrows}
           boatPos={nav.gps.fix}
+          laylines={lay?.result}
           simPos={route ? sim : undefined}
           fitKey={fitKey}
         >

@@ -4,6 +4,8 @@ import { bearingDeg, distanceNm, vmc } from '../nav/geo';
 import { trueToMag } from '../performance/angles';
 import type { WindSample } from '../weather/types';
 import { meanLabel, meanWind } from '../weather/windAverage';
+import { laylineText, nextManoeuvre } from '../nav/laylines';
+import { useLaylines } from './useLaylines';
 
 const f1 = (v: number) => v.toFixed(1);
 const f0 = (v: number) => Math.round(v).toString();
@@ -13,6 +15,7 @@ export function NextMarkCard({ observed, fromCog }: { observed?: WindSample; fro
   const { activeBoat: boat, settings } = useApp();
   const nav = useNav();
   const { course, gps, nextMark } = nav;
+  const lay = useLaylines();
   if (!course || course.marks.length < 2) return null;
   const mark = course.marks[nextMark];
   if (!mark) return null;
@@ -30,6 +33,7 @@ export function NextMarkCard({ observed, fromCog }: { observed?: WindSample; fro
   const advHeading = first ? (settings.manualMagnetic ? trueToMag(first.heading, settings.declination) : first.heading) : undefined;
   const ageMin = nav.liveStatus.at ? Math.round((Date.now() - nav.liveStatus.at) / 60000) : undefined;
   const unit = settings.manualMagnetic ? '°M' : '°T';
+  const nextMan = lr ? nextManoeuvre(lr.legs[0]?.track ?? [], Date.now()) : undefined;
 
   return (
     <section className="card next-mark">
@@ -75,6 +79,14 @@ export function NextMarkCard({ observed, fromCog }: { observed?: WindSample; fro
       ) : (
         <p className="muted small">Χρειάζεται θέση GPS για απόσταση, διόπτευση και VMC.</p>
       )}
+      {lay && (
+        <div className={`nm-lay ${lay.result.overstood ? 'warn-text' : ''}`} role="status">
+          <strong>{laylineText(lay.result)}</strong>
+          <div className="muted small">
+            Ενδεικτικό · άνεμος {lay.wind === 'measured' ? 'μετρημένος (μέσος όρος)' : 'από την πρόγνωση'} {f0(lay.twd)}° / {f0(lay.tws)} kt
+          </div>
+        </div>
+      )}
       {atMark && nextMark < course.marks.length - 1 && (
         <button className="btn primary" onClick={() => nav.setNextMark(nextMark + 1)}>
           Στη σημαδούρα → επόμενη
@@ -93,6 +105,13 @@ export function NextMarkCard({ observed, fromCog }: { observed?: WindSample; fro
             Τερματισμός σε {Math.floor(lr!.elapsedSec / 3600)}h {String(Math.round((lr!.elapsedSec % 3600) / 60)).padStart(2, '0')}′ ·{' '}
             {lr!.legs[0].tacks + lr!.legs[0].gybes} μανούβρες ως τη σημαδούρα
           </div>
+          {nextMan && (
+            <div className="small">
+              Επόμενη {nextMan.kind === 'tack' ? 'αναστροφή' : 'υποσταύρωση'} ~
+              {new Date(nextMan.at).toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit' })} (σε{' '}
+              {Math.max(0, Math.round((nextMan.at - Date.now()) / 60_000))}′)
+            </div>
+          )}
         </div>
       )}
       <button className="btn" disabled={nav.liveStatus.busy || !fix} onClick={() => {

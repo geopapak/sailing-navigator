@@ -1768,6 +1768,19 @@ legend { font-weight: 600; margin-bottom: 6px; }
   background: var(--good);
 }
 
+.nm-lay {
+  margin: 10px 0 4px;
+  padding: 8px 10px;
+  border-left: 4px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border-radius: 6px;
+}
+.nm-lay strong {
+  font-size: 1.05rem;
+}
+.nm-lay.warn-text {
+  border-left-color: var(--fair);
+}
 .race-strip .link {
   margin-left: auto;
   flex-shrink: 0;
