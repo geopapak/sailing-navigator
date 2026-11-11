@@ -47,12 +47,14 @@ function Shell() {
     prevAccount.current = account?.id;
   }, [account?.id, setNav]);
 
+  // All hooks must run before the early returns below (else React throws and the page is blank).
+  const [themeOpen, setThemeOpen] = useState(false);
+
   // Sign-in comes first; then a new password after a temporary one; then the terms.
   if (ready && !account) return <AuthFlow />;
   if (ready && account?.mustChangePassword) return <SetPasswordScreen />;
   if (ready && account && account.termsOk === false) return <AcceptTermsScreen />;
   if (ready && account && account.termsOk === undefined) return <AcceptTermsScreen />;
-  const [themeOpen, setThemeOpen] = useState(false);
   const showOnboarding = ready && !settings.onboarded && !(['boats', 'settings', 'guide'] as Tab[]).includes(nav.tab);
   const go = (tab: Tab) => setNav({ tab: nav.tab === tab && (tab === 'guide' || tab === 'settings') ? 'live' : tab });
 
