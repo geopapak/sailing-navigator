@@ -7,7 +7,7 @@ import type { D1Database, D1PreparedStatement } from './accounts';
 /** D1 on top of Node's built-in SQLite, with the real migration. */
 function fakeD1(): D1Database {
   const sql = new DatabaseSync(':memory:');
-  for (const f of ['0001_accounts.sql', '0002_terms_reset_pdf.sql']) sql.exec(readFileSync(new URL(`../migrations/${f}`, import.meta.url), 'utf8'));
+  for (const f of ['0001_accounts.sql', '0002_terms_reset_pdf.sql', '0003_pdf_cache.sql']) sql.exec(readFileSync(new URL(`../migrations/${f}`, import.meta.url), 'utf8'));
   const stmt = (q: string, args: unknown[] = []): D1PreparedStatement => ({
     bind: (...v: unknown[]) => stmt(q, v),
     first: async <T,>() => (sql.prepare(q).get(...(args as never[])) as T) ?? null,
@@ -210,18 +210,22 @@ describe('accounts', () => {
         );
       }),
     );
-    const pdf = btoa('%PDF-1.4 test');
+    const pdf = (i: number) => btoa(`%PDF-1.4 test ${i}`);
     for (let i = 0; i < 3; i++) {
-      const r = await ok<{ extract: { boat: { name: string } } }>(call(env, 'POST', '/certificate', { data: pdf, mediaType: 'application/pdf' }, token));
+      const r = await ok<{ extract: { boat: { name: string } } }>(call(env, 'POST', '/certificate', { data: pdf(i), mediaType: 'application/pdf' }, token));
       expect(r.extract.boat.name).toBe('Αστάρτη');
     }
     expect(bodies[0].messages[0].content[0]).toMatchObject({ type: 'document', source: { media_type: 'application/pdf' } });
     expect(bodies[0].output_config.format.type).toBe('json_schema');
-    // Fourth reading needs AI approval.
-    await ok(call(env, 'POST', '/certificate', { data: pdf, mediaType: 'application/pdf' }, token), 403);
+    // Fourth new file needs AI approval…
+    await ok(call(env, 'POST', '/certificate', { data: pdf(3), mediaType: 'application/pdf' }, token), 403);
+    // …but a file already read comes back from the cache, free.
+    const again = await ok<{ cached: boolean }>(call(env, 'POST', '/certificate', { data: pdf(0), mediaType: 'application/pdf' }, token));
+    expect(again.cached).toBe(true);
+    expect(bodies).toHaveLength(3);
     const me = await ok<{ user: { pdf: { used: number; left: number } } }>(call(env, 'GET', '/me', undefined, token));
     expect(me.user.pdf).toEqual({ used: 3, left: 0 });
-    await ok(call(env, 'POST', '/certificate', { data: pdf, mediaType: 'application/pdf' }), 401);
+    await ok(call(env, 'POST', '/certificate', { data: pdf(0), mediaType: 'application/pdf' }), 401);
   });
 
   it('still accepts the owner access code for AI', async () => {

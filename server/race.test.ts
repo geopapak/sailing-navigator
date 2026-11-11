@@ -7,7 +7,7 @@ import { parseAisStream } from './race';
 
 function fakeD1(): D1Database {
   const sql = new DatabaseSync(':memory:');
-  for (const f of ['0001_accounts.sql', '0002_terms_reset_pdf.sql']) sql.exec(readFileSync(new URL(`../migrations/${f}`, import.meta.url), 'utf8'));
+  for (const f of ['0001_accounts.sql', '0002_terms_reset_pdf.sql', '0003_pdf_cache.sql']) sql.exec(readFileSync(new URL(`../migrations/${f}`, import.meta.url), 'utf8'));
   const stmt = (q: string, args: unknown[] = []): D1PreparedStatement => ({
     bind: (...v: unknown[]) => stmt(q, v),
     first: async <T,>() => (sql.prepare(q).get(...(args as never[])) as T) ?? null,
@@ -73,6 +73,40 @@ describe('race endpoints', () => {
     expect(out.entries.map((e) => e.mmsi)).toEqual(['239112233', '']);
     const me = (await (await get(env, '/me', token)).json()) as { user: { pdf: { used: number } } };
     expect(me.user.pdf.used).toBe(1);
+  });
+
+  it('answers the same file again from the cache: no AI call, not counted, even for another user', async () => {
+    const env = mkEnv();
+    const token = await signup(env);
+    const extract = { isEntryList: true, event: 'Χειμερινό 4', entries: [{ name: 'ΑΣΤΑΡΤΗ', sailNo: 'GRE-1234', className: 'ORC B', mmsi: '', club: '' }] };
+    const ai = vi.fn(async () =>
+      new Response(JSON.stringify({ id: 'm', type: 'message', role: 'assistant', model: 'claude-opus-5-5', content: [{ type: 'text', text: JSON.stringify(extract) }], stop_reason: 'end_turn', usage: { input_tokens: 1, output_tokens: 1 } }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+    vi.stubGlobal('fetch', ai);
+    const upload = (t: string, data = btoa('%PDF-1.4 list')) =>
+      worker.fetch(
+        new Request('https://w/entrylist', {
+          method: 'POST',
+          headers: { Origin: ORIGIN, 'content-type': 'application/json', Authorization: `Bearer ${t}` },
+          body: JSON.stringify({ data, mediaType: 'application/pdf' }),
+        }),
+        env,
+      );
+    expect((await upload(token)).status).toBe(200);
+    const again = (await (await upload(token)).json()) as { event: string; entries: { sailNo: string }[]; cached?: boolean };
+    expect(again).toMatchObject({ event: 'Χειμερινό 4', cached: true });
+    expect(again.entries[0].sailNo).toBe('GRE-1234');
+    const other = await signup(env, 'c@d.gr');
+    expect(((await (await upload(other)).json()) as { cached?: boolean }).cached).toBe(true);
+    expect(ai).toHaveBeenCalledTimes(1);
+    const me = (await (await get(env, '/me', token)).json()) as { user: { pdf: { used: number } } };
+    expect(me.user.pdf.used).toBe(1);
+    // A different file is a new reading.
+    await upload(token, btoa('%PDF-1.4 other list'));
+    expect(ai).toHaveBeenCalledTimes(2);
   });
 
   it('looks a boat up in the ORC API, without the key ever reaching the logs', async () => {

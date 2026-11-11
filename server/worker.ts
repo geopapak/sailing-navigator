@@ -21,6 +21,8 @@ import { AgentError, runAgent } from './agent';
 import { log } from './log';
 import { MAX_CERT_BASE64, readCertificate, validateCertificateBody } from './certificate';
 import { aisPositions, orcBoat, readEntryList } from './race';
+import { cacheGet, cachePut, fileHash } from './pdfCache';
+import type { CertificateExtract } from '../src/boat/certificate';
 import { MAX_SUMMARY_CHARS, crewNotes, raceLessons } from './analysis';
 import {
   HttpError,
@@ -215,15 +217,23 @@ const ACCOUNT_PATHS = /^\/(auth\/|me$|me\/|sync$|admin\/)/;
 async function certificate(req: Request, env: Env, cors: Record<string, string>): Promise<Response> {
   const s = await sessionUser(env, req);
   if (!s) throw new HttpError(401, 'Χρειάζεται σύνδεση.');
+  const file = validateCertificateBody(await body(req, MAX_CERT_BASE64 + 1024));
+  const t0 = Date.now();
+  // Same file read before: free and instant, not counted against the allowance.
+  const hash = await fileHash('certificate', file.mediaType, file.data);
+  const hit = await cacheGet<CertificateExtract>(env.DB, 'certificate', hash);
+  if (hit) {
+    log('ai', { kind: 'certificate', user: s.user.id, cache: 'hit', ms: Date.now() - t0 });
+    return json({ extract: hit.result, model: hit.model, cached: true }, 200, cors);
+  }
   canReadPdf(s.user);
   if (!env.ANTHROPIC_API_KEY) throw new HttpError(500, 'Ο server δεν έχει κλειδί Claude API.');
-  const file = validateCertificateBody(await body(req, MAX_CERT_BASE64 + 1024));
   const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY, maxRetries: 1, timeout: 110_000 });
   try {
-    const t0 = Date.now();
     const r = await readCertificate(client, file);
+    await cachePut(env.DB, 'certificate', hash, r.extract, r.model);
     await countPdfRead(env, s.user);
-    log('ai', { kind: 'certificate', user: s.user.id, model: r.model, ms: Date.now() - t0, bytes: Math.round((file.data.length * 3) / 4), ...r.usage });
+    log('ai', { kind: 'certificate', user: s.user.id, cache: 'miss', model: r.model, ms: Date.now() - t0, bytes: Math.round((file.data.length * 3) / 4), ...r.usage });
     return json({ extract: r.extract, model: r.model }, 200, cors);
   } catch (e) {
     if (e instanceof HttpError) throw e;
@@ -235,15 +245,22 @@ async function certificate(req: Request, env: Env, cors: Record<string, string>)
 async function entryList(req: Request, env: Env, cors: Record<string, string>): Promise<Response> {
   const s = await sessionUser(env, req);
   if (!s) throw new HttpError(401, 'Χρειάζεται σύνδεση.');
+  const file = validateCertificateBody(await body(req, MAX_CERT_BASE64 + 1024));
+  const t0 = Date.now();
+  const hash = await fileHash('entrylist', file.mediaType, file.data);
+  const hit = await cacheGet<{ event: string; entries: unknown[] }>(env.DB, 'entrylist', hash);
+  if (hit) {
+    log('ai', { kind: 'entrylist', user: s.user.id, cache: 'hit', ms: Date.now() - t0, entries: hit.result.entries.length });
+    return json({ event: hit.result.event, entries: hit.result.entries, cached: true }, 200, cors);
+  }
   canReadPdf(s.user);
   if (!env.ANTHROPIC_API_KEY) throw new HttpError(500, 'Ο server δεν έχει κλειδί Claude API.');
-  const file = validateCertificateBody(await body(req, MAX_CERT_BASE64 + 1024));
   const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY, maxRetries: 1, timeout: 110_000 });
   try {
-    const t0 = Date.now();
     const r = await readEntryList(client, file);
+    await cachePut(env.DB, 'entrylist', hash, { event: r.event, entries: r.entries }, r.model);
     await countPdfRead(env, s.user);
-    log('ai', { kind: 'entrylist', user: s.user.id, model: r.model, ms: Date.now() - t0, entries: r.entries.length, ...r.usage });
+    log('ai', { kind: 'entrylist', user: s.user.id, cache: 'miss', model: r.model, ms: Date.now() - t0, entries: r.entries.length, ...r.usage });
     return json({ event: r.event, entries: r.entries }, 200, cors);
   } catch (e) {
     if (e instanceof HttpError) throw e;
