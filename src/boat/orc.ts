@@ -123,7 +123,7 @@ export function orcToBoat(rms: OrcRms, options: OrcScoringOption[] = [], isOwn =
     notes: `Από το ORC (${rms.C_Type ?? rms.Family ?? 'ORC'}${rms.IssueDate ? `, ${rms.IssueDate.slice(0, 10)}` : ''}).`,
     polar: orcPolar(rms.Allowances),
     performanceFactor: 1,
-    sails: [{ id: 'main', name: 'Μεγίστη', kind: 'main' }],
+    sails: [{ id: 'main', name: 'Μαΐστρα', kind: 'main' }],
     sailRules: [],
     scoring: orcScoring(rms, options),
     isOwn,

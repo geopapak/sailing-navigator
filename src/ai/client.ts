@@ -37,7 +37,7 @@ async function call(cfg: AdvisorConfig, path: string, init: RequestInit, timeout
     });
   } catch (e) {
     if ((e as Error).name === 'AbortError') throw new AdvisorError('Ο σύμβουλος δεν απάντησε εγκαίρως. Δοκίμασε ξανά.');
-    throw new AdvisorError('Δεν βρέθηκε ο server. Έλεγξε τη διεύθυνση στις Ρυθμίσεις και τη σύνδεση.');
+    throw new AdvisorError('Δεν απαντά η υπηρεσία της εφαρμογής. Έλεγξε τη σύνδεση στο internet.');
   } finally {
     clearTimeout(timer);
   }
@@ -73,7 +73,7 @@ export async function checkAdvisor(cfg: AdvisorConfig): Promise<string> {
 export async function fetchWindySeries(cfg: AdvisorConfig, lat: number, lon: number): Promise<import('../weather/compare').ModelSeries[]> {
   const res = await call(cfg, '/windy', { method: 'POST', body: JSON.stringify({ lat, lon }) }, 20_000);
   const data = (await res.json().catch(() => ({}))) as { series?: import('../weather/compare').ModelSeries[]; error?: string };
-  if (res.status === 501) throw new AdvisorError('δεν έχει μπει κλειδί Windy στον server.');
+  if (res.status === 501) throw new AdvisorError('τα μοντέλα Windy δεν έχουν ενεργοποιηθεί ακόμα.');
   if (!res.ok) throw new AdvisorError(data.error ?? `Windy: σφάλμα server (${res.status}).`);
   return data.series ?? [];
 }

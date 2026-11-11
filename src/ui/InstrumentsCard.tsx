@@ -5,7 +5,7 @@ import type { InstrumentField, InstrumentSettings, InstrumentSource } from '../i
 
 const ROWS: { k: InstrumentField; label: string; fmt: (v: number) => string }[] = [
   { k: 'tws', label: 'Αληθής άνεμος TWS', fmt: (v) => `${v.toFixed(1)} kt` },
-  { k: 'twa', label: 'Αληθής γωνία TWA', fmt: (v) => `${Math.round(Math.abs(v))}° ${v < 0 ? 'αριστερά' : 'δεξιά'}` },
+  { k: 'twa', label: 'Αληθής γωνία TWA', fmt: (v) => `${Math.round(Math.abs(v))}° ${v < 0 ? 'αριστερές' : 'δεξιές'}` },
   { k: 'twd', label: 'Κατεύθυνση TWD', fmt: (v) => `${Math.round(v).toString().padStart(3, '0')}°` },
   { k: 'bsp', label: 'Ταχύτητα BSP', fmt: (v) => `${v.toFixed(2)} kt` },
   { k: 'hdgTrue', label: 'Πλώρη (αληθής)', fmt: (v) => `${Math.round(v)}°` },

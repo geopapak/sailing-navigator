@@ -8,8 +8,8 @@ import { NumField } from './NumberStepper';
 import type { Theme } from './settings';
 
 const THEMES: { id: Theme; label: string }[] = [
-  { id: 'day', label: 'Ήλιος' },
-  { id: 'dark', label: 'Σκούρο' },
+  { id: 'day', label: 'Μέρα' },
+  { id: 'dark', label: 'Σούρουπο' },
   { id: 'night', label: 'Νύχτα (κόκκινο)' },
 ];
 
@@ -41,7 +41,7 @@ export function SettingsView() {
           Οι χειροκίνητες τιμές TWD και πορείας είναι μαγνητικές (πυξίδα)
         </label>
         <label>
-          Απόκλιση (°, ανατολική +)
+          Μαγνητική απόκλιση (°, ανατολική +)
           <NumField value={settings.declination} onChange={(v) => updateSettings({ declination: v ?? 0 })} width="5em" />
         </label>
         <label className="check">

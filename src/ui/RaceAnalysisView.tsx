@@ -66,7 +66,7 @@ export function RaceAnalysisView({ id, onBack }: { id: string; onBack: () => voi
           </button>
         </div>
         {race.track.length < 2 ? (
-          <p className="muted">Δεν καταγράφηκε πορεία σε αυτόν τον αγώνα (χρειάζεται GPS ή όργανα κατά τη διάρκεια).</p>
+          <p className="muted">Δεν καταγράφηκε πορεία σε αυτόν τον αγώνα (χρειάζεται GPS ή όργανα όσο τρέχει ο αγώνας).</p>
         ) : (
           <TrackMap race={race} planned={planned?.legs.flatMap((l) => l.track)} />
         )}
@@ -81,12 +81,12 @@ export function RaceAnalysisView({ id, onBack }: { id: string; onBack: () => voi
           </div>
           <div>
             <div className="big-num">{a.gybes}</div>
-            <div className="muted small">υψώσεις</div>
+            <div className="muted small">υποσταυρώσεις</div>
           </div>
           {planned && (
             <div>
               <div className="big-num">{fmtGap(a.durationSec - planned.elapsedSec)}</div>
-              <div className="muted small">vs βέλτιστη</div>
+              <div className="muted small">σε σχέση με τη βέλτιστη</div>
             </div>
           )}
         </div>
@@ -339,7 +339,7 @@ function PctTimeline({ race, a }: { race: Race; a: RaceAnalysis }) {
         </text>
       </svg>
       <figcaption className="muted small" aria-live="polite">
-        {h ? `${sinceStart(race, h.t)} · ${pctTxt(h.pct)}` : 'Πέρασε το δάχτυλο πάνω στη γραμμή για τιμές.'}
+        {h ? `${sinceStart(race, h.t)} · ${pctTxt(h.pct)}` : 'Σύρε το δάχτυλο πάνω στη γραμμή για να δεις τιμές.'}
       </figcaption>
     </figure>
   );

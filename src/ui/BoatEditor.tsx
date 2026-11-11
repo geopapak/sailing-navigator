@@ -12,10 +12,10 @@ interface Props {
 }
 
 const KIND_LABEL: Record<SailKind, string> = {
-  main: 'Μεγίστη',
-  headsail: 'Φλόκος',
-  spinnaker: 'Μπαλόνι',
-  reaching: 'Reaching (code 0 κλπ)',
+  main: 'Μαΐστρα',
+  headsail: 'Πανί πλώρης (τζένοα/φλόκος)',
+  spinnaker: 'Μπαλόνι (spinnaker)',
+  reaching: 'Ανοιχτών (Code 0 κ.λπ.)',
   other: 'Άλλο',
 };
 

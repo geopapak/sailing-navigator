@@ -111,7 +111,7 @@ export function CertificateImport({ isOwn, onCancel, onRead }: { isOwn: boolean;
           e.target.value = '';
           setError(undefined);
           if (!f) return;
-          if (!TYPES.includes(f.type)) return setError('Δέχομαι PDF ή φωτογραφία (JPG/PNG).');
+          if (!TYPES.includes(f.type)) return setError('Ανέβασε PDF ή φωτογραφία (JPG/PNG).');
           if (f.size > MAX_BYTES) return setError('Το αρχείο είναι πάνω από 10 MB.');
           setFile(f);
         }}

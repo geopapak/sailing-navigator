@@ -89,7 +89,7 @@ function readRaw(locations: OMLocation[], models: string[], nt: number): RawGrid
     let hasGust = false;
     locations.forEach((loc, k) => {
       const h = loc.hourly!;
-      if (h.time.length !== nt) throw new Error('Ασυνεπής χρονοσειρά στην πρόγνωση.');
+      if (h.time.length !== nt) throw new Error('Η πρόγνωση ήρθε ελλιπής. Δοκίμασε ξανά σε λίγο.');
       const s = h[key('wind_speed_10m', m, multi)] as Series | undefined;
       const d = h[key('wind_direction_10m', m, multi)] as Series | undefined;
       const g = h[key('wind_gusts_10m', m, multi)] as Series | undefined;
@@ -194,9 +194,9 @@ export function parseOpenMeteo(
   fetchedAt = Date.now(),
 ): GridForecast {
   const n = lats.length * lons.length;
-  if (locations.length !== n) throw new Error(`Αναμένονταν ${n} σημεία, ήρθαν ${locations.length}.`);
+  if (locations.length !== n) throw new Error('Η πρόγνωση ήρθε ελλιπής. Δοκίμασε ξανά σε λίγο.');
   const first = locations[0].hourly;
-  if (!first || locations.some((l) => !l.hourly)) throw new Error('Η απάντηση δεν έχει ωριαία δεδομένα.');
+  if (!first || locations.some((l) => !l.hourly)) throw new Error('Η πρόγνωση ήρθε ελλιπής. Δοκίμασε ξανά σε λίγο.');
   const times = first.time.map((s) => s * 1000);
   const nt = times.length;
   const raws = readRaw(locations, requestModels(model), nt);
@@ -234,7 +234,7 @@ async function getJson(url: string, signal?: AbortSignal): Promise<unknown> {
     } catch {
       /* ignore */
     }
-    throw new Error(`Open-Meteo: σφάλμα ${res.status}${reason ? ` (${reason})` : ''}`);
+    throw new Error(`Η πρόγνωση δεν κατέβηκε (Open-Meteo ${res.status}${reason ? `: ${reason}` : ''}). Δοκίμασε ξανά σε λίγο.`);
   }
   return res.json();
 }

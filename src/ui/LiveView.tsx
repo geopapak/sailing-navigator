@@ -58,7 +58,7 @@ function pctClass(v?: number) {
   return 'bad';
 }
 
-const MODE_LABEL = { upwind: 'Όρτσα', reach: 'Ανοιχτά', downwind: 'Πρύμα' } as const;
+const MODE_LABEL = { upwind: 'Όρτσα', reach: 'Ανοιχτά', downwind: 'Πρίμα' } as const;
 
 export function LiveView() {
   const { activeBoat: boat, settings } = useApp();
@@ -135,7 +135,7 @@ export function LiveView() {
     [boat, result],
   );
   const advice = useMemo(
-    () => (result && outlook ? adviceFor(result, { ...outlook, currentSailId: s.sailId }) : []),
+    () => (result && outlook ? adviceFor(result, { ...outlook, currentSailId: s.sailId, currentSailName: boat?.sails.find((x) => x.id === s.sailId)?.name }) : []),
     [result, outlook, s.sailId],
   );
 
@@ -155,9 +155,9 @@ export function LiveView() {
     if (c) setLiveSnapshot(c);
   }, [result, s.sailId, gps.fix, nav.nextMark, nav.liveRoute, nav.course]);
 
-  if (!boat) return <p>Δεν υπάρχει σκάφος.</p>;
+  if (!boat) return <p className="card">Πρόσθεσε πρώτα το σκάφος σου στην καρτέλα «Σκάφη».</p>;
   if (!boat.polar)
-    return <p className="card">Το σκάφος «{boat.name}» δεν έχει polars. Επίλεξε άλλο σκάφος ή πρόσθεσε polars στο προφίλ.</p>;
+    return <p className="card">Το σκάφος «{boat.name}» δεν έχει polars. Διάλεξε άλλο σκάφος επάνω ή πρόσθεσε polars (Σκάφη → Επεξεργασία).</p>;
 
   const sails = selectableSails(boat);
   const headingDisplay =
@@ -252,7 +252,7 @@ export function LiveView() {
           <div className="tile-label">Target TWA</div>
           <div className="tile-value">{result?.targetTwa !== undefined ? `${f0(result.targetTwa)}°` : '—'}</div>
           <div className="tile-sub">
-            όρτσα {f0(result?.beat.angle)}° · πρύμα {f0(result?.run.angle)}°
+            όρτσα {f0(result?.beat.angle)}° · πρίμα {f0(result?.run.angle)}°
           </div>
         </div>
         <div className={`tile ${pctClass(result?.pctVmg)}`}>
@@ -319,7 +319,7 @@ export function LiveView() {
         {s.windInput === 'twa' ? (
           <>
             <NumberStepper label="TWA" unit="°" value={s.twa} onChange={(v) => setManual('twa', { twa: v })} small={1} big={5} min={0} max={180} />
-            <div className="seg" role="group" aria-label="Αναστροφές">
+            <div className="seg" role="group" aria-label="Ποδαρικό">
               <button className={`stbd ${s.side === 'stbd' ? 'on' : ''}`} onClick={() => setManual('twa', { side: 'stbd' })}>
                 Δεξιές (stbd)
               </button>
@@ -344,7 +344,7 @@ export function LiveView() {
                 Πορεία από GPS
               </button>
               <button className={s.headingSource === 'manual' ? 'on' : ''} onClick={() => set({ headingSource: 'manual' })}>
-                Πορεία με το χέρι
+                Πορεία χειροκίνητα
               </button>
             </div>
             {s.headingSource === 'manual' && (
@@ -390,7 +390,7 @@ export function LiveView() {
         storageKey="advisor-live"
         title="Σύμβουλος AI"
         presets={['Αναστροφή τώρα;', 'Αλλαγή πανιού;', 'Πώς πάμε;']}
-        disabledReason={result ? undefined : 'Βάλε TWS και TWA για να ρωτήσεις.'}
+        disabledReason={result ? undefined : 'Βάλε άνεμο (TWS και TWA) για να ρωτήσεις.'}
         onOpenSettings={() => openTab('settings')}
         build={buildCtx}
       />

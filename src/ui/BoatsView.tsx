@@ -13,7 +13,7 @@ function blankBoat(isOwn = false): BoatProfile {
     name: '',
     isOwn,
     performanceFactor: 1,
-    sails: [{ id: 'main', name: 'Μεγίστη', kind: 'main' }],
+    sails: [{ id: 'main', name: 'Μαΐστρα', kind: 'main' }],
     sailRules: [],
     scoring: [],
     updatedAt: 0,

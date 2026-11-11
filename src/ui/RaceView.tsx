@@ -227,7 +227,7 @@ function RaceSetup({ id, onDone, onCancel }: { id?: string; onDone: (started: bo
       } catch (err) {
         setLookup((l) => ({ ...l, [e.id]: 'error' }));
         if (err instanceof ApiError && err.status === 501) {
-          setOrcNote('Ο server δεν έχει ακόμη κλειδί για το επίσημο ORC. Μέχρι τότε, πρόσθεσε τα πιστοποιητικά τους (PDF).');
+          setOrcNote('Η αναζήτηση στο επίσημο ORC δεν έχει ενεργοποιηθεί ακόμα. Μέχρι τότε, πρόσθεσε τα πιστοποιητικά τους (PDF).');
           setLookup((l) => Object.fromEntries(Object.entries(l).map(([k, v]) => [k, v === 'searching' ? 'error' : v])));
           return;
         }

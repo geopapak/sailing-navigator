@@ -36,7 +36,7 @@ const r1 = (x: number) => x.toFixed(1);
  */
 export function adviceFor(
   res: LiveResult,
-  sails: SailOutlook & { currentSailId?: string },
+  sails: SailOutlook & { currentSailId?: string; currentSailName?: string },
   th: AdviceThresholds = DEFAULT_THRESHOLDS,
 ): Advice[] {
   const out: Advice[] = [];
@@ -50,7 +50,7 @@ export function adviceFor(
     out.push({
       id: 'check-inputs',
       level: 'alert',
-      text: `Ταχύτητα ${r0(pctTarget * 100)}% του target: έλεγξε TWS/TWA/BSP (πιθανό λάθος ένδειξης ή ρεύμα).`,
+      text: `Ταχύτητα ${r0(pctTarget * 100)}% του target: έλεγξε τις ενδείξεις TWS/TWA/BSP (λάθος όργανο ή ρεύμα;).`,
     });
   }
 
@@ -88,21 +88,21 @@ export function adviceFor(
         out.push({ id: 'on-target-down', level: 'ok', text: `Στο target: ${r1(res.targetBsp)} kt στις ${r0(res.targetTwa)}°.` });
       }
     } else {
-      out.push({ id: 'target-down', level: 'info', text: `Target πρύμα: ${r1(res.targetBsp)} kt στις ${r0(res.targetTwa)}° TWA.` });
+      out.push({ id: 'target-down', level: 'info', text: `Target πρίμα: ${r1(res.targetBsp)} kt στις ${r0(res.targetTwa)}° TWA.` });
     }
   }
 
   if (mode === 'reach' && bsp !== undefined && pctTarget !== undefined) {
     if (pctTarget < th.slow) {
-      out.push({ id: 'slow-reach', level: 'warn', text: `Αργός στο reaching (${r0(pctTarget * 100)}%): έλεγξε ρύθμιση πανιών (άνοιξε), βάρη έξω, πανί.` });
+      out.push({ id: 'slow-reach', level: 'warn', text: `Αργός στα ανοιχτά (${r0(pctTarget * 100)}%): λάσκαρε λίγο τα πανιά, βάρη στην κουπαστή, έλεγξε το πανί.` });
     } else if (pctTarget <= th.implausible) {
-      out.push({ id: 'ok-reach', level: 'ok', text: `Reaching: ${r0(pctTarget * 100)}% του polar (${r1(res.targetBsp)} kt).` });
+      out.push({ id: 'ok-reach', level: 'ok', text: `Ανοιχτά: ${r0(pctTarget * 100)}% του polar (${r1(res.targetBsp)} kt).` });
     }
   }
 
   const rec = sails.recommended;
   if (rec && sails.currentSailId && sails.currentSailId !== rec.id) {
-    out.push({ id: 'sail-change', level: 'alert', text: `Προτεινόμενο πανί: ${rec.name} (τώρα ${sails.currentSailId}).` });
+    out.push({ id: 'sail-change', level: 'alert', text: `Προτεινόμενο πανί: ${rec.name} (τώρα ${sails.currentSailName ?? sails.currentSailId}).` });
   }
   if (sails.ifStronger) {
     out.push({ id: 'sail-ready-up', level: 'info', text: `Κοντά στο όριο: ετοίμασε ${sails.ifStronger.name} αν δυναμώσει.` });

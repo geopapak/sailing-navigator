@@ -132,14 +132,14 @@ function NoteEditor({ note, onDone }: { note?: KnowledgeNote; onDone: () => void
         </button>
         {marks.length > 0 && (
           <select
-            aria-label="Ή σε σημάδι της διαδρομής"
+            aria-label="Ή σε σημαδούρα της διαδρομής"
             value=""
             onChange={(e) => {
               const m = marks.find((x) => x.id === e.target.value);
               if (m) set({ lat: m.lat, lon: m.lon, place: n.place || m.name });
             }}
           >
-            <option value="">Σε σημάδι της διαδρομής…</option>
+            <option value="">Σε σημαδούρα της διαδρομής…</option>
             {marks.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.name}
@@ -148,7 +148,7 @@ function NoteEditor({ note, onDone }: { note?: KnowledgeNote; onDone: () => void
           </select>
         )}
       </div>
-      <p className="muted small">{hasPos ? `${formatDM(n.lat, true)} ${formatDM(n.lon, false)}` : 'Διάλεξε θέση: GPS ή σημάδι της διαδρομής.'}</p>
+      <p className="muted small">{hasPos ? `${formatDM(n.lat, true)} ${formatDM(n.lon, false)}` : 'Διάλεξε θέση: GPS ή σημαδούρα της διαδρομής.'}</p>
       <label>
         Ακτίνα
         <select value={n.radiusNm} onChange={(e) => set({ radiusNm: Number(e.target.value) })}>
@@ -179,7 +179,7 @@ function NoteEditor({ note, onDone }: { note?: KnowledgeNote; onDone: () => void
       </fieldset>
       <label>
         Τι παρατήρησες
-        <textarea rows={4} maxLength={400} value={n.text} onChange={(e) => set({ text: e.target.value })} placeholder="π.χ. Με ΒΑ 12–15 η ριπή μπαίνει πρώτα από αριστερά· μείνε έξω από το μπάνιο της ακτής." />
+        <textarea rows={4} maxLength={400} value={n.text} onChange={(e) => set({ text: e.target.value })} placeholder="π.χ. Με ΒΑ 12–15 η ριπή μπαίνει πρώτα από αριστερά· μείνε έξω από τη σκιά της ακτής." />
       </label>
       <fieldset>
         <legend>Ποιος τη βλέπει</legend>

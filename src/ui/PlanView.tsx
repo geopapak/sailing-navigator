@@ -223,7 +223,7 @@ export function PlanView() {
                 )}
                 {marks.length > 1 && (
                   <button className="btn" onClick={() => setMarks([...marks].reverse())}>
-                    Αντιστροφή
+                    Αντίστροφη φορά
                   </button>
                 )}
                 <button
@@ -293,7 +293,7 @@ export function PlanView() {
             <summary>Ρυθμίσεις υπολογισμού</summary>
             <div className="form-grid">
               <label>
-                Βήμα (λεπτά)
+                Βήμα υπολογισμού (λεπτά)
                 <NumField value={plan.stepMin} onChange={(v) => setPlan({ stepMin: Math.min(30, Math.max(2, v ?? 10)) })} />
               </label>
               <label>
@@ -335,7 +335,7 @@ export function PlanView() {
               <input type="checkbox" checked={plan.showWind} onChange={(e) => setPlan({ showWind: e.target.checked })} /> Βέλη ανέμου
             </label>
             <label className="check">
-              <input type="checkbox" checked={plan.showSeamarks} onChange={(e) => setPlan({ showSeamarks: e.target.checked })} /> Ναυτικά σημάδια
+              <input type="checkbox" checked={plan.showSeamarks} onChange={(e) => setPlan({ showSeamarks: e.target.checked })} /> Σημαντήρες & φάροι
             </label>
             <label className="check">
               <input type="checkbox" checked={plan.showIsochrones} onChange={(e) => setPlan({ showIsochrones: e.target.checked })} /> Ισόχρονες
@@ -350,7 +350,7 @@ export function PlanView() {
             {computeLabel}
           </button>
         </div>
-        {marks.length < 2 && <p className="muted small">Χρειάζονται τουλάχιστον εκκίνηση και ένα ακόμη σημείο.</p>}
+        {marks.length < 2 && <p className="muted small">Βάλε τουλάχιστον εκκίνηση και μία σημαδούρα ή τερματισμό.</p>}
         {nav.planStatus.error && <p className="errors">{nav.planStatus.error}</p>}
 
         {route && <RouteSummary route={route} boat={boat} scoringOptionId={plan.scoringOptionId} onScoring={(id) => setPlan({ scoringOptionId: id })} />}
@@ -441,7 +441,7 @@ function LegCard({ leg, index, boat }: { leg: LegResult; index: number; boat: Bo
   const modes = [
     m.upwind > 0.05 && `όρτσα ${pct(m.upwind)}`,
     m.reach > 0.05 && `ανοιχτά ${pct(m.reach)}`,
-    m.downwind > 0.05 && `πρύμα ${pct(m.downwind)}`,
+    m.downwind > 0.05 && `πρίμα ${pct(m.downwind)}`,
   ].filter(Boolean);
   return (
     <section className="card leg">
@@ -457,7 +457,7 @@ function LegCard({ leg, index, boat }: { leg: LegResult; index: number; boat: Bo
         </span>
         <span>{modes.join(' · ')}</span>
         <span>
-          {leg.tacks > 0 && `${leg.tacks} αναστρ.`} {leg.gybes > 0 && `${leg.gybes} υποσταυρ.`}
+          {leg.tacks > 0 && `${leg.tacks} ${leg.tacks === 1 ? 'αναστροφή' : 'αναστροφές'}`} {leg.gybes > 0 && `${leg.gybes} ${leg.gybes === 1 ? 'υποσταύρωση' : 'υποσταυρώσεις'}`}
           {leg.tacks + leg.gybes === 0 && 'χωρίς μανούβρες'}
         </span>
       </div>

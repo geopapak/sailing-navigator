@@ -27,10 +27,10 @@ export function validatePolar(p: PolarTable): string[] {
     if (!Number.isFinite(a) || a <= 0 || a > 180) errs.push(`Μη έγκυρη γωνία TWA: ${k}.`);
   }
   p.beatAngle.forEach((a) => {
-    if (a <= 0 || a >= 90) errs.push(`Γωνία beat εκτός ορίων: ${a}.`);
+    if (a <= 0 || a >= 90) errs.push(`Γωνία όρτσας εκτός ορίων: ${a}°.`);
   });
   p.gybeAngle.forEach((a) => {
-    if (a <= 90 || a > 180) errs.push(`Γωνία gybe εκτός ορίων: ${a}.`);
+    if (a <= 90 || a > 180) errs.push(`Γωνία πρίμα εκτός ορίων: ${a}°.`);
   });
   return [...new Set(errs)];
 }

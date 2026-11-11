@@ -41,7 +41,7 @@ export function routeInWorker(req: Omit<RouteRequest, 'id'>): Promise<RouteResul
       else p.reject(new Error(e.data.error));
     };
     worker.onerror = (e) => {
-      for (const p of pending.values()) p.reject(new Error(e.message || 'Σφάλμα worker'));
+      for (const p of pending.values()) p.reject(new Error(e.message || 'Ο υπολογισμός σταμάτησε απρόσμενα. Δοκίμασε ξανά.'));
       pending.clear();
       worker?.terminate();
       worker = undefined;

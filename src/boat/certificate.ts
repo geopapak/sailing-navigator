@@ -206,7 +206,7 @@ export function extractToBoat(x: CertificateExtract, isOwn: boolean): BoatProfil
           gybeAngle: p.gybeAngle.slice(0, n),
         }
       : undefined;
-  const sails: Sail[] = [{ id: 'main', name: 'Μεγίστη', kind: 'main' }];
+  const sails: Sail[] = [{ id: 'main', name: 'Μαΐστρα', kind: 'main' }];
   const used = new Set(['main']);
   for (const s of x.sails) {
     if (s.kind === 'main') {

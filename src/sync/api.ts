@@ -58,12 +58,12 @@ export async function api<T>(server: string, path: string, opts: { method?: stri
       signal: ctl.signal,
     });
   } catch (e) {
-    throw new ApiError(0, (e as Error).name === 'AbortError' ? 'Ο server δεν απάντησε εγκαίρως.' : 'Δεν βρέθηκε ο server.');
+    throw new ApiError(0, (e as Error).name === 'AbortError' ? 'Η υπηρεσία δεν απάντησε εγκαίρως. Δοκίμασε ξανά.' : 'Δεν απαντά η υπηρεσία της εφαρμογής. Έλεγξε τη σύνδεση.');
   } finally {
     clearTimeout(timer);
   }
   const data = (await res.json().catch(() => ({}))) as T & { error?: string };
-  if (!res.ok) throw new ApiError(res.status, data.error ?? `Σφάλμα server (${res.status}).`);
+  if (!res.ok) throw new ApiError(res.status, data.error ?? `Κάτι πήγε στραβά (κωδικός ${res.status}). Δοκίμασε ξανά.`);
   return data;
 }
 

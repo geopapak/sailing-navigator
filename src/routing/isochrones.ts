@@ -199,7 +199,7 @@ export function routeLeg(
       }
     }
     frontier = bins.filter((b): b is Node => !!b);
-    if (frontier.length === 0) throw new RoutingError(`Δεν βρέθηκε διαδρομή προς «${to.name}» (στεριά ή άπνοια).`);
+    if (frontier.length === 0) throw new RoutingError(`Δεν βρέθηκε διαδρομή προς «${to.name}»: μάλλον εμποδίζει στεριά ή η πρόγνωση δίνει άπνοια.`);
     t += dt * 1000;
     if ((step + 1) % o.keepIsochroneEvery === 0) isochrones.push(frontier.map((n) => ({ lat: n.lat, lon: n.lon })));
   }
@@ -359,7 +359,7 @@ export function routeCourse(
   land: Pick<LandIndex, 'crosses'>,
   opts: Partial<RouteOptions> = {},
 ): RouteResult {
-  if (marks.length < 2) throw new RoutingError('Χρειάζονται τουλάχιστον 2 σημεία (εκκίνηση και τερματισμός).');
+  if (marks.length < 2) throw new RoutingError('Βάλε τουλάχιστον εκκίνηση και τερματισμό.');
   const legs: LegResult[] = [];
   let t = startTime;
   let lastTwa: number | undefined;
