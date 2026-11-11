@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Πλήρωμα και θέσεις</title>
+<style>
+  /* Canvas around the phone (not part of the design). */
+  body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans",sans-serif; background:#e5e7eb; color:#111; }
+  .controls { position:sticky; top:0; z-index:50; background:#fff; border-bottom:1px solid #d1d5db; padding:8px 16px; display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center; }
+  .controls label { font-size:.8rem; font-weight:700; color:#374151; margin-right:4px; }
+  .pick { display:inline-flex; border:1px solid #9ca3af; border-radius:999px; overflow:hidden; flex-wrap:wrap; }
+  .pick button { border:0; background:#fff; padding:8px 12px; font:inherit; font-size:.85rem; font-weight:600; min-height:40px; cursor:pointer; }
+  .pick button + button { border-left:1px solid #d1d5db; }
+  .pick button.on { background:#0b2a4a; color:#fff; }
+  .cbtn { border:1px solid #9ca3af; background:#fff; border-radius:999px; min-height:40px; padding:0 12px; font:inherit; font-size:.85rem; font-weight:600; cursor:pointer; }
+  .page { display:flex; flex-wrap:wrap; gap:24px; padding:20px 16px 40px; justify-content:center; align-items:flex-start; }
+  .notes { width:440px; max-width:100%; background:#fff; border-radius:16px; padding:16px 20px; line-height:1.5; font-size:.95rem; box-sizing:border-box; }
+  .notes h2 { margin:.1em 0 .4em; font-size:1.2rem; } .notes h3 { margin:1em 0 .3em; font-size:1rem; }
+  .notes ul, .notes ol { padding-left:1.2em; margin:.3em 0; }
+  .notes .small { font-size:.85rem; }
+  .tag { display:inline-block; font-size:.72rem; font-weight:800; padding:2px 7px; border-radius:6px; background:#dcfce7; color:#14532d; margin-right:4px; }
+  .was { background:#f3f4f6; border-left:4px solid #6b7280; padding:8px 10px; border-radius:6px; font-size:.88rem; }
+  .warnbox { background:#fef3c7; border-left:4px solid #b45309; padding:8px 10px; border-radius:6px; font-size:.88rem; }
+
+  /* ---------- Phone & app tokens (as src/ui/styles.css) ---------- */
+  .phone { width:var(--pw,390px); height:844px; max-width:100%; border-radius:34px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,.28); border:10px solid #111; position:relative; display:flex; flex-direction:column; }
+  .phone[data-theme='day']  { --bg:#fff; --fg:#000; --muted:#4b5563; --card:#f3f4f6; --line:#6b7280; --accent:#0b2a4a; --accent-fg:#fff; --good:#047857; --fair:#b45309; --bad:#b91c1c; --sea:#e0ecf8; }
+  .phone[data-theme='dark'] { --bg:#0b1220; --fg:#f9fafb; --muted:#9ca3af; --card:#162033; --line:#64748b; --accent:#60a5fa; --accent-fg:#0b1220; --good:#34d399; --fair:#fbbf24; --bad:#f87171; --sea:#0d1b30; }
+  .phone[data-theme='night']{ --bg:#000; --fg:#ff3b30; --muted:#d8372c; --card:#140303; --line:#b02a20; --accent:#ff3b30; --accent-fg:#000; --good:#ff6b5e; --fair:#d1342a; --bad:#ff3b30; --sea:#050000; }
+  .phone { background:var(--bg); color:var(--fg); font-size:17px; }
+  .phone * { box-sizing:border-box; }
+  .phone button, .phone input, .phone textarea { font:inherit; color:inherit; }
+  .topbar { display:flex; align-items:center; gap:6px; padding:8px; background:var(--accent); color:var(--accent-fg); min-height:64px; }
+  .topbar b { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:1.1em; }
+  .tb { background:none; border:0; color:inherit; min-width:52px; min-height:52px; border-radius:10px; cursor:pointer; font-weight:800; font-size:1.1em; }
+  .phone[data-theme='night'] .topbar { background:#000; color:var(--fg); border-bottom:2px solid var(--line); }
+  .scr { flex:1; overflow-y:auto; overflow-x:hidden; padding:10px 12px 16px; }
+  .card { background:var(--card); border-radius:12px; padding:12px; margin-bottom:10px; }
+  .muted { color:var(--muted); } .small { font-size:.85em; }
+  h3 { margin:0 0 8px; font-size:1em; }
+  .btn { min-height:48px; padding:8px 14px; border-radius:10px; border:2px solid var(--line); background:var(--bg); font-weight:700; cursor:pointer; }
+  .btn.primary { background:var(--accent); color:var(--accent-fg); border-color:var(--accent); }
+  .btn.danger { color:var(--bad); border-color:var(--bad); }
+  .phone[data-theme='night'] .btn.primary, .phone[data-theme='night'] .seg button.on { background:#000; color:var(--fg); border-color:var(--fg); box-shadow:inset 0 0 0 2px var(--fg); }
+  .btn.big { width:100%; min-height:56px; font-size:1.05em; }
+  .btn:disabled { opacity:.45; cursor:default; }
+  .row { display:flex; gap:8px; align-items:center; } .grow { flex:1; min-width:0; }
+  label.f { display:block; font-weight:800; font-size:.9em; margin-bottom:10px; }
+  label.f input, label.f textarea { display:block; width:100%; margin-top:4px; min-height:52px; border:2px solid var(--line); border-radius:10px; background:var(--bg); padding:8px 10px; font-weight:600; }
+  .seg { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+  .seg button { flex:1 1 0; min-width:120px; min-height:56px; border-radius:10px; border:2px solid var(--line); background:var(--bg); font-weight:800; cursor:pointer; padding:4px 8px; text-align:left; }
+  .seg button span { display:block; font-weight:600; font-size:.78em; color:inherit; opacity:.85; }
+  .seg button.on { border-color:var(--accent); background:var(--accent); color:var(--accent-fg); }
+
+  .mem { display:grid; grid-template-columns:44px minmax(0,1fr) auto; gap:10px; align-items:center; padding:8px 0; border-top:1px solid var(--line); }
+  .mem:first-of-type { border-top:0; }
+  .av { width:44px; height:44px; border-radius:22px; background:var(--accent); color:var(--accent-fg); display:flex; align-items:center; justify-content:center; font-weight:900; }
+  .av.off { background:var(--card); color:var(--muted); border:2px dashed var(--line); }
+  .phone[data-theme='night'] .av { background:#000; color:var(--fg); border:2px solid var(--fg); }
+  .mem b { display:block; } .mem .s { font-size:.8em; color:var(--muted); font-weight:600; }
+  .pill { display:inline-block; font-size:.72em; font-weight:800; padding:1px 7px; border-radius:6px; border:1.5px solid currentColor; margin-left:4px; vertical-align:2px; }
+  .pill.wait { color:var(--fair); } .pill.guest { color:var(--accent); }
+  .posb { min-height:48px; max-width:150px; border-radius:10px; border:2px solid var(--line); background:var(--bg); font-weight:800; font-size:.85em; padding:4px 8px; cursor:pointer; text-align:center; }
+  .posb.none { color:var(--muted); border-style:dashed; }
+  .phone[style*="320px"] .posb { max-width:112px; font-size:.78em; }
+  .phone[style*="320px"] .mem { gap:6px; }
+  .chk { width:48px; height:48px; border-radius:10px; border:2px solid var(--line); background:var(--bg); font-weight:900; font-size:1.2em; cursor:pointer; }
+  .chk.on { background:var(--accent); color:var(--accent-fg); border-color:var(--accent); }
+  .phone[data-theme='night'] .chk.on { background:#000; color:var(--fg); border-color:var(--fg); }
+  .racecrew .mem { grid-template-columns:48px minmax(0,1fr) auto; }
+  .racecrew .mem.out b { opacity:.55; }
+  .msg { font-size:.88em; font-weight:700; padding:8px 10px; border-radius:8px; margin:0 0 10px; border-left:6px solid var(--good); background:var(--card); }
+  .msg.warn { border-left-color:var(--fair); }
+  .link { font-family:ui-monospace,Consolas,monospace; font-size:.85em; word-break:break-all; padding:10px; border-radius:10px; border:2px dashed var(--line); background:var(--bg); margin-bottom:8px; }
+  .share { list-style:none; padding:0; margin:0 0 6px; }
+  .share li { padding:4px 0 4px 28px; position:relative; font-size:.92em; }
+  .share li::before { position:absolute; left:0; top:3px; font-weight:900; }
+  .share.yes li::before { content:'✓'; color:var(--good); } .share.no li::before { content:'✕'; color:var(--bad); }
+  .bigpos { font-size:1.6em; font-weight:900; line-height:1.1; margin:2px 0 6px; }
+  .rc { display:block; width:100%; text-align:left; border:3px solid var(--line); background:var(--bg); border-radius:12px; padding:12px; margin-bottom:10px; cursor:pointer; }
+  .ro { font-size:.78em; font-weight:800; color:var(--muted); }
+  .sketch { width:100%; height:120px; border-radius:10px; background:var(--sea); display:block; margin-bottom:8px; }
+  .tabs { display:grid; grid-template-columns:1fr 1fr; border-top:2px solid var(--line); }
+  .tabs button { min-height:60px; border:0; background:var(--bg); font-weight:800; cursor:pointer; }
+  .tabs button.on { box-shadow:inset 0 4px 0 var(--accent); color:var(--accent); }
+  .sheet-bg { position:absolute; inset:0; background:rgba(0,0,0,.45); display:flex; align-items:flex-end; z-index:6; }
+  .sheet { background:var(--bg); width:100%; border-radius:18px 18px 0 0; padding:14px 12px 18px; max-height:80%; overflow:auto; border-top:3px solid var(--line); }
+  .sheet .grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .sheet .grid button { min-height:52px; border-radius:10px; border:2px solid var(--line); background:var(--bg); font-weight:800; cursor:pointer; }
+  .sheet .grid button.on { border-color:var(--accent); background:var(--accent); color:var(--accent-fg); }
+  .toast { position:absolute; left:12px; right:12px; bottom:76px; border-radius:12px; padding:10px 14px; font-weight:800; background:var(--fg); color:var(--bg); z-index:7; }
+  .phone[data-theme='night'] .toast { background:#000; color:var(--fg); border:2px solid var(--fg); }
+</style>
+</head>
+<body>
+<div class="controls">
+  <span><label>Θέμα</label><span class="pick" id="pTheme"><button data-v="day">Μέρα</button><button data-v="dark">Σκοτεινό</button><button data-v="night">Νύχτα</button></span></span>
+  <span><label>Πλάτος</label><span class="pick" id="pWidth"><button data-v="390">390</button><button data-v="320">320</button></span></span>
+  <span><label>Βλέπεις ως</label><span class="pick" id="pWho"><button data-v="owner">Ιδιοκτήτης (Νίκος)</button><button data-v="member">Μόνιμο μέλος (Σοφία)</button><button data-v="guest">Καλεσμένος (Κώστας)</button></span></span>
+  <button class="cbtn" id="reset">↺ Από την αρχή</button>
+</div>
+
+<div class="page">
+  <div class="phone" id="phone" data-theme="day"></div>
+  <div class="notes">
+    <h2>Πλήρωμα: προσκλήσεις και θέσεις</h2>
+    <p class="small">P-022: πρωτότυπο προς έγκριση. Άλλαξε πάνω το «Βλέπεις ως» για να δεις την ίδια ιστορία από τρεις πλευρές. Τα ονόματα είναι φανταστικά.</p>
+    <p class="was"><b>Σήμερα:</b> κάθε κινητό είναι μόνο του. Το μόνο κοινό είναι οι σημειώσεις «για το πλήρωμα», που τις βλέπει όποιος έχει σκάφος με τον ίδιο αριθμό πανιού.</p>
+    <h3>Τι αλλάζει</h3>
+    <ul>
+      <li><span class="tag">νέο</span><b>Πλήρωμα σκάφους</b>: ο ιδιοκτήτης στέλνει πρόσκληση με σύνδεσμο (π.χ. στο WhatsApp). Ο σύνδεσμος ισχύει μία φορά και λήγει σε 7 μέρες. Ο καλεσμένος χρειάζεται λογαριασμό.</li>
+      <li><span class="tag">νέο</span><b>Δύο είδη</b>: <b>μόνιμο πλήρωμα</b>, που το τσεκάρεις σε κάθε αγώνα, και <b>καλεσμένος για έναν αγώνα</b>, που βλέπει μόνο αυτόν και χάνει την πρόσβαση μετά.</li>
+      <li><span class="tag">νέο</span><b>Θέσεις</b> ανά αγώνα: Τιμονιέρης, Τακτικός, Ναυτίλος, Τρίμερ τζένοας, Τρίμερ μαΐστρας, Τρίμερ μπαλονιού, Πιτ, Μάστ, Πλώρη. Μπορούν να είναι δύο στην ίδια θέση. Προειδοποίηση αν λείπει τιμονιέρης.</li>
+      <li><span class="tag">νέο</span><b>Τα μέλη μόνο βλέπουν</b>: ώρα, διαδρομή, ποιος πάει και σε ποια θέση, και τη σημείωση του ιδιοκτήτη. Δεν αλλάζουν τίποτα.</li>
+      <li><span class="tag">νέο</span><b>Αριθμός δελτίου αθλητή</b> (προαιρετικό): τον βάζει το ίδιο το μέλος όταν μπαίνει, ή ο ιδιοκτήτης από τη θέση του. Φαίνεται στη λίστα πληρώματος και στον αγώνα, με προειδοποίηση αν λείπει, και μπαίνει στη «📋 Λίστα για τη δήλωση συμμετοχής».</li>
+      <li><span class="tag">νέο</span><b>Σημειώσεις πληρώματος</b>: θα τις βλέπουν μόνο τα μέλη, όχι όποιος γράψει τον αριθμό πανιού (κλείνει και την P-015).</li>
+    </ul>
+    <p class="warnbox"><b>Τι αλλάζει στον server:</b> για πρώτη φορά ανεβαίνει το πλάνο του αγώνα: ώρα, διαδρομή, ονόματα και θέσεις. Δεν ανεβαίνει ίχνος, θέση GPS ή οι δικοί σου αγώνες. Χρειάζεται νέα έκδοση των όρων, και κάθε μέλος τη δέχεται όταν μπαίνει. Ο αριθμός δελτίου είναι προσωπικό δεδομένο: τον βλέπουν μόνο ο ιδιοκτήτης και το ίδιο το μέλος, μπαίνει στην εξαγωγή και τη διαγραφή δεδομένων και αναφέρεται στην πολιτική απορρήτου. Πρώτα πρέπει να λυθεί η P-014 (να μη σβήνονται οι αγώνες με αλλαγή λογαριασμού).</p>
+    <h3>Θέλω την απόφασή σου</h3>
+    <ol>
+      <li>Έχει κάθε μέλος δικό του κινητό στο σκάφος, ή κοιτάνε όλοι το δικό σου;</li>
+      <li>Τα μέλη μόνο βλέπουν (όπως εδώ), ή να μπορούν να γράφουν και σημειώσεις;</li>
+      <li>Σου κάνει η πρόσκληση με σύνδεσμο στο WhatsApp, χωρίς email;</li>
+      <li>Δέχεσαι να ανεβαίνει το πλάνο του αγώνα στον server, με αλλαγή όρων;</li>
+      <li>Ο καλεσμένος να χάνει την πρόσβαση την επόμενη μέρα του αγώνα ή μετά από μία εβδομάδα (για να δει την ανάλυση);</li>
+    </ol>
+    <p class="small">Εκτός πρώτης έκδοσης: ζωντανή θέση των μελών, αλλαγές από μέλη, chat, ειδοποιήσεις push, «έρχομαι / δεν έρχομαι».</p>
+  </div>
+</div>
+
+<script>
+const POS = ['Τιμονιέρης', 'Τακτικός', 'Ναυτίλος', 'Τρίμερ τζένοας', 'Τρίμερ μαΐστρας', 'Τρίμερ μπαλονιού', 'Πιτ', 'Μάστ', 'Πλώρη'];
+const ini = (n) => n.slice(0, 1);
+// Athlete card number (personal data): shown only to the owner and to the member.
+const licTxt = (m) => (m.lic ? `δελτίο ${m.lic}` : '⚠ λείπει δελτίο');
+const meP = () => (S.who === 'guest' ? race('r3').guests.find((g) => g.id === 'k') : S.members.find((m) => m.id === 's'));
+const licField = (val, help) => `<label class="f">Αριθμός δελτίου αθλητή (προαιρετικό)<input data-act="lic" inputmode="numeric" maxlength="12" value="${val || ''}" placeholder="π.χ. 12345"></label><p class="small muted" style="margin:-4px 0 8px">${help}</p>`;
+function fresh() {
+  return {
+    theme: S0.theme, width: S0.width, who: S0.who,
+    screen: 'crew', sheet: null, toast: null, inv: null, joined: { member: false, guest: false }, accept: false, memberRace: null,
+    members: [
+      { id: 'n', name: 'Νίκος', pos: 'Τιμονιέρης', owner: true, lic: '10458' },
+      { id: 'd', name: 'Δημήτρης', pos: 'Τακτικός', lic: '08812' },
+      { id: 'm', name: 'Μαρία', pos: 'Τρίμερ τζένοας', lic: '' },
+      { id: 'e', name: 'Ελένη', pos: 'Πιτ', lic: '11207' },
+      { id: 'a', name: 'Άρης', pos: 'Πλώρη', lic: '09934' },
+      { id: 's', name: 'Σοφία', pos: 'Τρίμερ μαΐστρας', pending: 6, lic: '' },
+    ],
+    races: [
+      { id: 'r3', name: 'Χειμερινό · 3ος αγώνας', when: 'Κυρ 23/11 · 11:00', course: 'Τρίγωνο Φαλήρου', note: 'Συνάντηση 9:30 στη μαρίνα. Παίρνουμε το A2.',
+        crew: { n: 'Τιμονιέρης', d: 'Τακτικός', m: 'Τρίμερ τζένοας', e: 'Πιτ', k: 'Μάστ' }, guests: [{ id: 'k', name: 'Κώστας', pending: 6, lic: '' }] },
+      { id: 'r4', name: 'Χειμερινό · 4ος αγώνας', when: 'Κυρ 7/12 · 11:00', course: 'Όρτσα–πρίμα Φλοίσβου', note: '', crew: { n: 'Τιμονιέρης', d: 'Τακτικός', m: 'Τρίμερ τζένοας', s: 'Τρίμερ μαΐστρας', a: 'Πλώρη' }, guests: [] },
+    ],
+  };
+}
+const S0 = { theme: 'day', width: 390, who: 'owner' };
+let S = fresh();
+const race = (id) => S.races.find((r) => r.id === id);
+const person = (id, r) => S.members.find((m) => m.id === id) || (r && r.guests.find((g) => g.id === id));
+
+function sketch() {
+  return `<svg class="sketch" viewBox="0 0 300 120" aria-hidden="true"><polyline points="180,100 130,22 70,52 165,88" fill="none" stroke="var(--accent)" stroke-width="3" stroke-dasharray="7 5"/>
+  ${[[180, 100, 'var(--good)', 'Εκκίνηση'], [130, 22, 'var(--fair)', 'Σημ. 1'], [70, 52, 'var(--fair)', 'Σημ. 2'], [165, 88, 'var(--fair)', '']].map(([x, y, c, l]) => `<circle cx="${x}" cy="${y}" r="6" fill="${c}"/><text x="${x + 10}" y="${y + 4}" font-size="12" font-weight="700" fill="var(--fg)">${l}</text>`).join('')}</svg>`;
+}
+
+/* ---------- owner ---------- */
+function ownerCrew() {
+  const rows = S.members.map((m) => `<div class="mem"><span class="av ${m.pending ? 'off' : ''}">${ini(m.name)}</span>
+    <span><b>${m.name}${m.owner ? ' <span class="pill">εσύ</span>' : ''}${m.pending ? ' <span class="pill wait">πρόσκληση</span>' : ''}</b>
+    <span class="s">${m.pending ? `δεν έχει μπει ακόμα · λήγει σε ${m.pending} μέρες` : `συνήθως: ${m.pos} · ${licTxt(m)}`}</span></span>
+    ${m.pending ? `<button class="btn small" data-act="resend" data-id="${m.id}">Ξανά</button>` : `<button class="posb" data-act="defpos" data-id="${m.id}">${m.pos}</button>`}</div>`).join('');
+  return `<div class="card"><h3>Μόνιμο πλήρωμα · Αύρα</h3>${rows}</div>
+  <button class="btn big primary" data-act="invite" data-kind="perm">＋ Πρόσκληση στο πλήρωμα</button>
+  <p class="small muted">Οι μόνιμοι βλέπουν τους αγώνες όπου τους τσεκάρεις. Για κάποιον που έρχεται μία φορά, πάτα «＋ Καλεσμένος» μέσα στον αγώνα.</p>
+  <div class="card"><h3>Επόμενοι αγώνες</h3>${S.races.map((r) => `<button class="rc" data-act="openrace" data-id="${r.id}"><b>${r.name}</b><br><span class="small muted">${r.when} · ${Object.keys(r.crew).length} στο σκάφος</span></button>`).join('')}</div>`;
+}
+
+function ownerRace() {
+  const r = race(S.raceId || 'r3');
+  const all = [...S.members.filter((m) => !m.pending || m.id === 's'), ...r.guests];
+  const inCount = Object.keys(r.crew).length;
+  const noHelm = !Object.values(r.crew).includes('Τιμονιέρης');
+  const noLic = Object.keys(r.crew).map((id) => person(id, r)).filter((p) => p && !p.lic).map((p) => p.name);
+  const rows = all.map((m) => {
+    const on = m.id in r.crew, guest = r.guests.includes(m);
+    const pend = m.pending ? ` <span class="pill wait">${guest ? 'καλεσμένος · δεν έχει μπει' : 'δεν έχει μπει'}</span>` : guest ? ' <span class="pill guest">καλεσμένος</span>' : '';
+    return `<div class="mem ${on ? '' : 'out'}"><button class="chk ${on ? 'on' : ''}" data-act="toggle" data-id="${m.id}" aria-pressed="${on}" aria-label="${m.name} στο σκάφος">${on ? '✓' : ''}</button>
+      <span><b>${m.name}${m.owner ? ' <span class="pill">εσύ</span>' : ''}${pend}</b><span class="s">${on ? `στο σκάφος · ${m.pending ? 'δελτίο όταν μπει' : licTxt(m)}` : 'όχι σε αυτόν τον αγώνα'}</span></span>
+      ${on ? `<button class="posb ${r.crew[m.id] ? '' : 'none'}" data-act="pos" data-id="${m.id}">${r.crew[m.id] || 'Θέση;'}</button>` : ''}</div>`;
+  }).join('');
+  return `<div class="card"><h3>${r.name}</h3><p class="small" style="margin:0 0 8px">${r.when} · ${r.course}</p>${sketch()}</div>
+  ${noHelm ? '<p class="msg warn">Δεν έχεις βάλει τιμονιέρη.</p>' : ''}
+  ${noLic.length ? `<p class="msg warn">Λείπει αριθμός δελτίου για: ${noLic.join(', ')}. Χρειάζεται για τη δήλωση συμμετοχής. Τον βάζει το ίδιο το μέλος, ή εσύ πατώντας τη θέση του.</p>` : ''}
+  <div class="card racecrew"><h3>Πλήρωμα αγώνα · ${inCount} στο σκάφος</h3>${rows}
+    <button class="btn" style="width:100%;margin-top:8px" data-act="invite" data-kind="guest">＋ Καλεσμένος μόνο για αυτόν τον αγώνα</button></div>
+  <div class="card"><label class="f">Σημείωση για το πλήρωμα<textarea rows="2" data-act="note">${r.note}</textarea></label>
+    <p class="small muted" style="margin:0">Τη βλέπουν όσοι είναι στο σκάφος σε αυτόν τον αγώνα.</p></div>
+  <div class="card"><h3>Τι βλέπουν τα μέλη</h3><ul class="share yes"><li>Ώρα και διαδρομή</li><li>Ποιος πάει και σε ποια θέση</li><li>Τη σημείωσή σου</li></ul>
+  <ul class="share no"><li>Δεν αλλάζουν τίποτα</li><li>Δεν βλέπουν τους αριθμούς δελτίου των άλλων</li><li>Δεν βλέπουν τους άλλους αγώνες σου ούτε το ίχνος</li></ul></div>
+  <button class="btn big" style="margin-bottom:8px" data-act="entrylist">📋 Λίστα για τη δήλωση συμμετοχής</button>
+  <button class="btn big primary" data-act="sendupd">Στείλε ενημέρωση στο WhatsApp</button>`;
+}
+
+function inviteScreen() {
+  const v = S.inv;
+  if (v.link) {
+    return `<div class="card"><h3>Ο σύνδεσμος είναι έτοιμος</h3>
+      <p class="small" style="margin:0 0 8px">${v.kind === 'perm' ? 'Μόνιμο πλήρωμα' : 'Καλεσμένος για «' + race('r3').name + '»'}${v.pos ? ' · ' + v.pos : ''}${v.name ? ' · για ' + v.name : ''}</p>
+      <div class="link">geopapak.github.io/sailing-navigator/#/join/7fQ2-xK9m</div>
+      <div class="row"><button class="btn primary grow" data-act="wa">Στείλε με WhatsApp</button><button class="btn" data-act="copy">Αντιγραφή</button></div></div>
+    <p class="msg warn">Όποιος έχει τον σύνδεσμο μπορεί να μπει μία φορά, μέσα σε 7 μέρες. Στείλ' τον μόνο σε αυτό το άτομο. Μπορείς να τον ακυρώσεις από το «Πλήρωμα».</p>
+    <button class="btn big" data-act="invdone">Έτοιμο</button>`;
+  }
+  return `<div class="card"><h3>Ποιον καλείς</h3>
+    <div class="seg"><button data-act="kind" data-v="perm" class="${v.kind === 'perm' ? 'on' : ''}">Μόνιμο πλήρωμα<span>βλέπει τους αγώνες όπου τον τσεκάρεις</span></button>
+    <button data-act="kind" data-v="guest" class="${v.kind === 'guest' ? 'on' : ''}">Μόνο για έναν αγώνα<span>${race('r3').name}</span></button></div>
+    <label class="f">Όνομα (για να τον αναγνωρίζεις)<input data-act="invname" value="${v.name || ''}" placeholder="π.χ. Κώστας" maxlength="40"></label>
+    <p class="f" style="margin:0 0 6px">Θέση (προαιρετικό)</p>
+    <div class="seg">${POS.map((p) => `<button style="min-width:96px;min-height:48px" data-act="invpos" data-v="${p}" class="${v.pos === p ? 'on' : ''}">${p}</button>`).join('')}</div></div>
+  <button class="btn big primary" data-act="mklink">Φτιάξε σύνδεσμο πρόσκλησης</button>`;
+}
+
+/* ---------- member / guest ---------- */
+function joinScreen(guest) {
+  return `<div class="card" style="text-align:center"><div class="av" style="margin:4px auto 8px;width:64px;height:64px;border-radius:32px;font-size:1.5em">Ν</div>
+    <h3 style="font-size:1.2em">Ο Νίκος σε καλεί ${guest ? 'στο «Αύρα» για έναν αγώνα' : 'στο πλήρωμα του «Αύρα»'}</h3>
+    <p style="margin:0">${guest ? `<b>${race('r3').name}</b><br>${race('r3').when}<br>Θέση: <b>Μάστ</b>` : 'Μόνιμο πλήρωμα · Θέση: <b>Τρίμερ μαΐστρας</b>'}</p></div>
+  <div class="card"><h3>Τι θα βλέπεις</h3><ul class="share yes"><li>${guest ? 'Μόνο αυτόν τον αγώνα, ως την επόμενη μέρα' : 'Τους αγώνες όπου σε βάζει ο Νίκος'}</li><li>Ώρα, διαδρομή, ποιος πάει και σε ποια θέση</li><li>Τις σημειώσεις για το πλήρωμα</li></ul>
+    <h3>Τι βλέπει ο Νίκος για σένα</h3><ul class="share yes"><li>Το όνομά σου και τη θέση σου</li><li>Τον αριθμό δελτίου αθλητή, αν τον βάλεις</li></ul>
+    <h3>Τι δεν μοιράζεται</h3><ul class="share no"><li>Η θέση σου (GPS) και το ίχνος σου</li><li>Οι δικοί σου αγώνες και σκάφη</li><li>Το email σου</li><li>Ο αριθμός δελτίου σου προς τα άλλα μέλη</li></ul></div>
+  <div class="card">${licField(meP().lic, 'Για τη δήλωση συμμετοχής. Τον βλέπετε μόνο εσύ και ο Νίκος. Τον αλλάζεις ή τον σβήνεις όποτε θέλεις.')}</div>
+  <div class="msg">Συνδεδεμένη/ος ως <b>${guest ? 'Κώστας' : 'Σοφία'}</b>. Αν δεν έχεις λογαριασμό, εδώ θα έβγαινε πρώτα «Σύνδεση / Νέος λογαριασμός».</div>
+  <label class="row card" style="cursor:pointer"><input type="checkbox" data-act="accept" ${S.accept ? 'checked' : ''} style="width:28px;height:28px"><span class="small"><b>Δέχομαι τους όρους χρήσης (νέα έκδοση: κοινό πλάνο αγώνα)</b></span></label>
+  <button class="btn big primary" data-act="join" ${S.accept ? '' : 'disabled'}>Μπαίνω ${guest ? 'για τον αγώνα' : 'στο πλήρωμα'}</button>
+  <button class="btn big" style="margin-top:8px" data-act="decline">Όχι, ευχαριστώ</button>`;
+}
+
+function memberHome(guest) {
+  const me = guest ? 'k' : 's';
+  const list = guest ? [race('r3')] : S.races.filter((r) => me in r.crew);
+  const myPos = (r) => r.crew[me];
+  return `<p class="msg">${guest ? 'Είσαι καλεσμένος για έναν αγώνα. Η πρόσβαση λήγει την επόμενη μέρα.' : 'Είσαι στο μόνιμο πλήρωμα του «Αύρα».'}</p>
+  ${list.length ? list.map((r) => `<button class="rc" data-act="mrace" data-id="${r.id}"><span class="ro">📖 μόνο ανάγνωση</span><br><b>${r.name}</b><br><span class="small muted">${r.when} · ${r.course}</span>
+    <div class="bigpos">Εσύ: ${myPos(r) || 'χωρίς θέση'}</div><span class="small muted">${Object.keys(r.crew).length} στο σκάφος</span></button>`).join('')
+    : '<div class="card">Δεν σε έχει βάλει ακόμα σε κάποιον αγώνα. Θα εμφανιστεί εδώ μόλις σε τσεκάρει ο Νίκος.</div>'}
+  ${!guest && !('s' in race('r3').crew) ? '<p class="small muted">Στον «' + race('r3').name + '» δεν είσαι αυτή τη φορά.</p>' : ''}
+  <div class="card"><h3>Τα στοιχεία μου στο πλήρωμα</h3>${licField(meP().lic, 'Τον βλέπετε μόνο εσύ και ο Νίκος. Φεύγει μαζί σου αν αποχωρήσεις.')}</div>
+  <button class="btn big danger" style="margin-top:12px" data-act="leave">Αποχώρηση ${guest ? 'από τον αγώνα' : 'από το πλήρωμα'}</button>`;
+}
+
+function memberRace(guest) {
+  const r = race(S.memberRace), me = guest ? 'k' : 's';
+  const rows = Object.entries(r.crew).map(([id, pos]) => { const p = person(id, r); return `<div class="mem"><span class="av">${ini(p.name)}</span><span><b>${p.name}${id === me ? ' <span class="pill">εσύ</span>' : ''}</b><span class="s">${pos}</span></span><span></span></div>`; }).join('');
+  return `<div class="card"><span class="ro">📖 μόνο ανάγνωση</span><h3 style="margin-top:4px">${r.name}</h3><p class="small" style="margin:0 0 8px">${r.when} · ${r.course}</p>${sketch()}
+    <div class="bigpos">Εσύ: ${r.crew[me] || 'χωρίς θέση'}</div></div>
+  ${r.note ? `<div class="card"><h3>Από τον Νίκο</h3><p style="margin:0">${r.note}</p></div>` : ''}
+  <div class="card"><h3>Ποιος πάει</h3>${rows}</div>
+  ${guest ? '' : '<div class="card"><h3>Σημειώσεις πληρώματος</h3><p class="small" style="margin:0">«Στη Σημ. 1 με ρεύμα από Ν, γυρίζουμε πιο ψηλά.» · 2ος αγώνας</p></div>'}
+  <button class="btn big" data-act="mback">← Οι αγώνες μου</button>`;
+}
+
+/* ---------- render ---------- */
+const phone = document.getElementById('phone');
+function render() {
+  const sc = phone.querySelector('.scr'), keep = sc ? sc.scrollTop : 0;
+  let title = 'Πλήρωμα', back = false, body = '', tabs = '';
+  if (S.who === 'owner') {
+    if (S.screen === 'invite') { title = S.inv.kind === 'perm' ? 'Πρόσκληση στο πλήρωμα' : 'Καλεσμένος για έναν αγώνα'; back = true; body = inviteScreen(); }
+    else if (S.screen === 'race') { title = 'Αγώνας'; back = true; body = ownerRace(); }
+    else body = ownerCrew();
+    tabs = `<nav class="tabs"><button data-act="tab" data-v="race" class="${S.screen === 'race' ? 'on' : ''}">Αγώνας</button><button data-act="tab" data-v="crew" class="${S.screen === 'crew' ? 'on' : ''}">Πλήρωμα</button></nav>`;
+  } else {
+    const guest = S.who === 'guest';
+    if (!S.joined[S.who]) { title = 'Πρόσκληση'; body = joinScreen(guest); }
+    else if (S.memberRace) { title = 'Αγώνας'; back = true; body = memberRace(guest); }
+    else { title = guest ? 'Αύρα · ένας αγώνας' : 'Αύρα · πλήρωμα'; body = memberHome(guest); }
+  }
+  let sheet = '';
+  if (S.sheet) {
+    const r = race(S.raceId || 'r3'), m = person(S.sheet.id, r), cur = S.sheet.def ? m.pos : r.crew[m.id];
+    sheet = `<div class="sheet-bg" data-act="closesheet"><div class="sheet" role="dialog" aria-label="Θέση"><h3>${S.sheet.def ? 'Συνήθης θέση' : 'Θέση σε αυτόν τον αγώνα'}: ${m.name}</h3>
+      <div class="grid">${POS.map((p) => `<button data-act="setpos" data-v="${p}" class="${cur === p ? 'on' : ''}">${p}</button>`).join('')}${S.sheet.def ? '' : '<button data-act="setpos" data-v="">Χωρίς θέση</button>'}</div>
+      <p class="small muted">Μπορούν να είναι δύο άτομα στην ίδια θέση.</p>
+      ${m.pending ? '<p class="small muted">Τον αριθμό δελτίου θα τον βάλει το ίδιο το μέλος όταν μπει, ή εσύ μετά.</p>' : licField(m.lic, m.owner ? 'Τον βλέπεις μόνο εσύ.' : 'Τον βλέπετε μόνο εσύ και το ίδιο το μέλος, που μπορεί και να τον αλλάξει.')}
+      <button class="btn big primary" data-act="sheetdone">Έτοιμο</button></div></div>`;
+  }
+  phone.innerHTML = `<div class="topbar">${back ? '<button class="tb" data-act="back" aria-label="Πίσω">←</button>' : '<span style="width:8px"></span>'}<b>${title}</b></div>
+    <div class="scr">${body}</div>${tabs}${sheet}${S.toast ? `<div class="toast" role="status">${S.toast}</div>` : ''}`;
+  const nsc = phone.querySelector('.scr'); if (nsc) nsc.scrollTop = keep;
+}
+let toastT;
+const toast = (t) => { S.toast = t; clearTimeout(toastT); toastT = setTimeout(() => { S.toast = null; render(); }, 2400); };
+
+phone.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-act]'); if (!el) return;
+  const a = el.dataset.act, id = el.dataset.id, r = race(S.raceId || 'r3');
+  if (a === 'closesheet' && e.target !== el) return;
+  const top0 = () => { const s = phone.querySelector('.scr'); if (s) s.scrollTop = 0; };
+  switch (a) {
+    case 'tab': S.screen = el.dataset.v; if (S.screen === 'race') S.raceId = S.raceId || 'r3'; top0(); break;
+    case 'openrace': S.raceId = id; S.screen = 'race'; top0(); break;
+    case 'back': if (S.who === 'owner') S.screen = S.screen === 'invite' && S.inv.from === 'race' ? 'race' : 'crew'; else S.memberRace = null; top0(); break;
+    case 'invite': S.inv = { kind: el.dataset.kind, from: S.screen, pos: '', name: '' }; S.screen = 'invite'; top0(); break;
+    case 'kind': S.inv.kind = el.dataset.v; break;
+    case 'invpos': S.inv.pos = S.inv.pos === el.dataset.v ? '' : el.dataset.v; break;
+    case 'mklink': S.inv.link = true; top0(); break;
+    case 'wa': toast('Ανοίγει το WhatsApp με τον σύνδεσμο (στο πρωτότυπο δεν στέλνεται τίποτα)'); break;
+    case 'copy': toast('Ο σύνδεσμος αντιγράφηκε'); break;
+    case 'invdone': {
+      const nm = S.inv.name || (S.inv.kind === 'perm' ? 'Νέο μέλος' : 'Καλεσμένος');
+      const nid = 'x' + Date.now().toString(36);
+      if (S.inv.kind === 'perm') S.members.push({ id: nid, name: nm, pos: S.inv.pos || 'Τρίμερ μπαλονιού', pending: 7 });
+      else { race('r3').guests.push({ id: nid, name: nm, pending: 7 }); race('r3').crew[nid] = S.inv.pos || ''; }
+      S.screen = S.inv.kind === 'perm' ? 'crew' : 'race'; if (S.screen === 'race') S.raceId = 'r3';
+      toast('Η πρόσκληση στάλθηκε · περιμένει να μπει'); top0(); break;
+    }
+    case 'resend': toast('Νέος σύνδεσμος · ο παλιός ακυρώθηκε'); break;
+    case 'toggle': if (id in r.crew) delete r.crew[id]; else r.crew[id] = (person(id, r) && person(id, r).pos) || ''; break;
+    case 'pos': S.sheet = { id }; break;
+    case 'defpos': S.sheet = { id, def: true }; break;
+    case 'setpos': { const m = person(S.sheet.id, r); if (S.sheet.def) m.pos = el.dataset.v; else r.crew[m.id] = el.dataset.v; S.sheet = null; break; }
+    case 'closesheet': S.sheet = null; break;
+    case 'sheetdone': S.sheet = null; break;
+    case 'entrylist': toast('Αντιγράφηκε: ονόματα, θέσεις και αριθμοί δελτίου'); break;
+    case 'sendupd': toast('Ανοίγει το WhatsApp με ώρα, θέσεις και σύνδεσμο'); break;
+    case 'accept': S.accept = el.checked; break;
+    case 'join': S.joined[S.who] = true; S.accept = false; if (S.who === 'member') { const s = S.members.find((m) => m.id === 's'); delete s.pending; } else delete race('r3').guests[0].pending; toast('Μπήκες. Ο Νίκος το βλέπει στο «Πλήρωμα».'); top0(); break;
+    case 'decline': toast('Η πρόσκληση απορρίφθηκε'); break;
+    case 'mrace': S.memberRace = id; top0(); break;
+    case 'mback': S.memberRace = null; top0(); break;
+    case 'leave': S.joined[S.who] = false; S.memberRace = null; toast('Αποχώρησες. Ο Νίκος μπορεί να σε ξανακαλέσει.'); top0(); break;
+  }
+  render();
+});
+phone.addEventListener('input', (e) => {
+  const a = e.target.dataset.act;
+  if (a === 'invname') S.inv.name = e.target.value;
+  if (a === 'note') race(S.raceId || 'r3').note = e.target.value;
+  if (a === 'lic') { const v = e.target.value.replace(/\D/g, ''); e.target.value = v; if (S.sheet) person(S.sheet.id, race(S.raceId || 'r3')).lic = v; else meP().lic = v; }
+});
+
+function bindPick(id, get, set) {
+  const el = document.getElementById(id);
+  const paint = () => el.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === String(get())));
+  el.addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; set(b.dataset.v); paint(); render(); });
+  paint();
+}
+bindPick('pTheme', () => S.theme, (v) => { S.theme = S0.theme = v; phone.dataset.theme = v; });
+bindPick('pWidth', () => S.width, (v) => { S.width = S0.width = +v; phone.style.setProperty('--pw', v + 'px'); });
+bindPick('pWho', () => S.who, (v) => { S.who = S0.who = v; S.sheet = null; S.memberRace = null; S.accept = false; if (v === 'owner') S.screen = 'crew'; });
+document.getElementById('reset').addEventListener('click', () => { S = fresh(); render(); });
+render();
+</script>
+</body>
+</html>

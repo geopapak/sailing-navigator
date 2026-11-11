@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Οθόνη αγώνα με ειδοποιήσεις</title>
+<style>
+  /* Canvas around the phone (not part of the design). */
+  body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans",sans-serif; background:#e5e7eb; color:#111; }
+  .controls { position:sticky; top:0; z-index:50; background:#fff; border-bottom:1px solid #d1d5db; padding:8px 16px; display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center; }
+  .controls label { font-size:.8rem; font-weight:700; color:#374151; margin-right:4px; }
+  .pick { display:inline-flex; border:1px solid #9ca3af; border-radius:999px; overflow:hidden; }
+  .pick button { border:0; background:#fff; padding:8px 12px; font:inherit; font-size:.85rem; font-weight:600; min-height:40px; cursor:pointer; }
+  .pick button + button { border-left:1px solid #d1d5db; }
+  .pick button.on { background:#0b2a4a; color:#fff; }
+  .cbtn { border:1px solid #9ca3af; background:#fff; border-radius:999px; min-height:40px; min-width:44px; padding:0 12px; font:inherit; font-weight:700; cursor:pointer; }
+  .clock { font-variant-numeric:tabular-nums; font-weight:800; min-width:44px; display:inline-block; }
+  #scrub { width:180px; }
+  .page { display:flex; flex-wrap:wrap; gap:24px; padding:20px 16px 40px; justify-content:center; align-items:flex-start; }
+  .notes { width:440px; max-width:100%; background:#fff; border-radius:16px; padding:16px 20px; line-height:1.5; font-size:.95rem; box-sizing:border-box; }
+  .notes h2 { margin:.1em 0 .4em; font-size:1.2rem; } .notes h3 { margin:1em 0 .3em; font-size:1rem; }
+  .notes ul, .notes ol { padding-left:1.2em; margin:.3em 0; }
+  .notes .small { font-size:.85rem; }
+  .tag { display:inline-block; font-size:.72rem; font-weight:800; padding:2px 7px; border-radius:6px; background:#dcfce7; color:#14532d; margin-right:4px; }
+  .was { background:#f3f4f6; border-left:4px solid #6b7280; padding:8px 10px; border-radius:6px; font-size:.88rem; }
+  .warnbox { background:#fef3c7; border-left:4px solid #b45309; padding:8px 10px; border-radius:6px; font-size:.88rem; }
+  .ev { list-style:none; padding:0 !important; margin:.3em 0; max-height:260px; overflow:auto; }
+  .ev li button { width:100%; text-align:left; border:0; background:#f3f4f6; border-radius:8px; padding:6px 10px; margin-bottom:4px; font:inherit; font-size:.88rem; cursor:pointer; }
+  .ev li button b { font-variant-numeric:tabular-nums; margin-right:6px; }
+
+  /* ---------- Phone & app tokens (as src/ui/styles.css) ---------- */
+  .phone { width:var(--pw,390px); height:844px; max-width:100%; border-radius:34px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,.28); border:10px solid #111; position:relative; display:flex; flex-direction:column; }
+  .phone[data-theme='day']  { --bg:#fff; --fg:#000; --muted:#4b5563; --card:#f3f4f6; --line:#6b7280; --accent:#0b2a4a; --accent-fg:#fff; --good:#047857; --fair:#b45309; --bad:#b91c1c; --sea:#e0ecf8; --grid:#9fb6cf; }
+  .phone[data-theme='dark'] { --bg:#0b1220; --fg:#f9fafb; --muted:#9ca3af; --card:#162033; --line:#64748b; --accent:#60a5fa; --accent-fg:#0b1220; --good:#34d399; --fair:#fbbf24; --bad:#f87171; --sea:#0d1b30; --grid:#24364f; }
+  .phone[data-theme='night']{ --bg:#000; --fg:#ff3b30; --muted:#d8372c; --card:#140303; --line:#b02a20; --accent:#ff3b30; --accent-fg:#000; --good:#ff6b5e; --fair:#d1342a; --bad:#ff3b30; --sea:#050000; --grid:#3a0805; }
+  .phone { background:var(--bg); color:var(--fg); font-size:17px; }
+  .phone * { box-sizing:border-box; }
+  .phone button { font:inherit; color:inherit; }
+  .topbar { display:flex; align-items:center; gap:6px; padding:8px 8px 8px 12px; background:var(--accent); color:var(--accent-fg); min-height:68px; }
+  .topbar .tt { flex:1; min-width:0; line-height:1.15; }
+  .topbar .tt b { display:block; font-size:1.35em; font-variant-numeric:tabular-nums; }
+  .topbar .tt span { font-size:.78em; font-weight:700; opacity:.9; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block; }
+  .tb { background:none; border:2px solid currentColor; color:inherit; min-width:52px; min-height:52px; border-radius:12px; cursor:pointer; font-weight:800; padding:0 10px; }
+  .tb.on { background:var(--accent-fg); color:var(--accent); }
+  .phone[data-theme='night'] .topbar { background:#000; color:var(--fg); border-bottom:2px solid var(--line); }
+  .phone[data-theme='night'] .tb.on { background:var(--fg); color:#000; }
+  .scr { flex:1; overflow-y:auto; overflow-x:hidden; padding:8px 10px 12px; }
+  .card { background:var(--card); border-radius:12px; padding:12px; margin-bottom:10px; }
+  .muted { color:var(--muted); } .small { font-size:.85em; }
+  h3 { margin:0 0 8px; font-size:1em; }
+  .btn { min-height:48px; padding:8px 14px; border-radius:10px; border:2px solid var(--line); background:var(--bg); font-weight:700; cursor:pointer; }
+  .btn.primary { background:var(--accent); color:var(--accent-fg); border-color:var(--accent); }
+  .phone[data-theme='night'] .btn.primary { background:#000; color:var(--fg); border-color:var(--fg); box-shadow:inset 0 0 0 2px var(--fg); }
+  .btn.big { width:100%; min-height:56px; font-size:1.05em; }
+
+  /* Maneuver banner: full width, always in the same place, on every tab. */
+  .banner { min-height:112px; border-radius:14px; display:flex; flex-direction:column; justify-content:center; padding:8px 14px; margin-bottom:8px; width:100%; text-align:left; border:3px solid transparent; cursor:pointer; }
+  .banner.idle { background:var(--card); cursor:default; }
+  .banner.idle .big { font-size:1.15em; }
+  .banner .big { font-size:2.05em; font-weight:900; line-height:1.05; letter-spacing:.01em; }
+  .banner .sub { font-weight:800; font-size:.95em; margin-top:4px; }
+  .banner .meta { font-size:.75em; font-weight:700; opacity:.85; margin-top:2px; }
+  .banner.warn { background:var(--fair); color:var(--bg); }
+  .banner.info { background:var(--accent); color:var(--accent-fg); }
+  .banner.now { background:var(--bad); color:var(--bg); animation:blink 1s steps(2,jump-none) 3; }
+  @keyframes blink { 50% { filter:brightness(1.35); } }
+  @media (prefers-reduced-motion: reduce) { .banner.now { animation:none; } }
+  .phone[data-theme='night'] .banner.warn, .phone[data-theme='night'] .banner.info { background:#000; color:var(--fg); border-color:var(--fg); }
+  .phone[data-theme='night'] .banner.now { background:var(--fg); color:#000; }
+
+  /* Three big numbers. */
+  .tile { background:var(--card); border-radius:14px; padding:6px 12px; display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; min-height:84px; margin-bottom:8px; gap:8px; }
+  .tile .lab { font-weight:800; font-size:.95em; }
+  .tile .ab { font-size:.72em; color:var(--muted); font-weight:700; display:block; }
+  .tile .sub { font-size:.82em; font-weight:700; color:var(--muted); display:block; margin-top:2px; }
+  .tile .sub.good { color:var(--good); } .tile .sub.fair { color:var(--fair); }
+  .tile .val { font-size:2.9em; font-weight:900; font-variant-numeric:tabular-nums; line-height:1; text-align:right; }
+  .tile .val small { font-size:.4em; font-weight:800; }
+  .next { display:flex; justify-content:space-between; gap:8px; font-weight:800; font-size:.92em; padding:8px 12px; border-radius:12px; border:2px solid var(--line); margin-bottom:8px; }
+  .next span { font-variant-numeric:tabular-nums; }
+  .mm { display:block; width:100%; border-radius:12px; border:2px solid var(--line); background:var(--sea); }
+  .mm text { font-family:inherit; }
+  .msg { font-size:.9em; font-weight:700; padding:8px 10px; border-radius:10px; margin:0 0 8px; border-left:6px solid var(--fair); background:var(--card); }
+  .msg button { margin-top:6px; }
+
+  /* Bottom tabs. */
+  .tabs { display:grid; grid-template-columns:1fr 1fr; border-top:2px solid var(--line); }
+  .tabs button { min-height:60px; border:0; background:var(--bg); font-weight:800; cursor:pointer; }
+  .tabs button.on { box-shadow:inset 0 4px 0 var(--accent); color:var(--accent); }
+
+  /* Settings. */
+  .switch { display:flex; gap:10px; align-items:center; min-height:60px; width:100%; border:2px solid var(--line); border-radius:12px; background:var(--bg); padding:6px 12px; cursor:pointer; text-align:left; margin-bottom:8px; }
+  .switch:disabled { opacity:.5; cursor:default; }
+  .switch .tx { flex:1; min-width:0; font-weight:800; }
+  .switch .tx span { display:block; font-weight:600; font-size:.8em; color:var(--muted); }
+  .switch .knob { width:48px; height:28px; border-radius:14px; border:2px solid var(--line); position:relative; flex-shrink:0; }
+  .switch .knob::after { content:''; position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:9px; background:var(--line); transition:left .15s; }
+  .switch.on .knob { border-color:var(--accent); } .switch.on .knob::after { left:23px; background:var(--accent); }
+  .seg { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px; }
+  .seg button { flex:1 1 0; min-width:72px; min-height:52px; border-radius:10px; border:2px solid var(--line); background:var(--bg); font-weight:800; cursor:pointer; padding:4px 6px; }
+  .seg button.on { border-color:var(--accent); background:var(--accent); color:var(--accent-fg); }
+  .phone[data-theme='night'] .seg button.on { background:#000; color:var(--fg); border-color:var(--fg); box-shadow:inset 0 0 0 2px var(--fg); }
+
+  /* Locked phone. */
+  .lock { flex:1; background:#000; color:#9ca3af; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; text-align:center; padding:20px; }
+  .lock b { font-size:3.2em; color:#e5e7eb; font-variant-numeric:tabular-nums; }
+</style>
+</head>
+<body>
+<div class="controls">
+  <span><label>Θέμα</label><span class="pick" id="pTheme"><button data-v="day">Μέρα</button><button data-v="dark">Σκοτεινό</button><button data-v="night">Νύχτα</button></span></span>
+  <span><label>Πλάτος</label><span class="pick" id="pWidth"><button data-v="390">390</button><button data-v="320">320</button></span></span>
+  <span><label>Κινητό</label><span class="pick" id="pDev"><button data-v="ios">iPhone</button><button data-v="android">Android</button></span></span>
+  <span><label>Λέξεις</label><span class="pick" id="pWord"><button data-v="gr">Αναστροφή · Υποσταύρωση</button><button data-v="slang">Τακ · Τζάιμπ</button></span></span>
+  <span style="display:inline-flex;flex-wrap:wrap;gap:8px 12px;align-items:center">
+    <button class="cbtn" id="play" aria-label="Αναπαραγωγή">▶</button>
+    <span class="clock" id="clock">0:00</span>
+    <input id="scrub" type="range" min="0" max="1000" value="0" aria-label="Χρόνος αγώνα">
+    <span><label>Ταχύτητα</label><span class="pick" id="pSpeed"><button data-v="1">×1</button><button data-v="5">×5</button><button data-v="20">×20</button></span></span>
+    <span><label>Παύση σε κάθε ειδοποίηση</label><span class="pick" id="pPause"><button data-v="1">Ναι</button><button data-v="0">Όχι</button></span></span>
+    <button class="cbtn" id="lockBtn">🔒 Κλείδωσε το κινητό 1′</button>
+  </span>
+</div>
+
+<div class="page">
+  <div class="phone" id="phone" data-theme="day"></div>
+  <div class="notes">
+    <h2>Οθόνη αγώνα με ειδοποιήσεις μανούβρας</h2>
+    <p class="small">P-023 + P-026: πρωτότυπο προς έγκριση. Πάτα ▶ πάνω. Είναι ένας φανταστικός αγώνας: όρτσα ως τη Σημ. 1 και πρίμα ως τον τερματισμό, με μία στροφή ανέμου στην αρχή. Με το «Παύση σε κάθε ειδοποίηση» σταματά σε κάθε ειδοποίηση, για να τη δεις και να την ακούσεις.</p>
+    <p class="was"><b>Σήμερα:</b> το Live έχει πολλά μικρά πλακίδια και δεν ειδοποιεί για τίποτα. Δεν υπάρχουν laylines, ούτε ήχος ή φωνή. Η οθόνη μένει ανοιχτή μόνο στην καρτέλα Live.</p>
+    <h3>Τι αλλάζει</h3>
+    <ul>
+      <li><span class="tag">νέο</span><b>Οθόνη αγώνα</b> (P-026): τρία μεγάλα νούμερα για ήλιο και ένα χέρι: ταχύτητα με στόχο, γωνία ανέμου με μούρες, και πότε είναι η επόμενη μανούβρα.</li>
+      <li><span class="tag">νέο</span><b>Ζώνη ειδοποίησης</b> σε όλο το πλάτος, πάντα στο ίδιο σημείο: πορτοκαλί σε 2′ και 1′, κόκκινη στο «ΤΩΡΑ». Βγαίνει και στις άλλες καρτέλες.</li>
+      <li><span class="tag">νέο</span><b>Laylines</b> (P-019) στον μικρό χάρτη, με τον μέσο άνεμο των 20″ (P-018).</li>
+      <li><span class="tag">νέο</span><b>Τρία είδη ειδοποίησης</b>: layline (αναστροφή ή υποσταύρωση), στροφή ανέμου πάνω από 7° (μόνο με όργανα), σημαδούρα ή τερματισμός σε 1′ με το τι ακολουθεί.</li>
+      <li><span class="tag">νέο</span><b>Ήχος</b>: διαφορετικό μπιπ για κάθε είδος. Προαιρετικά ελληνική φωνή από το κινητό. Δόνηση μόνο σε Android.</li>
+      <li><span class="tag">νέο</span><b>«🔕 Σίγαση 5′»</b> πάνω δεξιά, διακόπτες ανά είδος και ελάχιστο κενό ανάμεσα στις ειδοποιήσεις.</li>
+      <li><span class="tag">νέο</span><b>Οθόνη ανοιχτή σε όλο τον αγώνα</b> (P-013). Αν κλειδώσει, το λέμε μόλις ανοίξει ξανά (δοκίμασε «🔒 Κλείδωσε το κινητό 1′»).</li>
+    </ul>
+    <p class="warnbox"><b>Τι δεν υποσχόμαστε:</b> με κλειδωμένο κινητό καμία ειδοποίηση. Το iPhone σταματά την εφαρμογή και το Android την παγώνει μετά από λίγο. Γι' αυτό η οθόνη μένει ανοιχτή όσο τρέχει αγώνας. Όλα τα κείμενα είναι προτάσεις, και η απόφαση είναι του κυβερνήτη.</p>
+    <h3>Θέλω την απόφασή σου</h3>
+    <ol>
+      <li>Ποια είδη ειδοποίησης ανοιχτά από την αρχή; (στο πρωτότυπο: όλα)</li>
+      <li>Ήχος: μόνο μπιπ ή μπιπ και φωνή; Δοκίμασέ τα στις «Ειδοποιήσεις».</li>
+      <li>Το κινητό θα είναι σε βάση στο κόκπιτ ή στην τσέπη; Από αυτό εξαρτάται αν αρκεί η οθόνη ή χρειάζεται δυνατός ήχος.</li>
+      <li>Λέξεις: «Αναστροφή / Υποσταύρωση» ή «Τακ / Τζάιμπ»; Άλλαξέ τες πάνω για να δεις τη διαφορά.</li>
+      <li>Πόσο νωρίς: 2′, 1′ και «τώρα», ή λιγότερα;</li>
+    </ol>
+    <h3>Ειδοποιήσεις μέχρι τώρα <span class="small" style="font-weight:400">(πάτα για να πας εκεί)</span></h3>
+    <ul class="ev" id="events"><li class="small">Καμία ακόμα. Πάτα ▶.</li></ul>
+    <p class="small">Φανταστικός αγώνας, ενδεικτικά νούμερα. <b>Ενδεικτικό, όχι για ναυσιπλοΐα.</b></p>
+  </div>
+</div>
+
+<script>
+/* ---------- geometry (flat, nm; x east, y north) ---------- */
+const D2R = Math.PI / 180;
+const nrm = (a) => ((a % 360) + 360) % 360;
+const adiff = (a, b) => ((a - b + 540) % 360) - 180;
+const U = (h) => ({ x: Math.sin(h * D2R), y: Math.cos(h * D2R) });
+const brg = (P, Q) => nrm(Math.atan2(Q.x - P.x, Q.y - P.y) / D2R);
+const dist = (P, Q) => Math.hypot(Q.x - P.x, Q.y - P.y);
+const f1 = (v) => v.toFixed(1).replace('.', ',');
+const f2 = (v) => v.toFixed(2).replace('.', ',');
+const mmss = (s) => { s = Math.max(0, Math.round(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+const deg3 = (d) => String(Math.round(nrm(d)) % 360).padStart(3, '0') + '°';
+
+const MK = [{ name: 'Σημ. 1', x: 0, y: 0.8 }, { name: 'Τερματισμός', x: 0.05, y: 0 }];
+// True wind from north, backs 8° between 95 s and 110 s (a header on starboard).
+const twdT = (t) => (t < 95 ? 0 : t < 110 ? (-8 * (t - 95)) / 15 : -8);
+// Instrument wind with a little noise.
+const twdM = (t) => twdT(t) + 1.6 * Math.sin(t / 7) + 0.9 * Math.sin(t / 2.3);
+const avgTwd = (t) => { let s = 0, n = 0; for (let k = Math.max(0, t - 19); k <= t; k++) { s += twdM(k); n++; } return s / n; };
+
+// Boards: up = upwind, b = s (starboard) / p (port), mk = target mark, fin = last board to the mark.
+const PH = { u1: { up: 1, b: 's', mk: 0 }, u2: { up: 1, b: 'p', mk: 0 }, u3: { up: 1, b: 's', mk: 0, fin: 1 }, d1: { up: 0, b: 's', mk: 1 }, d2: { up: 0, b: 'p', mk: 1, fin: 1 }, end: { up: 0, b: 'p', mk: 1, fin: 1 } };
+const hdgFor = (up, b, twd) => (up ? (b === 's' ? twd - 45 : twd + 45) : b === 's' ? twd - 150 : twd + 150);
+// Distance along heading h until the layline of the other board (heading h2) to mark M; null if not ahead.
+function toLay(P, h, h2, M) {
+  const a = U(h), w = U(h2 + 180), dx = M.x - P.x, dy = M.y - P.y;
+  const det = -a.x * w.y + a.y * w.x;
+  if (Math.abs(det) < 1e-9) return null;
+  const s = (-dx * w.y + dy * w.x) / det, r = (a.x * dy - a.y * dx) / det;
+  return s > 0 && r > 0 ? s : null;
+}
+
+/* ---------- scripted boat track, one sample per second ---------- */
+const TR = [];
+(function build() {
+  let x = 0.12, y = 0.02, h = 315, v = 6.2, ph = 'u1';
+  for (let t = 0; t <= 1800; t++) {
+    const twd = twdT(t), P = { x, y };
+    if (ph === 'u1' && t >= 140) ph = 'u2'; // crew follows the wind-shift suggestion
+    else if (ph === 'u2' && adiff(brg(P, MK[0]), nrm(hdgFor(1, 's', twd))) <= 0.5) ph = 'u3';
+    else if (ph === 'u3' && dist(P, MK[0]) < 0.02) ph = 'd1';
+    else if (ph === 'd1' && adiff(brg(P, MK[1]), nrm(hdgFor(0, 'p', twd))) <= 0.5) ph = 'd2';
+    else if (ph === 'd2' && dist(P, MK[1]) < 0.02) ph = 'end';
+    const q = PH[ph];
+    if (ph === 'end') { TR.push({ t, x, y, h, v, ph, tgt: 7.9 }); break; }
+    const ht = q.fin ? brg(P, MK[q.mk]) : nrm(hdgFor(q.up, q.b, twd));
+    const d = adiff(ht, h);
+    h = nrm(h + Math.max(-7, Math.min(7, d)));
+    const turning = Math.abs(d) > 12;
+    const aim = turning ? 3.6 : q.up ? 6.4 : 7.6;
+    v += (aim - v) * (turning ? 0.25 : 0.07);
+    TR.push({ t, x, y, h, v, ph, tgt: q.up ? 6.6 : 7.9 });
+    const uu = U(h), s = v / 3600;
+    x += uu.x * s; y += uu.y * s;
+  }
+})();
+const T_END = TR.length - 1;
+const snap = (t) => TR[Math.max(0, Math.min(T_END, Math.floor(t)))];
+
+/* ---------- state ---------- */
+const S = { theme: 'day', width: 390, dev: 'ios', word: 'gr', speed: 5, pauseOnAlert: true, playing: false, t: 0, tab: 'race', locks: [],
+  on: { lay: true, shift: true, mark: true }, leads: { 120: true, 60: true, 6: true }, sound: 'beep', vib: true, gap: 30, source: 'inst', audioAsked: false };
+const W = (k) => ({ gr: { tack: 'Αναστροφή', gybe: 'Υποσταύρωση', TACK: 'ΑΝΑΣΤΡΟΦΗ', GYBE: 'ΥΠΟΣΤΑΥΡΩΣΗ' }, slang: { tack: 'Τακ', gybe: 'Τζάιμπ', TACK: 'ΤΑΚ', GYBE: 'ΤΖΑΪΜΠ' } }[S.word][k]);
+const boardName = (b) => (b === 's' ? 'Δεξιές' : 'Αριστερές');
+const boardGen = (b) => (b === 's' ? 'δεξιών' : 'αριστερών');
+
+const lockAt = (t) => S.locks.find((l) => t >= l.from && t < l.to);
+
+/* ---------- alert engine (code-only, no AI) ---------- */
+const newEng = () => ({ fired: new Set(), last: -999, ref: null, log: [], banner: null, muteUntil: -1, missed: 0, lockMsg: null });
+let E = newEng();
+
+function layTime(sn) {
+  const q = PH[sn.ph];
+  if (q.fin) return null;
+  const twd = avgTwd(sn.t);
+  const h = nrm(hdgFor(q.up, q.b, twd)), h2 = nrm(hdgFor(q.up, q.b === 's' ? 'p' : 's', twd));
+  const s = toLay(sn, h, h2, MK[q.mk]);
+  return s == null ? null : s / (Math.max(sn.v, 3) / 3600);
+}
+function markTime(sn) {
+  const q = PH[sn.ph];
+  if (!q.fin || sn.ph === 'end') return null;
+  return dist(sn, MK[q.mk]) / (Math.max(sn.v, 3) / 3600);
+}
+
+function engStep(t, live) {
+  const sn = snap(t), q = PH[sn.ph];
+  const lk = lockAt(t);
+  if (!lk && S.locks.some((l) => l.to === t)) { const l = S.locks.find((x) => x.to === t); E.lockMsg = { dur: l.to - l.from, missed: E.missed, t0: t }; E.missed = 0; }
+  const quiet = !!lk;
+  if (sn.ph === 'end') { if (!E.fired.has('end')) fire(t, { key: 'end', type: 'mark', kind: 'info', big: 'ΤΕΡΜΑΤΙΣΜΟΣ', sub: `Χρόνος ${mmss(t)} · καλή δουλειά`, say: 'Τερματισμός' }, live, quiet); return; }
+
+  // 1. Layline (tack upwind, gybe downwind).
+  if (S.on.lay) {
+    const lt = layTime(sn);
+    if (lt != null) {
+      const leads = [120, 60, 6];
+      const L = [...leads].reverse().find((x) => lt <= x); // smallest lead already reached
+      if (L != null) {
+        leads.filter((x) => x > L).forEach((x) => E.fired.add(`lay-${sn.ph}-${x}`));
+        const key = `lay-${sn.ph}-${L}`;
+        if (!E.fired.has(key)) {
+          if (!S.leads[L]) E.fired.add(key);
+          else {
+            const word = q.up ? W('TACK') : W('GYBE'), w2 = q.up ? W('tack') : W('gybe');
+            const other = boardGen(q.b === 's' ? 'p' : 's');
+            const when = L === 6 ? 'ΤΩΡΑ' : L === 120 ? 'σε 2′' : 'σε 1′';
+            fire(t, { key, type: 'lay', kind: L === 6 ? 'now' : 'warn', big: `${word} ${when}`, sub: `Layline ${other} για ${MK[q.mk].name === 'Τερματισμός' ? 'τον τερματισμό' : 'τη ' + MK[q.mk].name} · πρόταση`,
+              say: L === 6 ? `${w2} τώρα` : `${w2} σε ${L === 120 ? 'δύο λεπτά' : 'ένα λεπτό'}` }, live, quiet);
+          }
+        }
+      }
+    }
+  }
+  // 2. Wind shift over 7° in the 20″ average (instruments only).
+  if (t >= 20) {
+    const a = avgTwd(t);
+    if (E.ref == null) E.ref = a;
+    const d = a - E.ref;
+    if (Math.abs(d) >= 7) {
+      E.ref = a;
+      if (S.on.shift && S.source === 'inst') {
+        const header = q.up && ((q.b === 's' && d < 0) || (q.b === 'p' && d > 0));
+        const n = Math.round(Math.abs(d));
+        fire(t, { key: `shift-${t}`, type: 'shift', kind: header ? 'warn' : 'info', big: `ΣΤΡΟΦΗ ΑΝΕΜΟΥ ${n}°`,
+          sub: header ? `Δυσμενής, σε κατεβάζει · πρόταση: ${W('tack').toLowerCase()}` : `Ευνοϊκή · μείνε σε αυτή τη βόλτα`,
+          say: header ? `Δυσμενής στροφή ανέμου ${n} μοίρες. Σκέψου ${W('tack').toLowerCase()}.` : `Ευνοϊκή στροφή ανέμου ${n} μοίρες.` }, live, quiet);
+      }
+    }
+  }
+  // 3. Mark or finish in 1′, with what comes next.
+  if (S.on.mark) {
+    const mt = markTime(sn);
+    if (mt != null && mt <= 60 && !E.fired.has(`mk-${q.mk}`)) {
+      fire(t, q.mk === 0
+        ? { key: 'mk-0', type: 'mark', kind: 'info', big: 'ΣΗΜΑΔΟΥΡΑ σε 1′', sub: 'Τη γυρίζεις αριστερά · μετά πρίμα: ετοίμασε το μπαλόνι', say: 'Σημαδούρα σε ένα λεπτό. Ετοίμασε το μπαλόνι.' }
+        : { key: 'mk-1', type: 'mark', kind: 'info', big: 'ΤΕΡΜΑΤΙΣΜΟΣ σε 1′', sub: 'Η γραμμή είναι μπροστά · κράτα την πορεία', say: 'Τερματισμός σε ένα λεπτό.' }, live, quiet);
+    }
+  }
+}
+
+function fire(t, a, live, quiet) {
+  if (a.kind !== 'now' && a.type !== 'mark' && t - E.last < S.gap && a.key !== 'end') { E.fired.add(a.key); return; } // too soon after the previous one
+  E.fired.add(a.key);
+  if (quiet) { E.missed++; return; } // phone locked: nothing runs
+  E.last = t;
+  E.banner = { ...a, t0: t, muted: t < E.muteUntil };
+  E.log.push({ t, big: a.big, sub: a.sub });
+  if (live) { notify(a, t); renderEvents(); if (S.pauseOnAlert) setPlaying(false); }
+}
+
+/* ---------- sound, voice, vibration ---------- */
+let AC = null;
+function ensureAudio() {
+  try { if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === 'suspended') AC.resume(); } catch (e) { AC = null; }
+}
+function tone(f, at, dur, vol = 0.14) {
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = 'square'; o.frequency.value = f;
+  g.gain.setValueAtTime(0, at); g.gain.linearRampToValueAtTime(vol, at + 0.01);
+  g.gain.setValueAtTime(vol, at + dur - 0.03); g.gain.linearRampToValueAtTime(0, at + dur);
+  o.connect(g).connect(AC.destination); o.start(at); o.stop(at + dur + 0.02);
+}
+// A different pattern per kind, so you know what it is without looking.
+function beep(a) {
+  if (!AC) return 0;
+  const n = AC.currentTime + 0.03;
+  if (a.kind === 'now') { [0, 0.18, 0.36].forEach((d) => tone(1320, n + d, 0.12)); return 0.6; }
+  if (a.type === 'lay') { [0, 0.25].forEach((d) => tone(880, n + d, 0.14)); return 0.5; }
+  if (a.type === 'shift') { tone(660, n, 0.18); tone(990, n + 0.22, 0.22); return 0.5; }
+  tone(740, n, 0.45); return 0.55;
+}
+function speak(text) {
+  try {
+    if (!('speechSynthesis' in window)) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'el-GR'; u.rate = 1.05;
+    const v = speechSynthesis.getVoices().find((x) => /^el/i.test(x.lang));
+    if (v) u.voice = v;
+    speechSynthesis.speak(u);
+  } catch (e) { /* no voice on this device */ }
+}
+function notify(a, t) {
+  if (t < E.muteUntil || S.sound === 'off') return;
+  ensureAudio();
+  const d = beep(a);
+  if (S.sound === 'voice') setTimeout(() => speak(a.say), d * 1000 + 80);
+  if (S.dev === 'android' && S.vib && navigator.vibrate) { try { navigator.vibrate(a.kind === 'now' ? [250, 100, 250, 100, 250] : [200, 120, 200]); } catch (e) {} }
+}
+
+/* ---------- mini map with laylines ---------- */
+function miniMap(t) {
+  const Wd = 360, Hd = 200, x0 = -0.75, x1 = 0.6, y0 = -0.08, y1 = 0.9;
+  const k = Math.min(Wd / (x1 - x0), Hd / (y1 - y0)), ox = (Wd - (x1 - x0) * k) / 2, oy = (Hd - (y1 - y0) * k) / 2;
+  const X = (x) => (ox + (x - x0) * k).toFixed(1), Y = (y) => (oy + (y1 - y) * k).toFixed(1);
+  const sn = snap(t), q = PH[sn.ph], twd = avgTwd(sn.t), mk = MK[q.mk];
+  let g = '';
+  const dirs = q.up ? [twd + 135, twd + 225] : [twd + 330, twd + 30];
+  if (sn.ph !== 'end') dirs.forEach((d) => { const uu = U(d); g += `<line x1="${X(mk.x)}" y1="${Y(mk.y)}" x2="${X(mk.x + uu.x * 1.3)}" y2="${Y(mk.y + uu.y * 1.3)}" stroke="var(--fair)" stroke-width="2.5" stroke-dasharray="7 5"/>`; });
+  // Track, with gaps while the phone was locked.
+  let seg = [], segs = [];
+  for (let i = 0; i <= Math.min(T_END, Math.floor(t)); i += 3) { if (lockAt(i)) { if (seg.length) segs.push(seg); seg = []; continue; } seg.push(`${X(TR[i].x)},${Y(TR[i].y)}`); }
+  if (seg.length) segs.push(seg);
+  segs.forEach((s) => { if (s.length > 1) g += `<polyline points="${s.join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2.5"/>`; });
+  MK.forEach((m, i) => { g += `<circle cx="${X(m.x)}" cy="${Y(m.y)}" r="7" fill="${i === 1 ? 'var(--good)' : 'var(--fair)'}" stroke="var(--bg)" stroke-width="2"/><text x="${+X(m.x) + 11}" y="${+Y(m.y) + 4}" font-size="12" font-weight="800" fill="var(--fg)">${m.name}</text>`; });
+  // Boat.
+  g += `<g transform="translate(${X(sn.x)} ${Y(sn.y)}) rotate(${sn.h.toFixed(0)})"><path d="M0,-10 L6,8 L0,5 L-6,8 Z" fill="var(--fg)" stroke="var(--bg)" stroke-width="1.5"/></g>`;
+  // Wind arrow (blowing towards twd+180).
+  const wv = U(twd + 180);
+  g += `<g transform="translate(34 40)"><line x1="${(-wv.x * 16).toFixed(1)}" y1="${(wv.y * 16).toFixed(1)}" x2="${(wv.x * 16).toFixed(1)}" y2="${(-wv.y * 16).toFixed(1)}" stroke="var(--fg)" stroke-width="3"/><circle cx="${(wv.x * 16).toFixed(1)}" cy="${(-wv.y * 16).toFixed(1)}" r="4" fill="var(--fg)"/></g><text x="12" y="74" font-size="11" font-weight="800" fill="var(--fg)">TWD ${deg3(twd)}</text>`;
+  g += `<text x="${Wd - 8}" y="${Hd - 8}" text-anchor="end" font-size="10" fill="var(--muted)">- - layline · ενδεικτικό</text>`;
+  return `<svg class="mm" viewBox="0 0 ${Wd} ${Hd}" role="img" aria-label="Μικρός χάρτης με laylines">${g}</svg>`;
+}
+
+/* ---------- screens ---------- */
+function bannerHtml(t) {
+  const b = E.banner;
+  if (b && t - b.t0 <= (b.kind === 'now' ? 15 : 30)) {
+    const vib = S.dev === 'android' && S.vib && !b.muted && S.sound !== 'off' ? ' · 📳' : '';
+    const how = b.muted ? '🔕 σε σίγαση' : S.sound === 'off' ? 'μόνο οθόνη' : S.sound === 'voice' ? '🔊 μπιπ + φωνή' : '🔊 μπιπ';
+    return `<button class="banner ${b.kind}" id="bnr" aria-live="assertive"><span class="big">${b.big}</span><span class="sub">${b.sub}</span><span class="meta">${mmss(b.t0)} · ${how}${vib} · πάτα για κλείσιμο</span></button>`;
+  }
+  const sn = snap(t), q = PH[sn.ph], lt = S.on.lay ? layTime(sn) : null, mt = markTime(sn);
+  let line = 'Καμία μανούβρα στον ορίζοντα';
+  if (sn.ph === 'end') line = 'Ο αγώνας τελείωσε';
+  else if (lt != null) line = `Επόμενο: ${(q.up ? W('tack') : W('gybe')).toLowerCase()} στη layline σε ${mmss(lt)}`;
+  else if (mt != null) line = `Επόμενο: ${q.mk === 0 ? 'Σημ. 1' : 'τερματισμός'} σε ${mmss(mt)}`;
+  return `<div class="banner idle"><span class="big">${line}</span><span class="meta muted">Εδώ βγαίνουν οι ειδοποιήσεις</span></div>`;
+}
+
+function raceScreen(t) {
+  const sn = snap(t), q = PH[sn.ph], twd = twdM(Math.floor(t)), twa = adiff(twd, sn.h);
+  const pct = Math.round((sn.v / sn.tgt) * 100), lt = layTime(sn), mt = markTime(sn), mk = MK[q.mk];
+  const man = q.up ? W('tack') : W('gybe');
+  let nextVal = '—', nextSub = '';
+  if (sn.ph === 'end') nextSub = 'τέλος αγώνα';
+  else if (lt != null) { nextVal = mmss(lt); nextSub = `στη layline ${boardGen(q.b === 's' ? 'p' : 's')}`; }
+  else nextSub = `φτάνεις ${q.mk === 0 ? 'τη Σημ. 1' : 'τον τερματισμό'} χωρίς άλλη`;
+  let msg = '';
+  if (E.lockMsg && t - E.lockMsg.t0 < 60) {
+    msg = `<div class="msg">⚠ Η οθόνη ήταν κλειδωμένη ${mmss(E.lockMsg.dur)}. Δεν καταγράφηκε πορεία${E.lockMsg.missed ? ` και ${E.lockMsg.missed === 1 ? 'δεν ακούστηκε 1 ειδοποίηση' : 'δεν ακούστηκαν ' + E.lockMsg.missed + ' ειδοποιήσεις'}` : ''}. Άφησε την οθόνη ανοιχτή όσο τρέχει ο αγώνας.<br><button class="btn" id="lockOk">Εντάξει</button></div>`;
+  }
+  return `${msg}
+  <div class="tile"><span><span class="lab">Ταχύτητα</span><span class="ab">BSP · kt</span><span class="sub ${pct >= 95 ? 'good' : 'fair'}">στόχος ${f1(sn.tgt)} · ${pct}%</span></span><span class="val">${f1(sn.v)}</span></div>
+  <div class="tile"><span><span class="lab">Γωνία ανέμου</span><span class="ab">TWA</span><span class="sub">${twa >= 0 ? 'Δεξιές' : 'Αριστερές'} · ${q.up ? 'όρτσα' : 'πρίμα'}</span></span><span class="val">${Math.round(Math.abs(twa))}°</span></div>
+  <div class="tile"><span><span class="lab">Επόμενη ${man.toLowerCase()}</span><span class="ab">${q.up ? 'αναστροφή (τακ)' : 'υποσταύρωση (τζάιμπ)'}</span><span class="sub">${nextSub}</span></span><span class="val">${nextVal}</span></div>
+  ${sn.ph !== 'end' ? `<div class="next"><span>→ ${mk.name}</span><span>${f2(dist(sn, mk))} NM · ${deg3(brg(sn, mk))}${mt != null ? ' · ' + mmss(mt) : ''}</span></div>` : ''}
+  ${miniMap(t)}`;
+}
+
+function sw(id, on, title, sub, disabled) {
+  return `<button class="switch ${on ? 'on' : ''}" data-sw="${id}" ${disabled ? 'disabled' : ''} aria-pressed="${on}"><span class="tx">${title}<span>${sub}</span></span><span class="knob"></span></button>`;
+}
+function seg(id, cur, opts) {
+  return `<div class="seg">${opts.map(([v, l]) => `<button data-seg="${id}" data-v="${v}" class="${String(cur) === String(v) ? 'on' : ''}" aria-pressed="${String(cur) === String(v)}">${l}</button>`).join('')}</div>`;
+}
+function settingsScreen() {
+  const ios = S.dev === 'ios';
+  return `
+  <div class="card"><h3>Τι σε ειδοποιεί</h3>
+    ${sw('lay', S.on.lay, `Layline · ${W('tack').toLowerCase()} / ${W('gybe').toLowerCase()}`, 'και οι μανούβρες της βέλτιστης πορείας')}
+    ${sw('shift', S.on.shift && S.source === 'inst', 'Στροφή ανέμου πάνω από 7°', S.source === 'inst' ? 'μέσος όρος 20″ από τα όργανα' : 'χρειάζεται όργανα ανέμου', S.source !== 'inst')}
+    ${sw('mark', S.on.mark, 'Σημαδούρα ή τερματισμός σε 1′', 'μαζί με το τι ακολουθεί')}
+  </div>
+  <div class="card"><h3>Πόσο νωρίς</h3>
+    <div class="seg">${[[120, '2′ πριν'], [60, '1′ πριν'], [6, 'Τώρα']].map(([v, l]) => `<button data-lead="${v}" class="${S.leads[v] ? 'on' : ''}" aria-pressed="${S.leads[v]}">${S.leads[v] ? '✓ ' : ''}${l}</button>`).join('')}</div>
+  </div>
+  <div class="card"><h3>Πώς</h3>
+    ${seg('sound', S.sound, [['beep', 'Μπιπ'], ['voice', 'Μπιπ + φωνή'], ['off', 'Μόνο οθόνη']])}
+    ${sw('vib', S.vib && !ios, 'Δόνηση', ios ? 'το iPhone δεν δονείται από εφαρμογή web' : 'μαζί με τον ήχο', ios)}
+    <button class="btn" id="test" style="width:100%">🔊 Δοκιμή ήχου</button>
+  </div>
+  <div class="card"><h3>Όχι πολύ συχνά</h3>
+    <p class="small muted" style="margin:0 0 6px">Ελάχιστο κενό ανάμεσα σε δύο ειδοποιήσεις. Το «Τώρα» και η σημαδούρα ακούγονται πάντα.</p>
+    ${seg('gap', S.gap, [[20, '20″'], [30, '30″'], [60, '60″']])}
+  </div>
+  <div class="card"><h3>Άνεμος από</h3>
+    ${seg('source', S.source, [['inst', 'Όργανα'], ['fc', 'Πρόγνωση']])}
+  </div>
+  <div class="msg">Οι ειδοποιήσεις ακούγονται μόνο με την οθόνη ανοιχτή. Όσο τρέχει αγώνας, η οθόνη μένει ανοιχτή σε όλες τις καρτέλες. Με κλειδωμένο κινητό δεν ακούγονται. Είναι προτάσεις: η απόφαση είναι του κυβερνήτη.</div>`;
+}
+
+/* ---------- render ---------- */
+const phone = document.getElementById('phone');
+function render() {
+  const t = S.t, sc = phone.querySelector('.scr'), keep = sc ? sc.scrollTop : 0;
+  const muted = t < E.muteUntil;
+  const topHtml = `<div class="topbar"><div class="tt"><b>⏱ ${mmss(t)}</b><span>Χειμερινό · 3η · ☀ οθόνη ανοιχτή</span></div>
+    <button class="tb ${muted ? 'on' : ''}" id="mute" aria-pressed="${muted}">${muted ? `🔕 ${mmss(E.muteUntil - t)}` : '🔕 Σίγαση 5′'}</button></div>`;
+  if (lockAt(t)) {
+    phone.innerHTML = `<div class="lock"><span>🔒</span><b>${mmss(t)}</b><span>Κλειδωμένο κινητό</span><span class="small">Η εφαρμογή δεν τρέχει: ούτε καταγραφή ούτε ειδοποιήσεις.</span><button class="cbtn" id="unlock" style="margin-top:12px">Ξεκλείδωσε</button></div>`;
+  } else {
+    const ask = !S.audioAsked && S.sound !== 'off' ? `<div class="msg">🔊 Για να ακούγονται οι ειδοποιήσεις, το κινητό θέλει ένα πάτημα στην αρχή.<br><button class="btn primary" id="audioOk">Ενεργοποίηση ήχου</button></div>` : '';
+    phone.innerHTML = `${topHtml}<div class="scr">${bannerHtml(t)}${ask}${S.tab === 'race' ? raceScreen(t) : settingsScreen()}</div>
+      <nav class="tabs"><button data-tab="race" class="${S.tab === 'race' ? 'on' : ''}">Οθόνη αγώνα</button><button data-tab="set" class="${S.tab === 'set' ? 'on' : ''}">Ειδοποιήσεις</button></nav>`;
+    const nsc = phone.querySelector('.scr'); if (nsc) nsc.scrollTop = keep;
+  }
+  document.getElementById('clock').textContent = mmss(t);
+  document.getElementById('scrub').value = Math.round((t / T_END) * 1000);
+  document.getElementById('play').textContent = S.playing ? '❚❚' : '▶';
+}
+function renderEvents() {
+  const ul = document.getElementById('events');
+  ul.innerHTML = E.log.length ? E.log.map((e) => `<li><button data-seek="${e.t}"><b>${mmss(e.t)}</b>${e.big}<br><span style="color:#4b5563">${e.sub}</span></button></li>`).join('') : '<li class="small">Καμία ακόμα. Πάτα ▶.</li>';
+  ul.scrollTop = ul.scrollHeight;
+}
+
+phone.addEventListener('click', (e) => {
+  ensureAudio();
+  const el = e.target.closest('button'); if (!el) return;
+  const t = S.t;
+  if (el.id === 'mute') E.muteUntil = t < E.muteUntil ? -1 : t + 300;
+  else if (el.id === 'bnr') E.banner = null;
+  else if (el.id === 'audioOk') { S.audioAsked = true; beep({ kind: 'info', type: 'mark' }); }
+  else if (el.id === 'lockOk') E.lockMsg = null;
+  else if (el.id === 'unlock') { const l = lockAt(t); if (l) { l.to = Math.floor(t); engStep(Math.floor(t), false); } }
+  else if (el.id === 'test') { S.audioAsked = true; const a = { kind: 'warn', type: 'lay', say: `${W('tack')} σε ένα λεπτό` }; if (S.sound !== 'off') { const d = beep(a); if (S.sound === 'voice') setTimeout(() => speak(a.say), d * 1000 + 80); } if (S.dev === 'android' && S.vib && navigator.vibrate) navigator.vibrate([200, 120, 200]); }
+  else if (el.dataset.tab) S.tab = el.dataset.tab === 'set' ? 'set' : 'race';
+  else if (el.dataset.sw) { const k = el.dataset.sw; if (k === 'vib') S.vib = !S.vib; else S.on[k] = !S.on[k]; }
+  else if (el.dataset.lead) { const k = el.dataset.lead; S.leads[k] = !S.leads[k]; }
+  else if (el.dataset.seg) { const k = el.dataset.seg, v = el.dataset.v; S[k] = k === 'gap' ? +v : v; if (k === 'sound' && v !== 'off') S.audioAsked = true; }
+  render();
+});
+
+/* ---------- playback ---------- */
+function setPlaying(p) { S.playing = p && S.t < T_END; if (S.playing) ensureAudio(); document.getElementById('play').textContent = S.playing ? '❚❚' : '▶'; }
+function seekTo(t) {
+  t = Math.max(0, Math.min(T_END, Math.floor(t)));
+  S.locks = S.locks.filter((l) => l.from < t);
+  const mute = E.muteUntil;
+  E = newEng(); E.muteUntil = mute;
+  for (let k = 0; k <= t; k++) engStep(k, false);
+  S.t = t; renderEvents(); render();
+}
+let lastTick = performance.now();
+setInterval(() => {
+  const now = performance.now(), dt = (now - lastTick) / 1000; lastTick = now;
+  if (!S.playing) return;
+  const nt = Math.min(T_END, S.t + dt * S.speed);
+  for (let k = Math.floor(S.t) + 1; k <= Math.floor(nt); k++) { S.t = k; engStep(k, true); if (!S.playing) break; }
+  if (S.playing) S.t = nt;
+  if (S.t >= T_END) setPlaying(false);
+  render();
+}, 120);
+
+/* ---------- canvas controls ---------- */
+function bindPick(id, get, set) {
+  const el = document.getElementById(id);
+  const paint = () => el.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === String(get())));
+  el.addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; set(b.dataset.v); paint(); render(); });
+  paint();
+}
+bindPick('pTheme', () => S.theme, (v) => { S.theme = v; phone.dataset.theme = v; });
+bindPick('pWidth', () => S.width, (v) => { S.width = +v; phone.style.setProperty('--pw', v + 'px'); });
+bindPick('pDev', () => S.dev, (v) => { S.dev = v; });
+bindPick('pWord', () => S.word, (v) => { S.word = v; });
+bindPick('pSpeed', () => S.speed, (v) => { S.speed = +v; });
+bindPick('pPause', () => (S.pauseOnAlert ? '1' : '0'), (v) => { S.pauseOnAlert = v === '1'; });
+document.getElementById('play').addEventListener('click', () => { if (S.t >= T_END) seekTo(0); setPlaying(!S.playing); });
+document.getElementById('scrub').addEventListener('input', (e) => { setPlaying(false); seekTo((+e.target.value / 1000) * T_END); });
+document.getElementById('lockBtn').addEventListener('click', () => { const t = Math.floor(S.t); if (lockAt(t) || t >= T_END) return; S.locks.push({ from: t, to: Math.min(T_END, t + 60) }); E.missed = 0; render(); });
+document.getElementById('events').addEventListener('click', (e) => { const b = e.target.closest('[data-seek]'); if (!b) return; setPlaying(false); seekTo(+b.dataset.seek); });
+if ('speechSynthesis' in window) speechSynthesis.getVoices();
+render();
+</script>
+</body>
+</html>
