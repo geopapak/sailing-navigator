@@ -29,3 +29,11 @@
 - Κάθε κυκλοφορία: έκδοση στο `package.json`, σημειώσεις στο `src/releases.json`, `npm run changelog`, αναφορά για το αν έγινε deploy και με τι αποτέλεσμα.
 - Deploy του server και migrations στην παραγωγή τα τρέχεις εσύ.
 - Το repo είναι δημόσιο: όχι προσωπικά δεδομένα, όχι κλειδιά.
+
+## Git
+- Το `main` είναι ό,τι είναι (ή θα γίνει) live: κάθε push στο `main` ανεβάζει την εφαρμογή στο GitHub Pages.
+- Κάθε δουλειά σε δικό της branch από το `main`: `feature/P-xxx-σύντομο-όνομα`, `fix/…`, `docs/…`. Όταν μια δουλειά πατά πάνω σε άλλη, το branch ξεκινά από εκείνο το branch (π.χ. η P-019 από την P-018).
+- Commits μικρά και με σαφές μήνυμα (στα αγγλικά), με τα tests να περνούν.
+- Συγχώνευση στο `main` με `git merge --no-ff`, αφού περάσουν `npm test`, `npm run typecheck` και `npm run build`.
+- Push του `main` μόνο στην κυκλοφορία, μετά τις σημειώσεις έκδοσης. Αν η έκδοση θέλει νέο server ή migration, πρώτα τρέχει ο χρήστης `d1 migrations apply --remote` και `npx wrangler deploy`, και μετά γίνεται push της εφαρμογής.
+- Κάθε κυκλοφορία παίρνει tag `vX.Y.Z`.
