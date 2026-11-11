@@ -3,6 +3,7 @@ import { useApp } from './AppContext';
 import { advisorConfig, checkAdvisor, AdvisorError } from '../ai/client';
 import { AccountCard } from './AccountCard';
 import { InstrumentsCard } from './InstrumentsCard';
+import { AlertsCard } from './AlertsCard';
 import { DEFAULT_SERVER } from './settings';
 import { NumField } from './NumberStepper';
 import { AppearancePickers } from './Appearance';
@@ -49,6 +50,7 @@ export function SettingsView() {
       )}
       <AccountCard />
       <InstrumentsCard />
+      <AlertsCard />
       <details className="card">
         <summary>
           <b>Για προχωρημένους</b> <span className="small muted">— μαγνητική απόκλιση, server</span>

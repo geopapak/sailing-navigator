@@ -53,7 +53,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
           s.onboarded = true;
           s.liveMode ??= 'full';
         }
-        setSettings({ ...DEFAULT_SETTINGS, ...s, instruments: { ...DEFAULT_SETTINGS.instruments, ...(s.instruments ?? {}) } });
+        setSettings({
+          ...DEFAULT_SETTINGS,
+          ...s,
+          instruments: { ...DEFAULT_SETTINGS.instruments, ...(s.instruments ?? {}) },
+          alerts: { ...DEFAULT_SETTINGS.alerts, ...(s.alerts ?? {}) },
+        });
         await reload();
       } catch (e) {
         setError(`Αποτυχία τοπικής αποθήκευσης: ${(e as Error).message}`);

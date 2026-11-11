@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useApp } from './AppContext';
 import { useNav } from './NavContext';
+import { useInstruments } from './InstrumentsContext';
 import { laylines, type LaylineResult } from '../nav/laylines';
 import { optimums } from '../performance/polar';
 import { gridField } from '../weather/field';
@@ -14,17 +15,20 @@ export interface LaylineView {
   twd: number;
 }
 
-/** Laylines to the next mark (P-019), from the measured mean wind, else the forecast. */
+/** Laylines to the next mark (P-019): measured mean wind (P-018), else the instruments now, else the forecast. */
 export function useLaylines(): LaylineView | undefined {
   const { activeBoat: boat } = useApp();
   const nav = useNav();
+  const inst = useInstruments();
   const fix = nav.gps.fix;
   const mark = nav.course?.marks[nav.nextMark];
   const field = useMemo(() => (nav.forecast ? gridField(nav.forecast) : undefined), [nav.forecast]);
   if (!boat?.polar || !fix || !mark) return undefined;
   const m = meanWind();
   let wind: Pick<LaylineView, 'wind' | 'tws' | 'twd'> | undefined;
+  const iv = inst.live ? inst.values : {};
   if (m) wind = { wind: 'measured', tws: m.tws, twd: m.twd };
+  else if (iv.tws !== undefined && iv.twd !== undefined) wind = { wind: 'measured', tws: iv.tws, twd: iv.twd };
   else if (field) {
     const w = field.at(fix.lat, fix.lon, Date.now());
     wind = { wind: 'forecast', tws: w.tws, twd: w.twd };

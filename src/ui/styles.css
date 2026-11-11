@@ -1781,6 +1781,106 @@ legend { font-weight: 600; margin-bottom: 6px; }
 .nm-lay.warn-text {
   border-left-color: var(--fair);
 }
+/* Race alerts band (P-023): full width, always in the same place, in every tab. */
+.alert-band {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  border: 0;
+  border-bottom: 3px solid var(--fair);
+  padding: 10px 14px;
+  text-align: left;
+  font: inherit;
+  color: var(--fg);
+  background: color-mix(in srgb, var(--fair) 22%, var(--bg));
+  cursor: pointer;
+}
+.alert-band.now {
+  border-bottom-color: var(--port);
+  background: color-mix(in srgb, var(--port) 26%, var(--bg));
+}
+.alert-band.info {
+  border-bottom-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, var(--bg));
+}
+.alert-band .big {
+  font-size: 1.6rem;
+  font-weight: 900;
+  line-height: 1.1;
+}
+.alert-band .sub {
+  font-weight: 700;
+}
+.alert-band .meta {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+/* Race screen (P-026): three big numbers for sun and one hand. */
+.race-screen .rs-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.race-screen .rs-top h3 {
+  margin: 0;
+}
+.race-screen .rs-audio {
+  margin: 8px 0;
+  font-weight: 700;
+}
+.rs-tile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.rs-tile > span:first-child {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.rs-tile .lab {
+  font-weight: 800;
+  font-size: 1.05rem;
+}
+.rs-tile .ab {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.rs-tile .sub {
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+.rs-tile .sub.good {
+  color: var(--good);
+}
+.rs-tile .sub.fair {
+  color: var(--fair);
+}
+.rs-tile .val {
+  font-size: clamp(2.6rem, 14vw, 4rem);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  white-space: nowrap;
+}
+.rs-tile .val.now {
+  color: var(--port);
+}
+.rs-next {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  padding: 10px 0 4px;
+  font-weight: 800;
+}
 .race-strip .link {
   margin-left: auto;
   flex-shrink: 0;
