@@ -54,18 +54,20 @@ export function RaceProvider({ children }: { children: ReactNode }) {
   const racesRef = useRef<Race[]>([]);
   racesRef.current = races;
 
+  // Each account sees only its own races on a shared phone (P-014).
   useEffect(() => {
-    listRaces().then(setRaces);
-  }, []);
+    listRaces(account?.id).then(setRaces);
+  }, [account?.id]);
 
   const active = races.find((r) => r.id === ui.activeId);
   const activeRef = useRef(active);
   activeRef.current = active;
 
-  const save = useCallback(async (r: Race) => {
+  const save = useCallback(async (r0: Race) => {
+    const r = r0.owner || !account?.id ? r0 : { ...r0, owner: account.id };
     await saveRace(r);
     setRaces((list) => [r, ...list.filter((x) => x.id !== r.id)].sort((a, b) => b.start - a.start));
-  }, []);
+  }, [account?.id]);
 
   const update = useCallback((patch: Partial<Race> | ((r: Race) => Partial<Race>)) => {
     const id = activeRef.current?.id;

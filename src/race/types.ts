@@ -67,6 +67,8 @@ export interface Race {
   fixes: RaceFix[];
   /** Final elapsed seconds per entry, when known. */
   results?: Record<string, number>;
+  /** Account that sailed this race on this device. Races stay local, so they are kept per account, never wiped. */
+  owner?: string;
   analysis?: { lessons: { text: string; impact?: string }[]; at: number; model?: string };
   updatedAt: number;
 }

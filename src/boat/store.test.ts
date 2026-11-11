@@ -1,6 +1,7 @@
 import 'fake-indexeddb/auto';
 import { describe, expect, it } from 'vitest';
-import { db, deleteBoat, getKV, listBoats, parseBoatJson, restoreBoat, saveBoat, type Tombstone } from './store';
+import { db, deleteBoat, getKV, listBoats, listRaces, parseBoatJson, restoreBoat, saveBoat, saveRace, type Tombstone } from './store';
+import type { Race } from '../race/types';
 import { TRE_IRENE } from './treIrene';
 import { adoptAccount, getSyncState } from '../sync/sync';
 
@@ -60,5 +61,21 @@ describe('undo of a delete', () => {
     await restoreBoat(boat);
     expect((await listBoats()).map((b) => b.id)).toContain(boat.id);
     expect((await getKV<Tombstone[]>('tombstones', [])).map((t) => t.id)).not.toContain(boat.id);
+  });
+});
+
+describe('races when another account signs in on the same phone (P-014)', () => {
+  it('keeps the races, hidden under the account that sailed them', async () => {
+    await db.races.clear();
+    await db.kv.clear();
+    await adoptAccount('user-a');
+    const race = { id: 'r1', name: 'Χειμερινό 1', marks: [], start: 1, scoringOptionId: 'x', method: 'ToD', entries: [], status: 'finished', track: [], fixes: [] } as unknown as Race;
+    await saveRace(race); // saved before races were tagged, like older versions did
+    expect((await listRaces('user-a')).map((r) => r.id)).toEqual(['r1']);
+
+    await adoptAccount('user-b');
+    expect(await db.races.count()).toBe(1);
+    expect(await listRaces('user-b')).toEqual([]);
+    expect((await listRaces('user-a')).map((r) => r.id)).toEqual(['r1']);
   });
 });

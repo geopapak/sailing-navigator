@@ -110,8 +110,16 @@ export async function deleteCourse(id: string): Promise<void> {
   changed();
 }
 
-export async function listRaces(): Promise<Race[]> {
-  return (await db.races.toArray()).sort((a, b) => b.start - a.start);
+/** Races of one account (plus untagged ones from before accounts were tracked). */
+export async function listRaces(owner?: string): Promise<Race[]> {
+  const all = await db.races.toArray();
+  return all.filter((r) => !r.owner || r.owner === owner).sort((a, b) => b.start - a.start);
+}
+
+/** Tags untagged races with an account, so another account on this phone does not see them. */
+export async function tagRaces(owner: string): Promise<void> {
+  const untagged = (await db.races.toArray()).filter((r) => !r.owner);
+  if (untagged.length) await db.races.bulkPut(untagged.map((r) => ({ ...r, owner })));
 }
 
 export const getRace = (id: string) => db.races.get(id);
