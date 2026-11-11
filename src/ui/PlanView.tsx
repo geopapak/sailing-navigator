@@ -92,6 +92,8 @@ export function PlanView() {
           live={nav.liveRoute}
           showIsochrones={plan.showIsochrones}
           showSeamarks={plan.showSeamarks}
+          chart={plan.mapChart}
+          showDepth={plan.showDepth}
           wind={windArrows}
           boatPos={nav.gps.fix}
           simPos={route ? sim : undefined}
@@ -304,7 +306,31 @@ export function PlanView() {
               </label>
             </div>
           </details>
+          <div className="full seg map-kind" role="radiogroup" aria-label="Είδος χάρτη">
+            {(
+              [
+                ['nautical', 'Ναυτικός'],
+                ['road', 'Οδικός'],
+              ] as const
+            ).map(([v, label]) => (
+              <button
+                key={v}
+                type="button"
+                role="radio"
+                aria-checked={plan.mapChart === v}
+                className={plan.mapChart === v ? 'on' : ''}
+                onClick={() => setPlan({ mapChart: v })}
+              >
+                {label} χάρτης
+              </button>
+            ))}
+          </div>
           <div className="full toggles">
+            {plan.mapChart === 'nautical' && (
+              <label className="check">
+                <input type="checkbox" checked={plan.showDepth} onChange={(e) => setPlan({ showDepth: e.target.checked })} /> Βάθη
+              </label>
+            )}
             <label className="check">
               <input type="checkbox" checked={plan.showWind} onChange={(e) => setPlan({ showWind: e.target.checked })} /> Βέλη ανέμου
             </label>

@@ -27,6 +27,9 @@ export interface PlanSettings {
   showIsochrones: boolean;
   showSeamarks: boolean;
   showWind: boolean;
+  /** Map look: nautical chart (default) or the street map. */
+  mapChart: 'nautical' | 'road';
+  showDepth: boolean;
 }
 
 function defaultStart(): string {
@@ -50,6 +53,8 @@ const DEFAULT_PLAN: PlanSettings = {
   showIsochrones: false,
   showSeamarks: true,
   showWind: true,
+  mapChart: 'nautical',
+  showDepth: true,
 };
 
 interface NavState {

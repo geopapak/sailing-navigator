@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Ναυτικός χάρτης — πρωτότυπο</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<style>
+  :root { --bg:#fff; --fg:#000; --card:#f3f4f6; --muted:#4b5563; --accent:#0b2a4a; --accent-fg:#fff; --line:#d1d5db; }
+  body[data-theme='dark'] { --bg:#0b1220; --fg:#f9fafb; --card:#162033; --muted:#9ca3af; --accent:#60a5fa; --accent-fg:#0b1220; --line:#334155; }
+  body[data-theme='night'] { --bg:#000; --fg:#ff3b30; --card:#140303; --muted:#b3261e; --accent:#ff3b30; --accent-fg:#000; --line:#3a0a08; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:#e5e7eb; color:var(--fg); }
+  .page { display:flex; flex-wrap:wrap; gap:24px; padding:16px; justify-content:center; align-items:flex-start; }
+  .phone { width:390px; max-width:100%; background:var(--bg); border-radius:28px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,.25); }
+  .bar { display:flex; align-items:center; gap:8px; padding:12px 14px; background:var(--accent); color:var(--accent-fg); font-weight:700; }
+  .bar .sp { flex:1; }
+  .seg { display:flex; background:var(--card); border-radius:999px; padding:3px; gap:2px; }
+  .seg button { flex:1; border:0; background:none; color:var(--fg); padding:8px 10px; border-radius:999px; font-weight:600; font-size:.85rem; min-height:36px; }
+  .seg button.on { background:var(--accent); color:var(--accent-fg); }
+  .mapbox { position:relative; height:560px; }
+  #map { position:absolute; inset:0; }
+  .chips { position:absolute; left:8px; right:8px; bottom:8px; display:flex; gap:6px; flex-wrap:wrap; z-index:2; }
+  .chip { border:1px solid var(--line); background:var(--bg); color:var(--fg); border-radius:999px; padding:6px 12px; font-weight:600; font-size:.82rem; min-height:36px; }
+  .chip.on { background:var(--accent); color:var(--accent-fg); border-color:var(--accent); }
+  .depth { position:absolute; top:10px; left:50%; transform:translateX(-50%); background:var(--bg); color:var(--fg); border:2px solid var(--accent); border-radius:12px; padding:6px 12px; font-weight:700; z-index:2; display:none; text-align:center; }
+  .depth small { display:block; font-weight:500; color:var(--muted); font-size:.72rem; }
+  .legend { position:absolute; top:10px; left:10px; background:var(--bg); border-radius:10px; padding:6px 8px; font-size:.72rem; z-index:2; box-shadow:0 1px 4px rgba(0,0,0,.2); }
+  .legend .sw { display:inline-block; width:14px; height:10px; vertical-align:middle; margin-right:4px; border-radius:2px; }
+  .ctl { padding:12px 14px; display:grid; gap:10px; }
+  .notes { width:420px; max-width:100%; background:#fff; color:#111; border-radius:16px; padding:16px 20px; line-height:1.5; font-size:.95rem; }
+  .notes h2 { margin:.2em 0 .4em; font-size:1.2rem; }
+  .notes h3 { margin:1em 0 .3em; font-size:1rem; }
+  .notes ul { padding-left:1.2em; margin:.3em 0; }
+  .muted { color:#4b5563; font-size:.85rem; }
+  .maplibregl-ctrl-attrib { font-size:10px; }
+</style>
+</head>
+<body data-theme="day">
+<div class="page">
+  <div class="phone">
+    <div class="bar">Χάρτης <span class="sp"></span>
+      <div class="seg" id="theme" style="background:rgba(255,255,255,.15)">
+        <button data-v="day" class="on">Μέρα</button><button data-v="dark">Σούρουπο</button><button data-v="night">Νύχτα</button>
+      </div>
+    </div>
+    <div class="ctl">
+      <div class="seg" id="mode"><button data-v="today">Σημερινός</button><button data-v="nautical" class="on">Ναυτικός (νέος)</button></div>
+    </div>
+    <div class="mapbox">
+      <div id="map"></div>
+      <div class="legend" id="legend">
+        <div><span class="sw" style="background:#9cc3e6"></span>0–5 m</div>
+        <div><span class="sw" style="background:#bcd8ef"></span>5–10 m</div>
+        <div><span class="sw" style="background:#d9e9f6"></span>10–20 m</div>
+        <div><span class="sw" style="background:#f4f9fd;border:1px solid #ccc"></span>&gt; 20 m</div>
+      </div>
+      <div class="depth" id="depth"></div>
+      <div class="chips" id="chips">
+        <button class="chip on" data-l="depth">Βάθη</button>
+        <button class="chip on" data-l="contours">Ισοβαθείς</button>
+        <button class="chip on" data-l="seamarks">Σημαντήρες</button>
+        <button class="chip on" data-l="labels">Ονόματα</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <h2>Ναυτικός χάρτης — πρόταση</h2>
+    <p class="muted">Ζωντανό πρωτότυπο με πραγματικά δεδομένα. Άλλαξε «Σημερινός / Ναυτικός» για σύγκριση, δοκίμασε τα θέματα και <b>άγγιξε τη θάλασσα</b> για το βάθος.</p>
+    <h3>Τι αλλάζει</h3>
+    <ul>
+      <li><b>Χωρίς δρόμους, κτίρια, πινακίδες:</b> μόνο ακτή, νησιά, ονόματα τόπων και κόλπων. Λιγότερος θόρυβος στον ήλιο.</li>
+      <li><b>Βάθη σε ζώνες</b> όπως στον ναυτικό χάρτη: πιο σκούρο μπλε = πιο ρηχά (0–5, 5–10, 10–20 m), λευκό = βαθιά.</li>
+      <li><b>Ισοβαθείς</b> και <b>σημαντήρες/φάροι</b> (OpenSeaMap, υπάρχει ήδη).</li>
+      <li><b>Άγγιγμα → βάθος</b> στο σημείο (π.χ. «≈ 12 m»).</li>
+      <li><b>Θέματα:</b> ίδια λογική με την εφαρμογή. Τη νύχτα μαύρη θάλασσα και κόκκινες γραμμές, για να μη χαλάει η νυχτερινή όραση.</li>
+      <li>Ο σημερινός χάρτης μένει ως επιλογή («Οδικός») για όποιον τον θέλει.</li>
+    </ul>
+    <h3>Από πού έρχονται τα δεδομένα (δωρεάν)</h3>
+    <ul>
+      <li>Ακτή/ονόματα: OpenFreeMap (OpenStreetMap), όπως σήμερα.</li>
+      <li>Βάθη, ισοβαθείς, βάθος σημείου: <b>EMODnet Bathymetry</b> (ΕΕ, ανοιχτά δεδομένα, CC-BY).</li>
+      <li>Σημαντήρες: OpenSeaMap.</li>
+    </ul>
+    <h3>Περιορισμοί — σημαντικό</h3>
+    <ul>
+      <li>Η ανάλυση βάθους είναι περίπου <b>100 m</b>: δείχνει πού ρηχαίνει, όχι κάθε ξέρα. <b>Δεν αντικαθιστά τον επίσημο ναυτικό χάρτη</b>· θα το γράφει η εφαρμογή.</li>
+      <li>Χωρίς σύνδεση δουλεύουν μόνο περιοχές που έχεις ήδη δει (όπως σήμερα). Το «Κατέβασμα Σαρωνικού» είναι επόμενη πρόταση.</li>
+    </ul>
+    <h3>Τι ΔΕΝ αλλάζει</h3>
+    <ul><li>Σημαδούρες, διαδρομή, ισόχρονες, βέλη ανέμου, θέση σκάφους: ίδια όπως τώρα, πάνω από τον νέο χάρτη.</li></ul>
+  </div>
+</div>
+
+<script>
+const OFM = 'https://tiles.openfreemap.org/planet';
+const GLYPHS = 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf';
+const WMS = (layer, extra = '') =>
+  `https://ows.emodnet-bathymetry.eu/wms?service=WMS&version=1.1.1&request=GetMap&layers=${layer}&styles=${extra}&format=image/png&transparent=true&srs=EPSG:3857&width=256&height=256&bbox={bbox-epsg-3857}`;
+
+// Our own colours on the EMODnet server (SLD): exact chart-like bands, transparent on land and in deep water.
+const sldDepth = (c) => `<StyledLayerDescriptor version="1.0.0" xmlns="http://www.opengis.net/sld"><NamedLayer><Name>emodnet:mean</Name><UserStyle><FeatureTypeStyle><Rule><RasterSymbolizer><ColorMap type="intervals"><ColorMapEntry color="#ffffff" quantity="-20" opacity="0"/><ColorMapEntry color="${c[2]}" quantity="-10"/><ColorMapEntry color="${c[1]}" quantity="-5"/><ColorMapEntry color="${c[0]}" quantity="0"/><ColorMapEntry color="#000000" quantity="100000" opacity="0"/></ColorMap></RasterSymbolizer></Rule></FeatureTypeStyle></UserStyle></NamedLayer></StyledLayerDescriptor>`;
+const sldContours = (color) => `<StyledLayerDescriptor version="1.0.0" xmlns="http://www.opengis.net/sld"><NamedLayer><Name>emodnet:contours</Name><UserStyle><FeatureTypeStyle><Rule><LineSymbolizer><Stroke><CssParameter name="stroke">${color}</CssParameter><CssParameter name="stroke-width">0.8</CssParameter></Stroke></LineSymbolizer></Rule></FeatureTypeStyle></UserStyle></NamedLayer></StyledLayerDescriptor>`;
+const WMS_SLD = (layer, sld) => WMS(layer) + '&SLD_BODY=' + encodeURIComponent(sld);
+
+const THEMES = {
+  day:   { land:'#f2ead3', water:'#f4f9fd', coast:'#5b4a2f', label:'#3b2f1e', waterLabel:'#1f4e79', halo:'#fff', depth:['#9cc3e6','#bcd8ef','#d9e9f6'], contour:'#5b7fa3', contourOpacity:.8, course:'#374151', boat:'#e11d48' },
+  dark:  { land:'#2b2f36', water:'#0f1b2d', coast:'#9aa4b2', label:'#e5e7eb', waterLabel:'#93c5fd', halo:'#0b1220', depth:['#1e4f7a','#1a3f63','#16304d'], contour:'#6b8fb8', contourOpacity:.7, course:'#cbd5e1', boat:'#f43f5e' },
+  night: { land:'#120000', water:'#000000', coast:'#7a1410', label:'#b3261e', waterLabel:'#7a1410', halo:'#000', depth:['#3a0806','#260403','#170201'], contour:'#5a0d09', contourOpacity:.8, course:'#ff3b30', boat:'#ff3b30' },
+};
+
+const COURSE = [ { name:'Εκκίνηση', lat:37.9, lon:23.66 }, { name:'Πάνω', lat:37.96, lon:23.66 }, { name:'Αίγινα', lat:37.80, lon:23.55 } ];
+
+function nauticalStyle(t) {
+  return {
+    version: 8,
+    glyphs: GLYPHS,
+    sources: {
+      ofm: { type:'vector', url: OFM },
+      bathy: { type:'raster', tiles:[WMS_SLD('emodnet:mean', sldDepth(t.depth))], tileSize:256, attribution:'Βάθη © EMODnet Bathymetry' },
+      contours: { type:'raster', tiles:[WMS_SLD('emodnet:contours', sldContours(t.contour))], tileSize:256 },
+      seamarks: { type:'raster', tiles:['https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png'], tileSize:256, attribution:'© OpenSeaMap' },
+    },
+    layers: [
+      { id:'land', type:'background', paint:{ 'background-color': t.land } },
+      { id:'water', type:'fill', source:'ofm', 'source-layer':'water', paint:{ 'fill-color': t.water } },
+      // Depth bands: the EMODnet raster, re-coloured into chart-like tones by the band layers below
+      { id:'bathy', type:'raster', source:'bathy', paint:{ 'raster-opacity': 1, 'raster-resampling': 'nearest' } },
+      { id:'contours', type:'raster', source:'contours', minzoom: 8, paint:{ 'raster-opacity': t.contourOpacity } },
+      { id:'coast', type:'line', source:'ofm', 'source-layer':'water', paint:{ 'line-color': t.coast, 'line-width': ['interpolate',['linear'],['zoom'],8,.6,13,1.6] } },
+      { id:'seamarks', type:'raster', source:'seamarks', minzoom: 10, paint: t === THEMES.night
+        ? { 'raster-opacity': .7, 'raster-saturation': -1, 'raster-brightness-max': .3 } // no blue/purple at night
+        : { 'raster-opacity': 1 } },
+      { id:'water-name', type:'symbol', source:'ofm', 'source-layer':'water_name',
+        layout:{ 'text-field':['coalesce',['get','name:el'],['get','name']], 'text-font':['Noto Sans Italic'], 'text-size':12, 'text-letter-spacing':.1 },
+        paint:{ 'text-color': t.waterLabel, 'text-halo-color': t.halo, 'text-halo-width': 1.2 } },
+      { id:'place', type:'symbol', source:'ofm', 'source-layer':'place',
+        filter:['in',['get','class'],['literal',['city','town','village','island','islet']]],
+        layout:{ 'text-field':['coalesce',['get','name:el'],['get','name']], 'text-font':['Noto Sans Bold'],
+          'text-size':['match',['get','class'],'city',14,'town',13,'island',13,12] },
+        paint:{ 'text-color': t.label, 'text-halo-color': t.halo, 'text-halo-width': 1.5 } },
+    ],
+  };
+}
+
+let theme = 'day', mode = 'nautical';
+const vis = { depth:true, contours:true, seamarks:true, labels:true };
+const map = new maplibregl.Map({ container:'map', style: nauticalStyle(THEMES.day), center:[23.6, 37.88], zoom: 10.3, attributionControl:{ compact:true } });
+map.addControl(new maplibregl.NavigationControl({ visualizePitch:false }), 'top-right');
+map.addControl(new maplibregl.ScaleControl({ unit:'nautical' }), 'bottom-right');
+
+function addOverlay() {
+  const t = THEMES[theme];
+  map.addSource('course', { type:'geojson', data:{ type:'Feature', geometry:{ type:'LineString', coordinates: COURSE.map(m => [m.lon, m.lat]) } } });
+  map.addLayer({ id:'course', type:'line', source:'course', paint:{ 'line-color': t.course, 'line-width':2, 'line-dasharray':[2,2] } });
+  map.addSource('marks', { type:'geojson', data:{ type:'FeatureCollection', features: COURSE.map((m,i) => ({ type:'Feature', properties:{ n: i ? String(i) : 'Ε', name:m.name }, geometry:{ type:'Point', coordinates:[m.lon, m.lat] } })) } });
+  map.addLayer({ id:'marks', type:'circle', source:'marks', paint:{ 'circle-radius':11, 'circle-color': theme==='night' ? '#000' : '#f59e0b', 'circle-stroke-color': theme==='night' ? '#ff3b30' : '#000', 'circle-stroke-width':2 } });
+  map.addLayer({ id:'marks-n', type:'symbol', source:'marks', layout:{ 'text-field':['get','n'], 'text-font':['Noto Sans Bold'], 'text-size':12, 'text-allow-overlap':true }, paint:{ 'text-color': theme==='night' ? '#ff3b30' : '#000' } });
+  map.addSource('boat', { type:'geojson', data:{ type:'Feature', geometry:{ type:'Point', coordinates:[23.645, 37.915] } } });
+  map.addLayer({ id:'boat', type:'circle', source:'boat', paint:{ 'circle-radius':8, 'circle-color': t.boat, 'circle-stroke-color': theme==='night' ? '#000' : '#fff', 'circle-stroke-width':3 } });
+  applyVis();
+}
+
+function applyVis() {
+  if (mode !== 'nautical') return;
+  const set = (id, on) => map.getLayer(id) && map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none');
+  set('bathy', vis.depth); set('contours', vis.contours); set('seamarks', vis.seamarks);
+  set('place', vis.labels); set('water-name', vis.labels);
+  document.getElementById('legend').style.display = vis.depth ? '' : 'none';
+}
+
+function restyle() {
+  document.body.dataset.theme = theme;
+  const style = mode === 'nautical' ? nauticalStyle(THEMES[theme]) : 'https://tiles.openfreemap.org/styles/liberty';
+  map.setStyle(style);
+  map.once('styledata', () => {
+    if (mode === 'today') {
+      map.addSource('seamarks', { type:'raster', tiles:['https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png'], tileSize:256 });
+      map.addLayer({ id:'seamarks', type:'raster', source:'seamarks', minzoom: 9 });
+    }
+    addOverlay();
+  });
+  document.getElementById('chips').style.display = mode === 'nautical' ? '' : 'none';
+  document.getElementById('legend').style.display = mode === 'nautical' && vis.depth ? '' : 'none';
+  // Legend colours follow the theme
+  const d = THEMES[theme].depth;
+  document.querySelectorAll('#legend .sw').forEach((s, i) => { if (i < 3) s.style.background = d[i]; else s.style.background = THEMES[theme].water; });
+}
+map.on('load', addOverlay);
+
+const seg = (id, cb) => document.getElementById(id).addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  [...e.currentTarget.children].forEach(x => x.classList.toggle('on', x === b)); cb(b.dataset.v);
+});
+seg('theme', v => { theme = v; restyle(); });
+seg('mode', v => { mode = v; restyle(); });
+document.getElementById('chips').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  vis[b.dataset.l] = !vis[b.dataset.l]; b.classList.toggle('on', vis[b.dataset.l]); applyVis();
+});
+
+// Tap → depth at that point (EMODnet REST)
+const depthEl = document.getElementById('depth');
+let depthTimer;
+map.on('click', async (e) => {
+  const { lng, lat } = e.lngLat;
+  depthEl.style.display = 'block'; depthEl.innerHTML = 'Βάθος…';
+  try {
+    const r = await fetch(`https://rest.emodnet-bathymetry.eu/depth_sample?geom=POINT(${lng.toFixed(5)}%20${lat.toFixed(5)})`);
+    const j = await r.json();
+    // The cell average (not "smoothed", which is wrong near the shore); range when known.
+    const v = j.avg;
+    const range = j.min !== undefined && j.max !== undefined && Math.round(-j.max) !== Math.round(-j.min) ? ` (${Math.round(-j.max)}–${Math.round(-j.min)} m)` : '';
+    depthEl.innerHTML = v === undefined || v === null || v >= 0 ? 'Στεριά / χωρίς στοιχεία' : `Βάθος ≈ ${Math.round(-v)} m${range}<small>ενδεικτικό, όχι για ναυσιπλοΐα</small>`;
+  } catch { depthEl.innerHTML = 'Χωρίς σύνδεση'; }
+  clearTimeout(depthTimer); depthTimer = setTimeout(() => depthEl.style.display = 'none', 5000);
+});
+</script>
+</body>
+</html>

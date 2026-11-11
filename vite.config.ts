@@ -62,6 +62,16 @@ export default defineConfig({
             handler: 'CacheFirst',
             options: { cacheName: 'seamarks', expiration: { maxEntries: 3000, maxAgeSeconds: 60 * 86400 } },
           },
+          {
+            // Depth bands and contours (EMODnet WMS): the sea floor rarely changes.
+            urlPattern: /^https:\/\/ows\.emodnet-bathymetry\.eu\/wms\?/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'bathymetry',
+              expiration: { maxEntries: 4000, maxAgeSeconds: 90 * 86400 },
+              cacheableResponse: { statuses: [200] },
+            },
+          },
         ],
       },
     }),

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Map as MLMap, Marker, NavigationControl, ScaleControl, setWorkerUrl, type GeoJSONSource } from 'maplibre-gl';
+import { Map as MLMap, Marker, NavigationControl, Popup, ScaleControl, setWorkerUrl, type GeoJSONSource, type RasterTileSource } from 'maplibre-gl';
 import type { StyleSpecification } from '@maplibre/maplibre-gl-style-spec';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
@@ -9,14 +9,29 @@ import { courseLine, isochroneLines, pointFC, routeSegments } from '../routing/g
 import { COASTLINE_ATTRIBUTION, COASTLINE_LINES } from '../routing/coastline';
 import type { LatLon } from '../nav/geo';
 import { sailColor } from './PolarChart';
+import { useApp } from './AppContext';
+import type { Theme } from './settings';
+import {
+  CHART_THEMES,
+  OFM_TILEJSON,
+  ROAD_STYLE_URL,
+  SEAMARK_TILES,
+  contourTiles,
+  depthTiles,
+  fetchDepth,
+  formatDepth,
+  nauticalStyle,
+  themePaint,
+  type ChartKind,
+  type VectorTileJson,
+} from './nauticalStyle';
 
 setWorkerUrl(workerUrl);
 
-const STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
-const SEAMARK_TILES = 'https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png';
+const seaColor = (theme: Theme) => (theme === 'day' ? '#cfe3f3' : CHART_THEMES[theme].water);
 
 /** Offline fallback: sea background + OSM coastline bundled with the app. */
-function fallbackStyle(): StyleSpecification {
+function fallbackStyle(theme: Theme): StyleSpecification {
   return {
     version: 8,
     sources: {
@@ -30,8 +45,8 @@ function fallbackStyle(): StyleSpecification {
       },
     },
     layers: [
-      { id: 'bg', type: 'background', paint: { 'background-color': '#cfe3f3' } },
-      { id: 'coast', type: 'line', source: 'coast', paint: { 'line-color': '#5b4a2f', 'line-width': 2 } },
+      { id: 'sea', type: 'background', paint: { 'background-color': seaColor(theme) } },
+      { id: 'coast', type: 'line', source: 'coast', paint: { 'line-color': CHART_THEMES[theme].coast, 'line-width': 2 } },
     ],
   };
 }
@@ -39,17 +54,19 @@ function fallbackStyle(): StyleSpecification {
 /** Waits generously: on a phone at sea the style can take well over 5 s. */
 const STYLE_TIMEOUT_MS = 15_000;
 
-async function loadStyle(): Promise<{ style: StyleSpecification; online: boolean }> {
-  if (navigator.onLine === false) return { style: fallbackStyle(), online: false };
+async function loadStyle(chart: ChartKind, theme: Theme): Promise<{ style: StyleSpecification; online: boolean }> {
+  if (navigator.onLine === false) return { style: fallbackStyle(theme), online: false };
   try {
     const ctl = new AbortController();
     const timer = setTimeout(() => ctl.abort(), STYLE_TIMEOUT_MS);
-    const res = await fetch(STYLE_URL, { signal: ctl.signal });
+    const res = await fetch(chart === 'road' ? ROAD_STYLE_URL : OFM_TILEJSON, { signal: ctl.signal });
     clearTimeout(timer);
     if (!res.ok) throw new Error(String(res.status));
-    return { style: (await res.json()) as StyleSpecification, online: true };
+    const json = await res.json();
+    const style = chart === 'road' ? (json as StyleSpecification) : nauticalStyle(json as VectorTileJson, theme);
+    return { style, online: true };
   } catch {
-    return { style: fallbackStyle(), online: false };
+    return { style: fallbackStyle(theme), online: false };
   }
 }
 
@@ -72,6 +89,10 @@ interface Props {
   live?: RouteResult;
   showIsochrones: boolean;
   showSeamarks: boolean;
+  /** Nautical chart (depths, no roads) or the street map. */
+  chart: ChartKind;
+  /** Depth bands and contours on the nautical chart. */
+  showDepth: boolean;
   wind?: WindArrow[];
   boatPos?: LatLon & { cog?: number };
   simPos?: LatLon;
@@ -113,6 +134,12 @@ export function MapView(p: Props) {
   const markers = useRef<Marker[]>([]);
   const propsRef = useRef(p);
   propsRef.current = p;
+  const { settings } = useApp();
+  const theme = settings.theme;
+  const themeRef = useRef(theme);
+  themeRef.current = theme;
+  const popup = useRef<Popup>();
+  const depthReq = useRef<AbortController>();
 
   // Without the base map, try again by itself when the connection comes back.
   useEffect(() => {
@@ -128,7 +155,7 @@ export function MapView(p: Props) {
     setReady(false);
     setBase('loading');
     (async () => {
-      const { style, online } = await loadStyle();
+      const { style, online } = await loadStyle(propsRef.current.chart, themeRef.current);
       if (disposed || !el.current) return;
       const map = new MLMap({
         container: el.current,
@@ -151,16 +178,26 @@ export function MapView(p: Props) {
       map.addControl(new ScaleControl({ unit: 'nautical' }), 'bottom-left');
       map.on('click', (e) => {
         const cur = propsRef.current;
-        if (cur.addMode && cur.onAdd) cur.onAdd({ lat: e.lngLat.lat, lon: e.lngLat.lng });
+        if (cur.addMode && cur.onAdd) {
+          cur.onAdd({ lat: e.lngLat.lat, lon: e.lngLat.lng });
+          return;
+        }
+        // Tap on the sea: indicative depth (nautical chart only, not on a mark).
+        const target = e.originalEvent.target as Element | null;
+        if (cur.chart !== 'nautical' || target?.closest?.('.maplibregl-marker')) return;
+        showDepthAt(map, e.lngLat.lat, e.lngLat.lng);
       });
       map.on('load', () => {
-        map.addSource('seamarks', {
-          type: 'raster',
-          tiles: [SEAMARK_TILES],
-          tileSize: 256,
-          attribution: '© OpenSeaMap contributors',
-        });
-        map.addLayer({ id: 'seamarks', type: 'raster', source: 'seamarks', minzoom: 9 });
+        // The nautical style has its own (night-dimmed) seamark layer.
+        if (!map.getLayer('seamarks')) {
+          map.addSource('seamarks', {
+            type: 'raster',
+            tiles: [SEAMARK_TILES],
+            tileSize: 256,
+            attribution: '© OpenSeaMap contributors',
+          });
+          map.addLayer({ id: 'seamarks', type: 'raster', source: 'seamarks', minzoom: 9 });
+        }
         for (const id of ['course', 'iso', 'planned', 'live', 'boat', 'sim', 'wind']) map.addSource(id, { type: 'geojson', data: EMPTY });
         if (!map.hasImage('nav-wind-arrow')) map.addImage('nav-wind-arrow', arrowImage(), { sdf: true });
         map.addLayer({
@@ -193,10 +230,64 @@ export function MapView(p: Props) {
     })();
     return () => {
       disposed = true;
+      depthReq.current?.abort();
+      popup.current?.remove();
+      popup.current = undefined;
       mapRef.current?.remove();
       mapRef.current = undefined;
     };
-  }, [attempt]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attempt, p.chart]);
+
+  function showDepthAt(map: MLMap, lat: number, lon: number) {
+    depthReq.current?.abort();
+    popup.current?.remove();
+    const box = document.createElement('div');
+    box.className = 'depth-pop';
+    const main = document.createElement('strong');
+    const note = document.createElement('small');
+    main.textContent = 'Βάθος…';
+    note.textContent = 'ενδεικτικό, όχι για ναυσιπλοΐα';
+    box.append(main, note);
+    popup.current = new Popup({ closeButton: true, maxWidth: '240px' }).setLngLat([lon, lat]).setDOMContent(box).addTo(map);
+    if (navigator.onLine === false) {
+      main.textContent = 'Το βάθος θέλει σύνδεση';
+      return;
+    }
+    const ctl = new AbortController();
+    depthReq.current = ctl;
+    const timer = window.setTimeout(() => ctl.abort(), 10_000);
+    fetchDepth(lat, lon, ctl.signal)
+      .then((d) => {
+        main.textContent = d ? formatDepth(d) : 'Ξηρά ή χωρίς στοιχεία βάθους';
+      })
+      .catch(() => {
+        if (depthReq.current === ctl) main.textContent = 'Δεν βρέθηκε βάθος (σύνδεση;)';
+      })
+      .finally(() => window.clearTimeout(timer));
+  }
+
+  // Theme switch: recolour in place, without reloading the map.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+    if (map.getLayer('sea')) {
+      map.setPaintProperty('sea', 'background-color', seaColor(theme));
+      map.setPaintProperty('coast', 'line-color', CHART_THEMES[theme].coast);
+      return;
+    }
+    if (p.chart !== 'nautical') return;
+    for (const [layer, prop, value] of themePaint(theme))
+      if (map.getLayer(layer)) map.setPaintProperty(layer, prop, value);
+    (map.getSource('bathy') as RasterTileSource | undefined)?.setTiles([depthTiles(CHART_THEMES[theme])]);
+    (map.getSource('contours') as RasterTileSource | undefined)?.setTiles([contourTiles(CHART_THEMES[theme])]);
+  }, [ready, theme, p.chart]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+    for (const id of ['bathy', 'contours']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', p.showDepth ? 'visible' : 'none');
+  }, [ready, p.showDepth, p.chart]);
 
   const set = (id: string, data: unknown) => {
     const src = mapRef.current?.getSource(id) as GeoJSONSource | undefined;
@@ -292,6 +383,17 @@ export function MapView(p: Props) {
           <button type="button" onClick={() => setAttempt((a) => a + 1)}>
             Ξανά
           </button>
+        </div>
+      )}
+      {p.chart === 'nautical' && p.showDepth && ready && base !== 'fallback' && (
+        <div className="depth-legend" aria-label="Βάθη σε μέτρα (ενδεικτικά)">
+          {['0–5', '5–10', '10–20', '>20'].map((label, i) => (
+            <span key={label}>
+              <i style={{ background: i < 3 ? CHART_THEMES[theme].depth[i] : CHART_THEMES[theme].water }} />
+              {label}
+            </span>
+          ))}
+          <em>μέτρα</em>
         </div>
       )}
       {p.children}
