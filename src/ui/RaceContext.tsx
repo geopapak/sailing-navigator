@@ -10,7 +10,8 @@ import { useApp } from './AppContext';
 import { useNav } from './NavContext';
 import { useInstruments } from './InstrumentsContext';
 import { DEFAULT_SERVER } from './settings';
-import { useStoredState } from './hooks';
+import { useStoredState, useWakeLock } from './hooks';
+import { trackGap } from '../race/gaps';
 
 export type WindSource = 'instruments' | 'live' | 'forecast';
 
@@ -28,6 +29,15 @@ interface RaceState {
   wind?: Wind & { source: WindSource };
   ais: { status: 'off' | 'ok' | 'nokey' | 'error'; message?: string; at?: number };
   recording: boolean;
+  /** Race mode (P-013): the screen is kept on in every tab while recording. */
+  wakeOn: boolean;
+  /** Minutes without a new track point while recording (no GPS, or the page was asleep). */
+  stalledMin?: number;
+  /** Last gap found when coming back to the app (screen locked / app in background). */
+  gap?: { minutes: number; at: number };
+  /** Recording has begun but no position has come in yet. */
+  waitingGps: boolean;
+  dismissGap: () => void;
 }
 
 const Ctx = createContext<RaceState | null>(null);
@@ -102,6 +112,27 @@ export function RaceProvider({ children }: { children: ReactNode }) {
 
   const running = active?.status === 'running';
   const recording = running && Date.now() >= (active?.start ?? 0) - 10 * 60_000;
+
+  // Race mode (P-013): keep the screen on in every tab, and notice holes in the track.
+  const wakeOn = useWakeLock(!!recording);
+  const [gap, setGap] = useState<{ minutes: number; at: number }>();
+  useEffect(() => {
+    if (!recording) {
+      setGap(undefined);
+      return;
+    }
+    const onVis = () => {
+      if (document.visibilityState !== 'visible') return;
+      const r = activeRef.current;
+      const g = r && r.track.length ? trackGap(r, Date.now()) : 0;
+      if (g >= 1) setGap({ minutes: g, at: Date.now() });
+      setTick((x) => x + 1);
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, [recording]);
+  const waitingGps = !!recording && !!active && active.track.length === 0;
+  const stalled = recording && active && !waitingGps ? trackGap(active, Date.now(), 0.5) : 0;
 
   // Wind for the estimate: instruments, else what the crew has in Live, else the forecast here.
   const live = getLiveSnapshot(5);
@@ -246,6 +277,11 @@ export function RaceProvider({ children }: { children: ReactNode }) {
         wind,
         ais,
         recording: !!recording,
+        wakeOn,
+        stalledMin: stalled > 0 ? stalled : undefined,
+        gap,
+        waitingGps,
+        dismissGap: () => setGap(undefined),
       }}
     >
       {children}

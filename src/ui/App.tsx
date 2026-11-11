@@ -6,7 +6,7 @@ import { InstrumentsProvider, useInstruments } from './InstrumentsContext';
 import { LiveView } from './LiveView';
 import { PolarView } from './PolarView';
 import { RaceView } from './RaceView';
-import { RaceProvider } from './RaceContext';
+import { RaceProvider, useRace } from './RaceContext';
 import { KnowledgeProvider } from './KnowledgeContext';
 import { BoatsView } from './BoatsView';
 import { SettingsView } from './SettingsView';
@@ -117,6 +117,7 @@ function Shell() {
         )}
       </header>
       <NetStrip />
+      <RaceStrip />
       <main className="content">
         {error && <p className="errors">{error}</p>}
         {ready && <WhatsNew />}
@@ -163,6 +164,44 @@ function Shell() {
 }
 
 /** Thin strip under the top bar: shown only while offline, then «Συνδέθηκε ξανά ✓» for 3 seconds. */
+/** Race mode (P-013): screen kept on while recording; warns when the track has holes. */
+function RaceStrip() {
+  const race = useRace();
+  if (!race.recording) return null;
+  if (race.gap)
+    return (
+      <div className="net-strip race-strip" role="alert">
+        <span className="dot" aria-hidden="true" />
+        <span>
+          Κενό {race.gap.minutes}′ στο ίχνος: η οθόνη έκλεισε ή η εφαρμογή πήγε στο παρασκήνιο. Άφησε την εφαρμογή ανοιχτή στον αγώνα.
+        </span>
+        <button type="button" className="link" onClick={race.dismissGap}>
+          Εντάξει
+        </button>
+      </div>
+    );
+  if (race.waitingGps)
+    return (
+      <div className="net-strip race-strip" role="status">
+        <span className="dot" aria-hidden="true" />
+        <span>Αγώνας: η καταγραφή περιμένει θέση GPS (ή όργανα).</span>
+      </div>
+    );
+  if (race.stalledMin)
+    return (
+      <div className="net-strip race-strip" role="alert">
+        <span className="dot" aria-hidden="true" />
+        <span>Η καταγραφή σταμάτησε πριν από {race.stalledMin}′: δεν έρχεται θέση GPS.</span>
+      </div>
+    );
+  return (
+    <div className="net-strip ok race-strip quiet" role="status">
+      <span className="dot" aria-hidden="true" />
+      <span>Αγώνας: καταγραφή{race.wakeOn ? ' · η οθόνη μένει ανοιχτή' : ' · κράτα την οθόνη ανοιχτή'}</span>
+    </div>
+  );
+}
+
 function NetStrip() {
   const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine));
   const [back, setBack] = useState(false);

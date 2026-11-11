@@ -87,7 +87,8 @@ interface NavState {
   setNextMark: (i: number) => void;
   liveRoute?: RouteResult;
   liveStatus: { busy: boolean; error?: string; note?: string; at?: number };
-  rerouteLive: (observed?: WindSample) => Promise<void>;
+  /** `howMeasured` is shown in the note, e.g. "μέσος όρος 4′ από 12 μετρήσεις". */
+  rerouteLive: (observed?: WindSample, howMeasured?: string) => Promise<void>;
 
   gps: { status: GpsStatus; fix?: GpsFix; message?: string };
   gpsEnabled: boolean;
@@ -256,7 +257,7 @@ export function NavProvider({ children }: { children: ReactNode }) {
   }, [activeBoat, course, windSpec, plan.startLocal, options]);
 
   const rerouteLive = useCallback(
-    async (observed?: WindSample) => {
+    async (observed?: WindSample, howMeasured?: string) => {
       if (!activeBoat || !course) return;
       const fix = gps.fix;
       if (!fix) {
@@ -283,6 +284,7 @@ export function NavProvider({ children }: { children: ReactNode }) {
         wind = windSpec();
         note = 'Χωρίς μετρημένο TWD: χρησιμοποιείται η πρόγνωση όπως είναι.';
       }
+      if (observed && howMeasured) note = `${note} Μετρημένος άνεμος: ${howMeasured}.`;
       if (!wind) {
         setLiveStatus({ busy: false, error: 'Δεν υπάρχει πρόγνωση ή ενδείξεις ανέμου.' });
         return;
