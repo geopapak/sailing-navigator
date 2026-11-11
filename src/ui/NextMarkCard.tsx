@@ -3,12 +3,13 @@ import { useNav } from './NavContext';
 import { bearingDeg, distanceNm, vmc } from '../nav/geo';
 import { trueToMag } from '../performance/angles';
 import type { WindSample } from '../weather/types';
+import { meanLabel, meanWind } from '../weather/windAverage';
 
 const f1 = (v: number) => v.toFixed(1);
 const f0 = (v: number) => Math.round(v).toString();
 
 /** Next mark: distance, bearing, VMC, ETA and the re-routed recommendation. */
-export function NextMarkCard({ observed }: { observed?: WindSample }) {
+export function NextMarkCard({ observed, fromCog }: { observed?: WindSample; fromCog?: boolean }) {
   const { activeBoat: boat, settings } = useApp();
   const nav = useNav();
   const { course, gps, nextMark } = nav;
@@ -94,7 +95,12 @@ export function NextMarkCard({ observed }: { observed?: WindSample }) {
           </div>
         </div>
       )}
-      <button className="btn" disabled={nav.liveStatus.busy || !fix} onClick={() => nav.rerouteLive(observed)}>
+      <button className="btn" disabled={nav.liveStatus.busy || !fix} onClick={() => {
+          // P-018: the mean of the last few minutes, not one reading that may sit on a shift.
+          const m = observed ? meanWind() : undefined;
+          if (m) nav.rerouteLive({ tws: m.tws, twd: m.twd }, meanLabel(m));
+          else nav.rerouteLive(observed, observed && fromCog ? '≈ από την πορεία GPS' : undefined);
+        }}>
         {nav.liveStatus.busy ? 'Υπολογισμός…' : observed ? '↻ Ξαναϋπολογισμός με τον τωρινό άνεμο' : '↻ Ξαναϋπολογισμός (πρόγνωση)'}
       </button>
       {nav.liveStatus.note && <p className="muted small">{nav.liveStatus.note}</p>}

@@ -1768,6 +1768,17 @@ legend { font-weight: 600; margin-bottom: 6px; }
   background: var(--good);
 }
 
+.race-strip .link {
+  margin-left: auto;
+  flex-shrink: 0;
+  min-height: 40px;
+}
+.race-strip.quiet {
+  padding: 4px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
 /* Undo snackbar and our own confirm sheet (follow the theme, never white at night). */
 .snack {
   position: fixed;

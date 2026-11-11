@@ -21,6 +21,7 @@ import { setLiveSnapshot } from '../ai/snapshot';
 import { useInstruments } from './InstrumentsContext';
 import { knowledgeHints } from '../knowledge/match';
 import { InstrumentBar, type LockField } from './InstrumentBar';
+import { MIN_SOG_FOR_COG, pushWind, type WindFrom } from '../weather/windAverage';
 
 interface LiveState {
   windInput: 'twa' | 'twd';
@@ -166,14 +167,26 @@ export function LiveView() {
     [result, outlook, s.sailId],
   );
 
-  // Observed true wind for re-routing: TWD typed in, or TWA + GPS course.
-  const observedTwd =
-    s.windInput === 'twd'
-      ? twdTrue
-      : gps.fix?.cog !== undefined && signedTwa !== undefined
-        ? twdFromTwa(signedTwa, gps.fix.cog)
-        : undefined;
+  // Observed true wind for re-routing (P-018): instruments' TWD, else TWD typed in, else TWA + heading;
+  // GPS course only as a last resort and only when moving (below ~2 kn the COG is noise).
+  const cogOk = gps.fix?.cog !== undefined && (gps.fix.sog ?? 0) >= MIN_SOG_FOR_COG;
+  let observedTwd: number | undefined;
+  let observedFrom: WindFrom | undefined;
+  if (inst.live && iv.twd !== undefined) [observedTwd, observedFrom] = [iv.twd, 'instruments'];
+  else if (s.windInput === 'twd' && twdTrue !== undefined) [observedTwd, observedFrom] = [twdTrue, 'typed'];
+  else if (signedTwa !== undefined && s.headingSource !== 'gps' && headingTrue !== undefined)
+    [observedTwd, observedFrom] = [twdFromTwa(signedTwa, headingTrue), 'heading'];
+  else if (signedTwa !== undefined && cogOk) [observedTwd, observedFrom] = [twdFromTwa(signedTwa, gps.fix!.cog!), 'cog'];
   const observed = s.tws !== null && observedTwd !== undefined ? { tws: s.tws, twd: observedTwd } : undefined;
+  // Keep a rolling record, so re-routing can use the last few minutes instead of one reading.
+  const observedRef = useRef<{ tws: number; twd: number; from: WindFrom } | undefined>();
+  observedRef.current = observed && observedFrom ? { ...observed, from: observedFrom } : undefined;
+  useEffect(() => {
+    const push = () => observedRef.current && pushWind({ t: Date.now(), ...observedRef.current });
+    push();
+    const t = window.setInterval(push, 10_000);
+    return () => window.clearInterval(t);
+  }, []);
 
   // Publish the latest numbers for the advisor chat (buildRef is set further down, after the early returns).
   const buildRef = useRef<(q?: string) => ReturnType<typeof buildLiveContext> | undefined>();
@@ -451,7 +464,7 @@ export function LiveView() {
         </div>
       </section>
 
-      <NextMarkCard observed={observed} />
+      <NextMarkCard observed={observed} fromCog={observedFrom === 'cog'} />
 
       <AdvisorCard
         storageKey="advisor-live"
