@@ -73,9 +73,21 @@ export const sailKey = (s: unknown) =>
         .replace(/^[A-Z]{3}(?=\d)/, '')
     : '';
 
+/** SQL twin of sailKey() for a JSON text expression (pre-filter; sailKey() confirms in code). */
+function sqlSailKey(expr: string): string {
+  let k = `upper(coalesce(${expr}, ''))`;
+  for (const ch of [' ', '-', '/', '.', '_']) k = `replace(${k}, '${ch}', '')`;
+  return `(CASE WHEN substr(${k}, 1, 3) GLOB '[A-Z][A-Z][A-Z]' AND substr(${k}, 4, 1) GLOB '[0-9]' THEN substr(${k}, 4) ELSE ${k} END)`;
+}
+
+export const MAX_CREW_NOTES = 200;
+
 /**
  * Notes that crew mates shared ("crew" scope) for a boat the user also has as
- * their own boat (same sail number). The author is shown by first name only.
+ * their own boat (same sail number). Interim rule (P-015) until crews with
+ * invitations (P-022): the author must also have that boat as their own, and the
+ * filter runs in SQL so older notes are not lost behind other people's newer ones.
+ * The author is shown by first name only.
  */
 export async function crewNotes(env: AccountEnv, u: UserRow) {
   const d = env.DB!;
@@ -93,13 +105,20 @@ export async function crewNotes(env: AccountEnv, u: UserRow) {
     }
   }
   if (!keys.size) return { notes: [] };
+  const list = [...keys].slice(0, 20);
+  const noteKey = sqlSailKey("json_extract(i.data, '$.sailNo')");
   const rows = await d
     .prepare(
       `SELECT i.id, i.data, u.name FROM items i JOIN users u ON u.id = i.user_id
        WHERE i.kind = 'note' AND i.deleted = 0 AND i.user_id != ? AND json_extract(i.data, '$.scope') = 'crew'
-       ORDER BY i.updated_at DESC LIMIT 500`,
+         AND ${noteKey} IN (${list.map(() => '?').join(', ')})
+         AND EXISTS (
+           SELECT 1 FROM items b WHERE b.user_id = i.user_id AND b.kind = 'boat' AND b.deleted = 0
+             AND json_extract(b.data, '$.isOwn') = 1
+             AND ${sqlSailKey("json_extract(b.data, '$.sailNumber')")} = ${noteKey})
+       ORDER BY i.updated_at DESC LIMIT ?`,
     )
-    .bind(u.id)
+    .bind(u.id, ...list, MAX_CREW_NOTES)
     .all<{ id: string; data: string | null; name: string | null }>();
   const notes = [];
   for (const r of rows.results) {
@@ -111,5 +130,5 @@ export async function crewNotes(env: AccountEnv, u: UserRow) {
       /* skip */
     }
   }
-  return { notes: notes.slice(0, 200) };
+  return { notes };
 }
