@@ -1,0 +1,153 @@
+import { readFileSync } from 'node:fs';
+import { DatabaseSync } from 'node:sqlite';
+import { describe, expect, it } from 'vitest';
+import worker, { type Env } from './worker';
+import type { D1Database, D1PreparedStatement } from './accounts';
+
+/** Crews with invitations (P-022) over the real routes, on an in-memory D1. */
+function fakeD1(): D1Database {
+  const sql = new DatabaseSync(':memory:');
+  sql.exec('PRAGMA foreign_keys = ON');
+  for (const f of ['0001_accounts.sql', '0002_terms_reset_pdf.sql', '0003_pdf_cache.sql', '0004_rate_limits.sql', '0005_crews.sql'])
+    sql.exec(readFileSync(new URL(`../migrations/${f}`, import.meta.url), 'utf8'));
+  const stmt = (q: string, args: unknown[] = []): D1PreparedStatement => ({
+    bind: (...v: unknown[]) => stmt(q, v),
+    first: async <T,>() => (sql.prepare(q).get(...(args as never[])) as T) ?? null,
+    all: async <T,>() => ({ results: sql.prepare(q).all(...(args as never[])) as T[] }),
+    run: async () => {
+      const r = sql.prepare(q).run(...(args as never[]));
+      return { results: [], meta: { changes: Number(r.changes) } };
+    },
+  });
+  return {
+    prepare: (q) => stmt(q),
+    batch: async (list) => {
+      const out = [];
+      for (const s of list) out.push(await s.run());
+      return out;
+    },
+  };
+}
+
+const ORIGIN = 'https://geopapak.github.io';
+const mkEnv = (): Env => ({ ANTHROPIC_API_KEY: 'k', ACCESS_CODE: 'owner', ALLOWED_ORIGINS: ORIGIN, ADMIN_EMAIL: 'captain@example.test', DB: fakeD1() });
+let ipN = 1;
+async function call<T = Record<string, unknown>>(env: Env, method: string, path: string, body?: unknown, token?: string, status = 200): Promise<T> {
+  const headers: Record<string, string> = { Origin: ORIGIN, 'content-type': 'application/json', 'CF-Connecting-IP': `203.0.113.${ipN++ % 250}` };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const r = await worker.fetch(new Request(`https://w${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) }), env);
+  const j = (await r.json()) as T;
+  expect(r.status, JSON.stringify(j)).toBe(status);
+  return j;
+}
+const user = async (env: Env, name: string) =>
+  (
+    await call<{ token: string }>(env, 'POST', '/auth/register', {
+      email: `${name.split(' ')[0].toLowerCase()}${ipN}@example.test`,
+      password: 'long-password-1',
+      name,
+      acceptTerms: true,
+      acceptPrivacy: true,
+    })
+  ).token;
+
+async function setup() {
+  const env = mkEnv();
+  const owner = await user(env, 'Γιώργος');
+  const mate = await user(env, 'Μαρία Π');
+  const other = await user(env, 'Κώστας');
+  const { crew } = await call<{ crew: { id: string } }>(env, 'POST', '/crews', { boatId: 'b1', boatName: 'ΑΣΤΑΡΤΗ', sailNo: 'GRE-1234' }, owner);
+  return { env, owner, mate, other, crewId: crew.id };
+}
+const join = async (env: Env, owner: string, crewId: string, who: string, body: Record<string, unknown> = {}) => {
+  const inv = await call<{ token: string }>(env, 'POST', `/crews/${crewId}/invites`, { kind: 'crew' }, owner);
+  await call(env, 'POST', `/invites/${inv.token}/accept`, body, who);
+  return inv.token;
+};
+
+describe('crews and invitations (P-022)', () => {
+  it('invite link: one use; the athlete card is seen only by owner and member', async () => {
+    const { env, owner, mate, other, crewId } = await setup();
+    const inv = await call<{ token: string }>(env, 'POST', `/crews/${crewId}/invites`, { kind: 'crew' }, owner);
+    const pre = await call(env, 'GET', `/invites/${inv.token}`, undefined, mate);
+    expect(pre).toMatchObject({ boatName: 'ΑΣΤΑΡΤΗ', owner: 'Γιώργος', kind: 'crew' });
+    await call(env, 'POST', `/invites/${inv.token}/accept`, { athleteCard: 'ΕΙΟ 12345' }, mate);
+    await call(env, 'POST', `/invites/${inv.token}/accept`, {}, other, 410);
+
+    const o = await call<{ owned: { members: { name: string; athleteCard: string | null }[] }[] }>(env, 'GET', '/crews', undefined, owner);
+    expect(o.owned[0].members).toEqual([expect.objectContaining({ name: 'Μαρία Π', athleteCard: 'ΕΙΟ 12345' })]);
+    const m = await call<{ member: { athleteCard: string; crew: Record<string, unknown>[] }[] }>(env, 'GET', '/crews', undefined, mate);
+    expect(m.member[0].athleteCard).toBe('ΕΙΟ 12345');
+    expect(m.member[0].crew[0]).not.toHaveProperty('athleteCard');
+    expect((await call<{ member: unknown[] }>(env, 'GET', '/crews', undefined, other)).member).toEqual([]);
+  });
+
+  it('only the owner invites and shares races; members only read and can leave', async () => {
+    const { env, owner, mate, crewId } = await setup();
+    await call(env, 'POST', `/crews/${crewId}/invites`, { kind: 'crew' }, mate, 404);
+    await join(env, owner, crewId, mate);
+    const plan = {
+      name: 'Χειμερινό 3η',
+      start: Date.now() + 86_400_000,
+      courseName: 'Φάληρο',
+      marks: [{ name: 'Πάνω', lat: 37.9, lon: 23.6 }],
+      note: 'Στις 10 στη μαρίνα',
+      crew: [{ name: 'Μαρία Π', role: 'helm' }],
+      track: [1, 2, 3],
+    };
+    await call(env, 'PUT', `/crews/${crewId}/races/r1`, plan, mate, 404);
+    await call(env, 'PUT', `/crews/${crewId}/races/r1`, plan, owner);
+    const m = await call<{ member: { races: { data: Record<string, unknown> }[] }[] }>(env, 'GET', '/crews', undefined, mate);
+    expect(m.member[0].races[0].data).toMatchObject({ name: 'Χειμερινό 3η', note: 'Στις 10 στη μαρίνα', crew: [{ name: 'Μαρία Π', role: 'helm' }] });
+    expect(m.member[0].races[0].data).not.toHaveProperty('track');
+    const me = await call<{ user: { id: string } }>(env, 'GET', '/me', undefined, mate);
+    await call(env, 'DELETE', `/crews/${crewId}/members/${me.user.id}`, undefined, mate);
+    expect((await call<{ member: unknown[] }>(env, 'GET', '/crews', undefined, mate)).member).toEqual([]);
+  });
+
+  it('a guest sees only their race and loses access after it', async () => {
+    const { env, owner, mate, other, crewId } = await setup();
+    await call(env, 'PUT', `/crews/${crewId}/races/old`, { name: 'Παλιός', start: Date.now() - 3 * 86_400_000 }, owner);
+    await call(env, 'PUT', `/crews/${crewId}/races/next`, { name: 'Επόμενος', start: Date.now() + 86_400_000 }, owner);
+    const g1 = await call<{ token: string }>(env, 'POST', `/crews/${crewId}/invites`, { kind: 'guest', raceId: 'next' }, owner);
+    await call(env, 'POST', `/invites/${g1.token}/accept`, {}, mate);
+    const m = await call<{ member: { kind: string; races: { raceId: string }[] }[] }>(env, 'GET', '/crews', undefined, mate);
+    expect(m.member[0].kind).toBe('guest');
+    expect(m.member[0].races.map((r) => r.raceId)).toEqual(['next']);
+    const g2 = await call<{ token: string }>(env, 'POST', `/crews/${crewId}/invites`, { kind: 'guest', raceId: 'old' }, owner);
+    await call(env, 'POST', `/invites/${g2.token}/accept`, {}, other);
+    expect((await call<{ member: unknown[] }>(env, 'GET', '/crews', undefined, other)).member).toEqual([]);
+  });
+
+  it('crew notes go only to the owner and permanent crew of that sail number', async () => {
+    const { env, owner, mate, other, crewId } = await setup();
+    await join(env, owner, crewId, mate);
+    const note = (id: string, sailNo: string, text: string) => ({ kind: 'note', id, updatedAt: Date.now(), data: { id, scope: 'crew', sailNo, text } });
+    await call(env, 'POST', '/sync', { since: 0, changes: [note('n1', '1234', 'ρεύμα στο Φλέβες'), note('n2', '999', 'άλλο σκάφος')] }, mate);
+    // A stranger who only knows the public sail number gets nothing.
+    await call(env, 'POST', '/sync', { since: 0, changes: [{ kind: 'boat', id: 'x', updatedAt: Date.now(), data: { id: 'x', isOwn: true, sailNumber: 'GRE 1234' } }] }, other);
+    const o = await call<{ notes: { text: string; author: string }[] }>(env, 'GET', '/notes/crew', undefined, owner);
+    expect(o.notes.map((n) => n.text)).toEqual(['ρεύμα στο Φλέβες']);
+    expect(o.notes[0].author).toBe('Μαρία');
+    expect((await call<{ notes: unknown[] }>(env, 'GET', '/notes/crew', undefined, other)).notes).toEqual([]);
+  });
+
+  it('export contains my crews and my card; deleting the owner account removes the crew', async () => {
+    const { env, owner, mate, crewId } = await setup();
+    await join(env, owner, crewId, mate, { athleteCard: '777' });
+    const ex = await call<{ memberships: { athleteCard: string }[] }>(env, 'GET', '/me/export', undefined, mate);
+    expect(ex.memberships[0].athleteCard).toBe('777');
+    const exo = await call<{ ownedCrews: { members: Record<string, unknown>[] }[] }>(env, 'GET', '/me/export', undefined, owner);
+    expect(exo.ownedCrews[0].members[0]).not.toHaveProperty('athleteCard');
+    await call(env, 'DELETE', '/me', undefined, owner);
+    expect((await call<{ member: unknown[] }>(env, 'GET', '/crews', undefined, mate)).member).toEqual([]);
+  });
+
+  it('rejects a bad card number and needs the current terms', async () => {
+    const { env, owner, mate, crewId } = await setup();
+    const inv = await call<{ token: string }>(env, 'POST', `/crews/${crewId}/invites`, {}, owner);
+    await call(env, 'POST', `/invites/${inv.token}/accept`, { athleteCard: '<script>' }, mate, 400);
+    await (env.DB as D1Database).prepare('UPDATE users SET terms_version = 2').run();
+    await call(env, 'POST', `/invites/${inv.token}/accept`, {}, mate, 409);
+  });
+});

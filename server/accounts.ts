@@ -8,6 +8,7 @@
 /** The subset of Cloudflare's D1 API we use (kept local: no extra type package). */
 import { log } from './log';
 import { LIMITS, clear, hit, isLimited, prune } from './rateLimit';
+import { deleteCrewStatements, exportCrews } from './crews';
 
 export interface D1Result<T = unknown> {
   results: T[];
@@ -68,7 +69,7 @@ export interface PublicUser {
 }
 
 /** Bump when the Terms or Privacy policy change: everyone accepts again. */
-export const TERMS_VERSION = 2;
+export const TERMS_VERSION = 3;
 /** Free certificate readings for users not (yet) approved for AI. */
 export const FREE_PDF_READS = 3;
 
@@ -314,6 +315,7 @@ export async function exportData(env: AccountEnv, u: UserRow) {
     boats: items.results.filter((r) => r.kind === 'boat').map((r) => (r.data ? JSON.parse(r.data) : null)),
     courses: items.results.filter((r) => r.kind === 'course').map((r) => (r.data ? JSON.parse(r.data) : null)),
     notes: items.results.filter((r) => r.kind === 'note').map((r) => (r.data ? JSON.parse(r.data) : null)),
+    ...(await exportCrews(env, u)),
   };
 }
 
@@ -469,6 +471,7 @@ export async function changePassword(env: AccountEnv, u: UserRow, tokenHash: str
 export async function deleteAccount(env: AccountEnv, u: UserRow) {
   const d = db(env);
   await d.batch([
+    ...deleteCrewStatements(d, u.id),
     d.prepare('DELETE FROM items WHERE user_id = ?').bind(u.id),
     d.prepare('DELETE FROM sessions WHERE user_id = ?').bind(u.id),
     d.prepare('DELETE FROM users WHERE id = ?').bind(u.id),

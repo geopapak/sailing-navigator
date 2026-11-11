@@ -7,7 +7,7 @@ import { parseAisStream } from './race';
 
 function fakeD1(): D1Database {
   const sql = new DatabaseSync(':memory:');
-  for (const f of ['0001_accounts.sql', '0002_terms_reset_pdf.sql', '0003_pdf_cache.sql', '0004_rate_limits.sql']) sql.exec(readFileSync(new URL(`../migrations/${f}`, import.meta.url), 'utf8'));
+  for (const f of ['0001_accounts.sql', '0002_terms_reset_pdf.sql', '0003_pdf_cache.sql', '0004_rate_limits.sql', '0005_crews.sql']) sql.exec(readFileSync(new URL(`../migrations/${f}`, import.meta.url), 'utf8'));
   const stmt = (q: string, args: unknown[] = []): D1PreparedStatement => ({
     bind: (...v: unknown[]) => stmt(q, v),
     first: async <T,>() => (sql.prepare(q).get(...(args as never[])) as T) ?? null,
@@ -180,7 +180,7 @@ describe('race endpoints', () => {
     expect((await post('x'.repeat(30_000))).status).toBe(413);
   });
 
-  it('shares crew notes only with accounts that have the same boat as their own', async () => {
+  it('the same public sail number alone no longer shares crew notes (P-022: crew members only)', async () => {
     const env = mkEnv();
     const sync = (token: string, changes: unknown[]) =>
       worker.fetch(
@@ -200,9 +200,8 @@ describe('race endpoints', () => {
     await sync(crew, [boat('gre 4711')]);
     await sync(other, [boat('GRE-1')]);
     const list = async (t: string) => ((await (await get(env, '/notes/crew', t)).json()) as { notes: { text: string; author: string }[] }).notes;
-    const seen = await list(crew);
-    expect(seen.map((x) => x.text)).toEqual(['shared']);
-    expect(seen[0].author).toBe('Νίκος');
+    // Sharing with the crew now goes through crew invitations (see crews.test.ts).
+    expect(await list(crew)).toEqual([]);
     expect(await list(other)).toEqual([]);
     expect(await list(skipper)).toEqual([]);
     expect((await get(env, '/notes/crew')).status).toBe(401);

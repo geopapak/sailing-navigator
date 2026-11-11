@@ -7,7 +7,7 @@ import type { D1Database, D1PreparedStatement } from './accounts';
 /** D1 on top of Node's built-in SQLite, with the real migration. */
 function fakeD1(): D1Database {
   const sql = new DatabaseSync(':memory:');
-  for (const f of ['0001_accounts.sql', '0002_terms_reset_pdf.sql', '0003_pdf_cache.sql', '0004_rate_limits.sql']) sql.exec(readFileSync(new URL(`../migrations/${f}`, import.meta.url), 'utf8'));
+  for (const f of ['0001_accounts.sql', '0002_terms_reset_pdf.sql', '0003_pdf_cache.sql', '0004_rate_limits.sql', '0005_crews.sql']) sql.exec(readFileSync(new URL(`../migrations/${f}`, import.meta.url), 'utf8'));
   const stmt = (q: string, args: unknown[] = []): D1PreparedStatement => ({
     bind: (...v: unknown[]) => stmt(q, v),
     first: async <T,>() => (sql.prepare(q).get(...(args as never[])) as T) ?? null,
@@ -150,7 +150,7 @@ describe('accounts', () => {
     const me = await ok<{ user: { termsOk: boolean } }>(call(env, 'GET', '/me', undefined, r.token));
     expect(me.user.termsOk).toBe(false);
     await ok(call(env, 'POST', '/me/terms', { version: 99 }, r.token), 409);
-    const acc = await ok<{ user: { termsOk: boolean } }>(call(env, 'POST', '/me/terms', { version: 2 }, r.token));
+    const acc = await ok<{ user: { termsOk: boolean } }>(call(env, 'POST', '/me/terms', { version: 3 }, r.token));
     expect(acc.user.termsOk).toBe(true);
   });
 

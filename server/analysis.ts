@@ -5,6 +5,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { HttpError, type AccountEnv, type UserRow } from './accounts';
 import type { Usage } from './log';
+import { crewCircles } from './crews';
 
 const MODEL = 'claude-opus-5-5';
 
@@ -73,59 +74,37 @@ export const sailKey = (s: unknown) =>
         .replace(/^[A-Z]{3}(?=\d)/, '')
     : '';
 
-/** SQL twin of sailKey() for a JSON text expression (pre-filter; sailKey() confirms in code). */
-function sqlSailKey(expr: string): string {
-  let k = `upper(coalesce(${expr}, ''))`;
-  for (const ch of [' ', '-', '/', '.', '_']) k = `replace(${k}, '${ch}', '')`;
-  return `(CASE WHEN substr(${k}, 1, 3) GLOB '[A-Z][A-Z][A-Z]' AND substr(${k}, 4, 1) GLOB '[0-9]' THEN substr(${k}, 4) ELSE ${k} END)`;
-}
-
 export const MAX_CREW_NOTES = 200;
 
 /**
- * Notes that crew mates shared ("crew" scope) for a boat the user also has as
- * their own boat (same sail number). Interim rule (P-015) until crews with
- * invitations (P-022): the author must also have that boat as their own, and the
- * filter runs in SQL so older notes are not lost behind other people's newer ones.
- * The author is shown by first name only.
+ * Notes that crew mates shared ("crew" scope), for the boat's sail number,
+ * only between the owner and the permanent crew of that boat (P-022, replaces
+ * the sail-number match of P-015). The author is shown by first name only.
  */
 export async function crewNotes(env: AccountEnv, u: UserRow) {
   const d = env.DB!;
-  const mine = await d
-    .prepare("SELECT data FROM items WHERE user_id = ? AND kind = 'boat' AND deleted = 0")
-    .bind(u.id)
-    .all<{ data: string | null }>();
-  const keys = new Set<string>();
-  for (const r of mine.results) {
-    try {
-      const b = r.data ? JSON.parse(r.data) : null;
-      if (b?.isOwn && sailKey(b.sailNumber)) keys.add(sailKey(b.sailNumber));
-    } catch {
-      /* skip */
-    }
-  }
-  if (!keys.size) return { notes: [] };
-  const list = [...keys].slice(0, 20);
-  const noteKey = sqlSailKey("json_extract(i.data, '$.sailNo')");
+  const circles = (await crewCircles(d, u.id)).filter((c) => sailKey(c.sailNo));
+  const byUser = new Map<string, Set<string>>();
+  for (const c of circles)
+    for (const id of c.users) if (id !== u.id) byUser.set(id, new Set([...(byUser.get(id) ?? []), sailKey(c.sailNo)]));
+  if (!byUser.size) return { notes: [] };
+  const ids = [...byUser.keys()].slice(0, 100);
   const rows = await d
     .prepare(
-      `SELECT i.id, i.data, u.name FROM items i JOIN users u ON u.id = i.user_id
-       WHERE i.kind = 'note' AND i.deleted = 0 AND i.user_id != ? AND json_extract(i.data, '$.scope') = 'crew'
-         AND ${noteKey} IN (${list.map(() => '?').join(', ')})
-         AND EXISTS (
-           SELECT 1 FROM items b WHERE b.user_id = i.user_id AND b.kind = 'boat' AND b.deleted = 0
-             AND json_extract(b.data, '$.isOwn') = 1
-             AND ${sqlSailKey("json_extract(b.data, '$.sailNumber')")} = ${noteKey})
+      `SELECT i.id, i.user_id, i.data, us.name FROM items i JOIN users us ON us.id = i.user_id
+       WHERE i.kind = 'note' AND i.deleted = 0 AND i.user_id IN (${ids.map(() => '?').join(', ')})
+         AND json_extract(i.data, '$.scope') = 'crew'
        ORDER BY i.updated_at DESC LIMIT ?`,
     )
-    .bind(u.id, ...list, MAX_CREW_NOTES)
-    .all<{ id: string; data: string | null; name: string | null }>();
+    .bind(...ids, MAX_CREW_NOTES * 3)
+    .all<{ id: string; user_id: string; data: string | null; name: string | null }>();
   const notes = [];
   for (const r of rows.results) {
     try {
       const n = r.data ? JSON.parse(r.data) : null;
-      if (!n || !keys.has(sailKey(n.sailNo))) continue;
+      if (!n || !byUser.get(r.user_id)?.has(sailKey(n.sailNo))) continue;
       notes.push({ ...n, id: `crew:${r.id}`, author: (r.name ?? '').trim().split(/\s+/)[0] || 'Πλήρωμα' });
+      if (notes.length >= MAX_CREW_NOTES) break;
     } catch {
       /* skip */
     }
