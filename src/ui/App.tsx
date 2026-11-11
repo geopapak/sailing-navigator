@@ -7,6 +7,7 @@ import { LiveView } from './LiveView';
 import { PolarView } from './PolarView';
 import { RaceView } from './RaceView';
 import { RaceProvider, useRace } from './RaceContext';
+import { AlertBanner, AlertsProvider } from './RaceAlerts';
 import { KnowledgeProvider } from './KnowledgeContext';
 import { BoatsView } from './BoatsView';
 import { SettingsView } from './SettingsView';
@@ -118,6 +119,7 @@ function Shell() {
       </header>
       <NetStrip />
       <RaceStrip />
+      <AlertBanner />
       <main className="content">
         {error && <p className="errors">{error}</p>}
         {ready && <WhatsNew />}
@@ -256,7 +258,9 @@ export function App() {
       <NavProvider>
         <KnowledgeProvider>
           <RaceProvider>
-            <Shell />
+            <AlertsProvider>
+              <Shell />
+            </AlertsProvider>
           </RaceProvider>
         </KnowledgeProvider>
       </NavProvider>

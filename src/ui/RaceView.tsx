@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { RaceScreen } from './RaceScreen';
 import { useApp } from './AppContext';
 import { useNav, localToMs } from './NavContext';
 import { useRace } from './RaceContext';
@@ -569,6 +570,7 @@ function RaceLive({ onBack, onOpponent, onFinished }: { onBack: () => void; onOp
 
   return (
     <div className="race-live">
+      {recording && <RaceScreen />}
       <section className="card">
         <div className="row between">
           <div>

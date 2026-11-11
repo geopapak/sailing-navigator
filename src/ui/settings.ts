@@ -1,4 +1,5 @@
 import { DEFAULT_INSTRUMENTS } from '../instruments/types';
+import { DEFAULT_ALERTS, type AlertSettings } from '../race/alerts';
 
 export type Theme = 'day' | 'dark' | 'night';
 export type TextSize = 'n' | 'l' | 'xl';
@@ -26,6 +27,8 @@ export interface Settings {
   account?: import('../sync/api').PublicUser;
   /** Boat instruments (Signal K / NMEA 0183 gateway, or the simulator). */
   instruments: import('../instruments/types').InstrumentSettings;
+  /** Manoeuvre alerts during a race (P-023). */
+  alerts: AlertSettings;
 }
 
 /** The project's own server; users can point the app elsewhere in Settings. */
@@ -45,4 +48,5 @@ export const DEFAULT_SETTINGS: Settings = {
   aiCode: '',
   authToken: '',
   instruments: DEFAULT_INSTRUMENTS,
+  alerts: DEFAULT_ALERTS,
 };
