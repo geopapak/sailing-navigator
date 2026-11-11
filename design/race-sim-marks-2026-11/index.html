@@ -1,0 +1,676 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Προσομοίωση και σημαδούρες</title>
+<style>
+  /* Canvas around the phone (not part of the design). */
+  body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans",sans-serif; background:#e5e7eb; color:#111; }
+  .controls { position:sticky; top:0; z-index:50; background:#fff; border-bottom:1px solid #d1d5db; padding:10px 16px; display:flex; flex-wrap:wrap; gap:10px 18px; align-items:center; }
+  .controls label { font-size:.8rem; font-weight:700; color:#374151; margin-right:4px; }
+  .pick { display:inline-flex; border:1px solid #9ca3af; border-radius:999px; overflow:hidden; }
+  .pick button { border:0; background:#fff; padding:8px 12px; font:inherit; font-size:.85rem; font-weight:600; min-height:40px; cursor:pointer; }
+  .pick button + button { border-left:1px solid #d1d5db; }
+  .pick button.on { background:#0b2a4a; color:#fff; }
+  .page { display:flex; flex-wrap:wrap; gap:24px; padding:20px 16px 40px; justify-content:center; align-items:flex-start; }
+  .notes { width:440px; max-width:100%; background:#fff; border-radius:16px; padding:16px 20px; line-height:1.5; font-size:.95rem; box-sizing:border-box; }
+  .notes h2 { margin:.1em 0 .4em; font-size:1.2rem; }
+  .notes h3 { margin:1em 0 .3em; font-size:1rem; }
+  .notes ul, .notes ol { padding-left:1.2em; margin:.3em 0; }
+  .notes .tag { display:inline-block; font-size:.72rem; font-weight:800; padding:2px 7px; border-radius:6px; background:#fef3c7; color:#78350f; margin-right:4px; }
+  .notes .tag.new { background:#dcfce7; color:#14532d; }
+  .notes .warn { background:#fef2f2; border-left:4px solid #b91c1c; padding:8px 10px; border-radius:6px; font-size:.88rem; }
+
+  /* ---------- Phone & app tokens (same as src/ui/styles.css, 0.9.0) ---------- */
+  .phone { width:var(--pw,390px); height:844px; max-width:100%; border-radius:34px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,.28); border:10px solid #111; position:relative; display:flex; flex-direction:column; }
+  .phone[data-theme='day']  { --bg:#fff; --fg:#000; --muted:#4b5563; --card:#f3f4f6; --line:#6b7280; --accent:#0b2a4a; --accent-fg:#fff; --good:#047857; --fair:#b45309; --bad:#b91c1c; --now:#dc2626; --sea:#e0ecf8; --grid:#9fb6cf; }
+  .phone[data-theme='dark'] { --bg:#0b1220; --fg:#f9fafb; --muted:#9ca3af; --card:#162033; --line:#64748b; --accent:#60a5fa; --accent-fg:#0b1220; --good:#34d399; --fair:#fbbf24; --bad:#f87171; --now:#f87171; --sea:#0d1b30; --grid:#24364f; }
+  .phone[data-theme='night']{ --bg:#000; --fg:#ff3b30; --muted:#d8372c; --card:#140303; --line:#b02a20; --accent:#ff3b30; --accent-fg:#000; --good:#ff6b5e; --fair:#d1342a; --bad:#ff3b30; --now:#ff8a80; --sea:#050000; --grid:#3a0805; }
+
+  .phone { background:var(--bg); color:var(--fg); font-size:17px; }
+  .phone * { box-sizing:border-box; }
+  .phone button, .phone input, .phone select { font:inherit; color:inherit; }
+  .scr { flex:1; overflow-y:auto; overflow-x:hidden; padding:10px 12px 16px; }
+  .topbar { display:flex; align-items:center; gap:6px; padding:8px 8px; background:var(--accent); color:var(--accent-fg); }
+  .topbar b { flex:1; font-size:1.05em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tb { background:none; border:0; color:inherit; min-width:52px; min-height:52px; border-radius:10px; cursor:pointer; font-weight:800; font-size:1.1em; }
+  .phone[data-theme='night'] .topbar { background:#000; color:var(--fg); border-bottom:2px solid var(--line); }
+  .phone[data-theme='night'] .btn.primary, .phone[data-theme='night'] .seg button.on, .phone[data-theme='night'] .chip.on { background:#000; color:var(--fg); border-color:var(--fg); box-shadow:inset 0 0 0 2px var(--fg); }
+
+  .card { background:var(--card); border-radius:12px; padding:12px; margin-bottom:10px; }
+  .muted { color:var(--muted); } .small { font-size:.85em; }
+  h3 { margin:0 0 8px; font-size:1em; }
+  .btn { min-height:48px; padding:8px 14px; border-radius:10px; border:2px solid var(--line); background:var(--bg); font-weight:700; cursor:pointer; }
+  .btn.primary { background:var(--accent); color:var(--accent-fg); border-color:var(--accent); }
+  .btn.big { min-height:56px; width:100%; font-size:1.05em; }
+  .btn:disabled { opacity:.45; cursor:default; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .row > .grow { flex:1; min-width:0; }
+  .seg { display:flex; border:2px solid var(--line); border-radius:10px; overflow:hidden; margin:6px 0 10px; }
+  .seg button { flex:1; min-height:48px; border:0; background:var(--bg); font-weight:700; cursor:pointer; padding:0 4px; }
+  .seg button + button { border-left:2px solid var(--line); }
+  .seg button.on { background:var(--accent); color:var(--accent-fg); }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; margin:4px 0 8px; }
+  .chip { min-height:48px; padding:6px 12px; border-radius:999px; border:3px solid var(--line); background:var(--bg); font-weight:700; cursor:pointer; }
+  .chip.on { background:var(--accent); color:var(--accent-fg); border-color:var(--accent); }
+
+  .map { display:block; width:100%; border-radius:12px; border:2px solid var(--line); background:var(--sea); touch-action:none; margin-bottom:8px; }
+  .map text { font-family:inherit; }
+
+  .tiles { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; margin-bottom:8px; }
+  .tile { background:var(--card); border-radius:12px; padding:6px 10px; min-width:0; border:3px solid transparent; }
+  .tile.wide { grid-column:1 / -1; }
+  .tile.good { border-color:var(--good); } .tile.bad { border-color:var(--bad); }
+  .tl { font-size:.75em; font-weight:800; text-transform:uppercase; color:var(--fg); opacity:.85; }
+  .tv { font-size:1.55em; font-weight:800; line-height:1.15; font-variant-numeric:tabular-nums; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ts { font-size:.82em; color:var(--muted); overflow-wrap:anywhere; }
+
+  .transport { display:grid; grid-template-columns:56px 72px minmax(0,1fr); gap:8px; align-items:center; margin-bottom:6px; }
+  .transport .play { min-height:64px; font-size:1.6em; }
+  .range { width:100%; height:48px; accent-color:var(--accent); margin:0 0 6px; }
+  .stepper { display:grid; grid-template-columns:48px minmax(0,1fr) 48px; gap:6px; align-items:center; }
+  .stepper button { min-height:48px; border-radius:10px; border:2px solid var(--line); background:var(--bg); font-weight:800; cursor:pointer; }
+  .stepper .v { text-align:center; font-weight:800; font-size:1.15em; }
+  .stepper .v small { display:block; font-size:.62em; font-weight:700; color:var(--muted); }
+
+  .switch { display:flex; gap:10px; align-items:center; min-height:56px; width:100%; border:2px solid var(--line); border-radius:12px; background:var(--bg); padding:6px 12px; cursor:pointer; text-align:left; margin-bottom:8px; }
+  .switch .knob { width:48px; height:28px; border-radius:14px; border:2px solid var(--line); position:relative; flex-shrink:0; }
+  .switch .knob::after { content:''; position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:9px; background:var(--line); transition:left .15s; }
+  .switch.on .knob { border-color:var(--accent); } .switch.on .knob::after { left:23px; background:var(--accent); }
+
+  .live { border:3px solid var(--fair); border-radius:12px; overflow:hidden; margin-bottom:10px; }
+  .live .band { background:var(--fair); color:var(--bg); font-weight:900; letter-spacing:.12em; text-align:center; padding:4px; font-size:.85em; }
+  .phone[data-theme='night'] .live .band { background:#000; color:var(--fg); border-bottom:2px solid var(--fg); }
+  .live .tiles { padding:8px; margin:0; }
+
+  .field { display:block; margin-bottom:8px; }
+  .field > span { display:block; font-weight:800; font-size:.85em; margin-bottom:4px; }
+  .coord { display:grid; grid-template-columns:minmax(0,62px) minmax(0,1fr) 104px; gap:6px; align-items:center; }
+  .phone input, .phone select { min-height:52px; border:2px solid var(--line); border-radius:10px; background:var(--bg); padding:0 10px; width:100%; min-width:0; font-size:1.05em; font-variant-numeric:tabular-nums; }
+  .phone input.err { border-color:var(--bad); }
+  .coord .seg { margin:0; } .coord .seg button { min-height:48px; }
+  .msg { font-size:.88em; font-weight:700; padding:6px 10px; border-radius:8px; margin:4px 0 8px; border-left:6px solid var(--muted); background:var(--card); }
+  .msg.bad { border-color:var(--bad); color:var(--bad); }
+  .msg.warn { border-color:var(--fair); }
+  .msg.ok { border-color:var(--good); }
+  .preview { font-variant-numeric:tabular-nums; font-weight:800; }
+
+  .fixring { width:150px; height:150px; margin:6px auto 8px; border-radius:50%; border:8px solid var(--line); display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:900; }
+  .fixring.run { border-color:var(--accent); animation:pulse 1s infinite; }
+  .fixring .big { font-size:2.6em; line-height:1; font-variant-numeric:tabular-nums; }
+  @keyframes pulse { 50% { border-color:var(--line); } }
+
+  .endrow { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:6px; align-items:center; padding:8px 0; border-top:2px solid var(--line); }
+  .endrow:first-of-type { border-top:0; }
+  .endrow .nm { font-weight:800; } .endrow .cc { font-variant-numeric:tabular-nums; font-size:.9em; color:var(--muted); }
+
+  .sum td { padding:4px 2px; } .sum td:last-child { text-align:right; font-weight:800; font-variant-numeric:tabular-nums; }
+  .sum { width:100%; border-collapse:collapse; font-size:.92em; }
+  .sum tr + tr td { border-top:1px solid var(--line); }
+
+  .toast { position:absolute; left:12px; right:12px; bottom:14px; background:var(--fg); color:var(--bg); border-radius:12px; padding:8px 8px 8px 14px; display:flex; gap:8px; align-items:center; font-weight:700; z-index:5; }
+  .toast button { min-height:48px; border-radius:10px; border:2px solid var(--bg); background:transparent; color:var(--bg); font-weight:800; padding:0 12px; cursor:pointer; }
+  .phone[data-theme='night'] .toast { background:#000; color:var(--fg); border:2px solid var(--fg); }
+  .phone[data-theme='night'] .toast button { color:var(--fg); border-color:var(--fg); }
+</style>
+</head>
+<body>
+<div class="controls">
+  <span><label>Οθόνη</label><span class="pick" id="pScreen">
+    <button data-v="A">Α · Προσομοίωση</button><button data-v="B">Β · Σημαδούρα</button><button data-v="C">Γ · Γραμμή εκκίνησης</button></span></span>
+  <span><label>Θέμα</label><span class="pick" id="pTheme">
+    <button data-v="day">Μέρα</button><button data-v="dark">Σκοτεινό</button><button data-v="night">Νύχτα</button></span></span>
+  <span><label>Σήμα GPS (δοκιμή)</label><span class="pick" id="pGps">
+    <button data-v="good">Καλό</button><button data-v="weak">Αδύναμο</button><button data-v="none">Κανένα</button></span></span>
+  <span><label>Πλάτος</label><span class="pick" id="pWidth">
+    <button data-v="390">390</button><button data-v="320">320</button></span></span>
+</div>
+
+<div class="page">
+  <div class="phone" id="phone" data-theme="day"></div>
+
+  <div class="notes">
+    <h2>Προσομοίωση αγώνα · Σημαδούρες · Αφετηρία</h2>
+    <p class="small">P-009 / P-010 — πρωτότυπο προς έγκριση. Τα τρία κομμάτια μοιράζονται την ίδια διαδρομή: αν αλλάξεις σημαδούρα στη Β ή άκρη στη Γ, η προσομοίωση στην Α ξαναϋπολογίζεται.</p>
+
+    <h3>Α · Προσομοίωση</h3>
+    <ul>
+      <li><span class="tag new">νέο</span>▶ / ⏸ με ταχύτητα ×10 / ×60 / ×300 και σύρσιμο χρόνου.</li>
+      <li>Ενδείξεις: χρόνος, ταχύτητα σκάφους, πορεία, γωνία ανέμου με ποδαρικό, πανί, σκέλος, απόσταση και ETA στην επόμενη, αναστροφές και υποσταυρώσεις, διορθωμένος χρόνος.</li>
+      <li>«Ιδανικές συνθήκες» = σταθερός άνεμος που αλλάζεις με − / +. Η πορεία ξαναβγαίνει αμέσως.</li>
+      <li>«Στείλε στο Live»: το Live δείχνει τις ίδιες τιμές με λωρίδα <b>ΠΡΟΣΟΜΟΙΩΣΗ</b>. Σβήνει μόνο του όταν φύγεις από την οθόνη.</li>
+      <li>Στο τέλος: σύνοψη με χρόνο ανά σκέλος, μίλια που πλεύσαμε έναντι της ευθείας, αναστροφές, πανιά.</li>
+    </ul>
+
+    <h3>Β · Σημαδούρα</h3>
+    <ul>
+      <li><span class="tag new">νέο</span><b>Μοίρες</b>: γράφεις συντεταγμένες όπως στις οδηγίες πλου (μοίρες και λεπτά, κόμμα ή τελεία). Λάθη με ελληνικό μήνυμα.</li>
+      <li><b>Από άλλη</b>: διόπτευση (μαγνητική ή αληθής) και απόσταση σε ναυτικά μίλια από άλλο σημείο.</li>
+      <li><b>Πάρε στίγμα</b>: πας δίπλα στη σημαδούρα, πατάς, μετράει 10″ και κρατά τον μέσο όρο. Δείχνει ακρίβεια και πόσο μετακινήθηκε, ρωτά πριν αλλάξει και έχει Αναίρεση.</li>
+      <li>Δοκίμασε «Σήμα GPS: Αδύναμο / Κανένα» πάνω.</li>
+    </ul>
+
+    <h3>Γ · Γραμμή εκκίνησης</h3>
+    <ul>
+      <li><span class="tag new">νέο</span>Η εκκίνηση γίνεται <b>γραμμή</b>: Επιτροπή + Pin, καθεμιά με στίγμα ή μοίρες.</li>
+      <li>Μήκος, διόπτευση, <b>ευνοημένη άκρη</b> για τον τωρινό άνεμο (μοίρες και μέτρα), και απόσταση του σκάφους από τη γραμμή. <b>Σύρε το σκάφος</b> στον χάρτη.</li>
+      <li>Η βέλτιστη πορεία ξεκινά από την ευνοημένη πλευρά της γραμμής.</li>
+    </ul>
+
+    <p class="warn">Ενδεικτικό, όχι για ναυσιπλοΐα. Το GPS του κινητού έχει ±5–10 m: αρκεί για την ευνοημένη άκρη, όχι για να κρίνει πρόωρη εκκίνηση.</p>
+
+    <h3>Θέλω την απόφασή σου</h3>
+    <ol>
+      <li>Μέσος όρος στίγματος <b>10 δευτερόλεπτα</b> — καλό ή θέλεις 20–30″ για μεγαλύτερη ακρίβεια;</li>
+      <li>Διόπτευση: προεπιλογή <b>μαγνητική</b> (όπως η πυξίδα) ή αληθής (όπως οι χάρτες);</li>
+      <li>«Στείλε στο Live» με λωρίδα ΠΡΟΣΟΜΟΙΩΣΗ — εντάξει ή το θέλεις μόνο μέσα στην προσομοίωση;</li>
+      <li>Χρονόμετρο εκκίνησης (5-4-1-0) στη Γ τώρα ή μετά (P-008);</li>
+    </ol>
+  </div>
+</div>
+
+<script>
+/* ===================== geometry (local flat projection, nm) ===================== */
+const LAT0 = 37 + 54.2 / 60, LON0 = 23 + 40.1 / 60;
+const KX = 60 * Math.cos(LAT0 * Math.PI / 180);
+const toXY = (p) => ({ x: (p.lon - LON0) * KX, y: (p.lat - LAT0) * 60 });
+const toLL = (x, y) => ({ lat: LAT0 + y / 60, lon: LON0 + x / KX });
+const R = Math.PI / 180;
+const unit = (b) => ({ x: Math.sin(b * R), y: Math.cos(b * R) });
+const brgXY = (a, b) => ((Math.atan2(b.x - a.x, b.y - a.y) / R) + 360) % 360;
+const distXY = (a, b) => Math.hypot(b.x - a.x, b.y - a.y);
+const norm = (d) => ((d % 360) + 360) % 360;
+const sdiff = (a, b) => { let d = norm(a - b); return d > 180 ? d - 360 : d; };
+const NM = 1852;
+const DECL = 5; // magnetic variation (east), from Settings
+
+/* ===================== formatting ===================== */
+const f = (n, d = 0) => n.toFixed(d).replace('.', ',');
+const pad = (n, w) => String(n).padStart(w, '0');
+function dm(v, isLat) {
+  const h = isLat ? (v >= 0 ? 'Β' : 'Ν') : (v >= 0 ? 'Α' : 'Δ');
+  v = Math.abs(v); let d = Math.floor(v); let m = (v - d) * 60;
+  if (m >= 59.9995) { d += 1; m = 0; }
+  return `${pad(d, isLat ? 2 : 3)}° ${pad(m.toFixed(3).replace('.', ','), 6)}′ ${h}`;
+}
+const dmLL = (p) => `${dm(p.lat, true)}  ${dm(p.lon, false)}`;
+function hms(h) { const s = Math.round(h * 3600); return `${Math.floor(s / 3600)}:${pad(Math.floor(s / 60) % 60, 2)}:${pad(s % 60, 2)}`; }
+const deg = (b) => pad(Math.round(norm(b)) % 360, 3) + '°';
+
+/* ===================== state ===================== */
+const P0 = (x, y) => ({ ...toLL(x, y) });
+const S = {
+  screen: 'A', prev: 'A', theme: 'day', gps: 'good', width: 390,
+  tws: 12, twd: 210, wind: 'ideal', tot: 1.045,
+  startMode: 'line',
+  pts: [
+    { id: 'C', name: 'Επιτροπή', kind: 'end', ...P0(0, 0) },
+    { id: 'P', name: 'Pin', kind: 'end', ...P0(0.0855, -0.0692) },
+    { id: 'M1', name: 'Σημ. 1', kind: 'mark', ...P0(-0.957, -1.767) },
+    { id: 'M2', name: 'Σημ. 2', kind: 'mark', ...P0(-1.876, -0.996) },
+    { id: 'F', name: 'Τερματισμός', kind: 'mark', ...P0(-0.3, 0.4) },
+  ],
+  boatC: { x: 0.073, y: 0.017 },
+  simT: 0, playing: false, speed: 60, toLive: false,
+  sel: 'M1', tab: 'dm', form: {}, fix: { phase: 'idle' }, toast: null,
+};
+const byId = (id) => S.pts.find((p) => p.id === id);
+const marks = () => S.pts.filter((p) => p.kind === 'mark');
+
+/* ===================== start line ===================== */
+function lineInfo() {
+  const C = toXY(byId('C')), P = toXY(byId('P'));
+  const wv = unit(S.twd);
+  const len = distXY(C, P);
+  const pc = C.x * wv.x + C.y * wv.y, pp = P.x * wv.x + P.y * wv.y;
+  const adv = Math.abs(pc - pp);
+  const fav = pp > pc ? 'P' : 'C';
+  const bias = Math.asin(Math.min(1, adv / (len || 1))) / R;
+  // normal pointing upwind
+  let n = { x: -(C.y - P.y), y: C.x - P.x }; const nl = Math.hypot(n.x, n.y) || 1; n = { x: n.x / nl, y: n.y / nl };
+  if (n.x * wv.x + n.y * wv.y < 0) n = { x: -n.x, y: -n.y };
+  const b = S.boatC; const over = (b.x - P.x) * n.x + (b.y - P.y) * n.y; // >0 = over the line
+  return { C, P, len, adv, fav, bias, over, brg: brgXY(P, C) };
+}
+function startXY() {
+  if (S.startMode === 'point') return toXY(byId('C'));
+  const L = lineInfo(); const a = L.fav === 'P' ? L.P : L.C, o = L.fav === 'P' ? L.C : L.P;
+  return { x: a.x + (o.x - a.x) * 0.15, y: a.y + (o.y - a.y) * 0.15 };
+}
+
+/* ===================== polar & route (ideal, constant wind) ===================== */
+const PT = [[0, 0], [32, 0], [42, 6.2], [52, 6.7], [60, 7.0], [75, 7.3], [90, 7.5], [110, 7.6], [120, 7.6], [135, 7.4], [150, 7.0], [165, 6.4], [180, 6.0]];
+function bsp(twa) {
+  const fct = Math.min(1.15, 0.45 + 0.55 * Math.min(S.tws, 18) / 12);
+  for (let i = 1; i < PT.length; i++) if (twa <= PT[i][0]) { const [a0, v0] = PT[i - 1], [a1, v1] = PT[i]; return (v0 + (v1 - v0) * (twa - a0) / (a1 - a0)) * fct; }
+  return PT[PT.length - 1][1] * fct;
+}
+const sail = (twa) => twa < 65 ? 'Τζένοα' : twa < 115 ? 'Code 0' : 'Μπαλόνι A2';
+let RT = null;
+function buildRoute() {
+  const course = [{ name: 'Εκκίνηση', ...startXY() }, ...marks().map((m) => ({ name: m.name, ...toXY(m) }))];
+  const segs = [], legs = []; let t = 0;
+  for (let i = 0; i < course.length - 1; i++) {
+    const a = course[i], b = course[i + 1], br = brgXY(a, b), d = distXY(a, b);
+    const rel = sdiff(br, S.twd), abs = Math.abs(rel);
+    const leg = { i, name: `${a.name} → ${b.name}`, to: b, t0: t, straight: d, sailed: 0, kind: abs < 42 ? 'beat' : abs > 150 ? 'run' : 'reach' };
+    let pieces;
+    if (leg.kind !== 'reach') {
+      const twa = leg.kind === 'beat' ? 42 : 150;
+      const h1 = norm(S.twd - twa), h2 = norm(S.twd + twa);
+      const u1 = unit(h1), u2 = unit(h2), v = { x: b.x - a.x, y: b.y - a.y };
+      const det = u1.x * u2.y - u1.y * u2.x;
+      const p = (v.x * u2.y - v.y * u2.x) / det, q = (u1.x * v.y - u1.y * v.x) / det;
+      const n = d > 0.8 ? 4 : 2; pieces = [];
+      for (let k = 0; k < n; k++) pieces.push(k % 2 === 0 ? { h: h1, len: 2 * p / n, twa, side: 'δεξιές' } : { h: h2, len: 2 * q / n, twa, side: 'αριστερές' });
+    } else pieces = [{ h: br, len: d, twa: abs, side: rel < 0 ? 'δεξιές' : 'αριστερές' }];
+    let cur = { x: a.x, y: a.y };
+    pieces.forEach((pc, k) => {
+      const u = unit(pc.h), nx = { x: cur.x + u.x * pc.len, y: cur.y + u.y * pc.len };
+      const v = bsp(pc.twa), dur = pc.len / v;
+      segs.push({ a: cur, b: nx, hdg: pc.h, twa: pc.twa, side: pc.side, bsp: v, t0: t, t1: t + dur, leg: i, sail: sail(pc.twa), man: k > 0 ? (leg.kind === 'beat' ? 'tack' : 'gybe') : null });
+      t += dur; leg.sailed += pc.len; cur = nx;
+    });
+    leg.t1 = t; legs.push(leg);
+  }
+  RT = { segs, legs, T: t, course };
+  if (S.simT > t) S.simT = t;
+}
+function stateAt(t) {
+  const s = RT.segs.find((g) => t <= g.t1) || RT.segs[RT.segs.length - 1];
+  const k = s.t1 > s.t0 ? Math.min(1, Math.max(0, (t - s.t0) / (s.t1 - s.t0))) : 1;
+  const pos = { x: s.a.x + (s.b.x - s.a.x) * k, y: s.a.y + (s.b.y - s.a.y) * k };
+  const leg = RT.legs[s.leg];
+  const tacks = RT.segs.filter((g) => g.man === 'tack' && g.t0 <= t).length;
+  const gybes = RT.segs.filter((g) => g.man === 'gybe' && g.t0 <= t).length;
+  return { s, pos, leg, tacks, gybes, toMark: distXY(pos, leg.to), eta: leg.t1 - t };
+}
+
+/* ===================== map (SVG) ===================== */
+let MAPT = null;
+function mapSVG(o) {
+  const W = 370, H = o.h, padp = 30;
+  const xs = o.bounds.map((p) => p.x), ys = o.bounds.map((p) => p.y);
+  const minx = Math.min(...xs), maxx = Math.max(...xs), miny = Math.min(...ys), maxy = Math.max(...ys);
+  const k = Math.min((W - 2 * padp) / ((maxx - minx) || 0.1), (H - 2 * padp) / ((maxy - miny) || 0.1));
+  const cx = (minx + maxx) / 2, cy = (miny + maxy) / 2;
+  const X = (p) => (W / 2 + (p.x - cx) * k).toFixed(1), Y = (p) => (H / 2 - (p.y - cy) * k).toFixed(1);
+  MAPT = { W, H, k, cx, cy };
+  let g = '';
+  // graticule
+  const spanMin = H / k; const step = [0.05, 0.1, 0.2, 0.5, 1, 2].find((s) => spanMin / s <= 5) || 2;
+  const latLo = toLL(0, cy - H / 2 / k).lat * 60, latHi = toLL(0, cy + H / 2 / k).lat * 60;
+  for (let m = Math.ceil(latLo / step) * step; m <= latHi; m += step) {
+    const y = Y({ y: m - LAT0 * 60 });
+    const dd = Math.floor(m / 60), mm = m - dd * 60;
+    g += `<line x1="0" x2="${W}" y1="${y}" y2="${y}" stroke="var(--grid)" stroke-width="1"/><text x="${W - 4}" y="${y - 3}" text-anchor="end" font-size="9" fill="var(--muted)">${dd}°${f(mm, step < 1 ? 2 : 0)}′</text>`;
+  }
+  const lonLo = toLL(cx - W / 2 / k, 0).lon * 60, lonHi = toLL(cx + W / 2 / k, 0).lon * 60;
+  for (let m = Math.ceil(lonLo / step) * step; m <= lonHi; m += step) {
+    const x = X({ x: (m / 60 - LON0) * KX });
+    const dd = Math.floor(m / 60), mm = m - dd * 60;
+    g += `<line y1="0" y2="${H}" x1="${x}" x2="${x}" stroke="var(--grid)" stroke-width="1"/><text x="${+x + 3}" y="${H - 4}" font-size="9" fill="var(--muted)">${pad(dd, 3)}°${f(mm, step < 1 ? 2 : 0)}′</text>`;
+  }
+  // course legs
+  if (o.course) { const c = o.course; for (let i = 0; i < c.length - 1; i++) g += `<line x1="${X(c[i])}" y1="${Y(c[i])}" x2="${X(c[i + 1])}" y2="${Y(c[i + 1])}" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="3 5"/>`; }
+  // track
+  if (o.track) {
+    const all = [RT.segs[0].a, ...RT.segs.map((s) => s.b)].map((p) => `${X(p)},${Y(p)}`).join(' ');
+    g += `<polyline points="${all}" fill="none" stroke="var(--accent)" stroke-width="2" opacity=".35"/>`;
+    if (o.boat) {
+      const done = [RT.segs[0].a, ...RT.segs.filter((s) => s.t1 <= o.t).map((s) => s.b), o.boat].map((p) => `${X(p)},${Y(p)}`).join(' ');
+      g += `<polyline points="${done}" fill="none" stroke="var(--accent)" stroke-width="3"/>`;
+    }
+  }
+  // start line
+  if (S.startMode === 'line' && o.line !== false) {
+    const L = lineInfo();
+    g += `<line x1="${X(L.P)}" y1="${Y(L.P)}" x2="${X(L.C)}" y2="${Y(L.C)}" stroke="var(--good)" stroke-width="3" stroke-dasharray="7 4"/>`;
+    const fp = L.fav === 'P' ? L.P : L.C;
+    if (o.fav) g += `<circle cx="${X(fp)}" cy="${Y(fp)}" r="15" fill="none" stroke="var(--good)" stroke-width="3"/>`;
+  }
+  // points
+  S.pts.forEach((p) => {
+    if (p.id === 'P' && S.startMode === 'point') return;
+    const q = toXY(p), x = X(q), y = Y(q);
+    if (o.hl === p.id) g += `<circle cx="${x}" cy="${y}" r="12" fill="none" stroke="var(--accent)" stroke-width="3"/>`;
+    g += p.id === 'C'
+      ? `<rect x="${x - 6}" y="${y - 6}" width="12" height="12" rx="2" fill="var(--fg)" stroke="var(--bg)" stroke-width="2"/>`
+      : `<circle cx="${x}" cy="${y}" r="6.5" fill="var(--fair)" stroke="var(--bg)" stroke-width="2"/>`;
+    const nm = p.id === 'C' && S.startMode === 'point' ? 'Εκκίνηση' : p.name;
+    if (p.kind === 'end' && !o.endLabels && S.startMode === 'line') { if (p.id === 'C') g += `<text x="${+x + 10}" y="${+y + 16}" font-size="12" font-weight="800" fill="var(--fg)" stroke="var(--sea)" stroke-width="3" paint-order="stroke">Εκκίνηση</text>`; return; }
+    g += `<text x="${+x + 10}" y="${+y + 4}" font-size="12" font-weight="800" fill="var(--fg)" stroke="var(--sea)" stroke-width="3" paint-order="stroke">${nm}</text>`;
+  });
+  // boat
+  if (o.boat) g += `<g id="${o.boatId || 'boat'}" transform="translate(${X(o.boat)},${Y(o.boat)}) rotate(${o.hdg || 0})" style="cursor:${o.drag ? 'grab' : 'default'}"><circle r="18" fill="transparent"/><path d="M0,-11 L6,7 L0,4 L-6,7Z" fill="var(--now)" stroke="var(--bg)" stroke-width="1.5"/></g>`;
+  // wind arrow (points where the wind goes)
+  g += `<g transform="translate(34,34)"><circle r="24" fill="var(--bg)" opacity=".85" stroke="var(--line)" stroke-width="1.5"/><g transform="rotate(${S.twd + 180})"><path d="M0,-14 L0,12 M-6,6 L0,13 L6,6" stroke="var(--fg)" stroke-width="3" fill="none" stroke-linecap="round"/></g></g>
+        <text x="34" y="72" text-anchor="middle" font-size="11" font-weight="800" fill="var(--fg)" stroke="var(--sea)" stroke-width="3" paint-order="stroke">${S.tws} kn · ${deg(S.twd)}</text>`;
+  return `<svg class="map" id="${o.id}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Χάρτης διαδρομής">${g}</svg>`;
+}
+const courseBounds = () => [startXY(), ...S.pts.map(toXY)];
+
+/* ===================== screens ===================== */
+const phone = document.getElementById('phone');
+function topBar(title, back) { return `<div class="topbar">${back ? `<button class="tb" data-act="back" aria-label="Πίσω">←</button>` : '<span style="width:8px"></span>'}<b>${title}</b></div>`; }
+function stepper(label, val, sub, dec, inc) { return `<div class="stepper"><button data-act="${dec}" aria-label="${label} λιγότερο">−</button><div class="v">${val}<small>${label}${sub ? ' · ' + sub : ''}</small></div><button data-act="${inc}" aria-label="${label} περισσότερο">+</button></div>`; }
+
+function readouts(t) {
+  const st = stateAt(t), s = st.s;
+  const corr = t * S.tot;
+  return `<div class="tiles">
+    <div class="tile"><div class="tl">Χρόνος</div><div class="tv">${hms(t)}</div><div class="ts">διορθ. ${hms(corr)}</div></div>
+    <div class="tile"><div class="tl">Ταχύτητα</div><div class="tv">${f(s.bsp, 1)} <small style="font-size:.5em">kn</small></div><div class="ts">BSP · ιδανικό</div></div>
+    <div class="tile"><div class="tl">Πορεία</div><div class="tv">${deg(s.hdg)}</div><div class="ts">μαγν. ${deg(s.hdg - DECL)}</div></div>
+    <div class="tile"><div class="tl">Γωνία ανέμου</div><div class="tv">${Math.round(s.twa)}°</div><div class="ts">ποδαρικό ${s.side}</div></div>
+    <div class="tile"><div class="tl">Πανί</div><div class="tv" style="font-size:1.25em">${s.sail}</div><div class="ts">TWS ${S.tws} kn · ${deg(S.twd)}</div></div>
+    <div class="tile"><div class="tl">Επόμενη</div><div class="tv">${f(st.toMark, 2)} <small style="font-size:.5em">NM</small></div><div class="ts">${st.leg.to.name} · σε ${Math.max(0, Math.round(st.eta * 60))}′</div></div>
+    <div class="tile wide"><div class="row"><div class="grow"><div class="tl">Σκέλος ${st.leg.i + 1}/${RT.legs.length}</div><div class="ts" style="color:var(--fg);font-weight:700">${st.leg.name}</div></div>
+      <div style="text-align:right"><div class="tl">Αναστρ. · Υποσταυρ.</div><div class="tv" style="font-size:1.25em">${st.tacks} · ${st.gybes}</div></div></div></div>
+  </div>`;
+}
+function liveMini(t) {
+  const s = stateAt(t).s;
+  return `<div class="live"><div class="band">ΠΡΟΣΟΜΟΙΩΣΗ — ΟΧΙ ΑΛΗΘΙΝΑ ΟΡΓΑΝΑ</div><div class="tiles">
+    <div class="tile"><div class="tl">Live · Ταχύτητα</div><div class="tv">${f(s.bsp, 1)}</div></div>
+    <div class="tile"><div class="tl">Live · Γωνία</div><div class="tv">${Math.round(s.twa)}° ${s.side === 'δεξιές' ? 'Δ' : 'Α'}</div></div></div>
+    <div class="small muted" style="padding:0 10px 8px">Έτσι φαίνεται το Live τώρα. Γυρίζει στα κανονικά μόλις φύγεις από την προσομοίωση ή συνδεθούν όργανα.</div></div>`;
+}
+function summary() {
+  const sailed = RT.legs.reduce((a, l) => a + l.sailed, 0), straight = RT.legs.reduce((a, l) => a + l.straight, 0);
+  const tacks = RT.segs.filter((g) => g.man === 'tack').length, gybes = RT.segs.filter((g) => g.man === 'gybe').length;
+  const sails = [...new Set(RT.segs.map((s) => s.sail))].join(', ');
+  return `<div class="card"><h3>🏁 Σύνοψη (ιδανικές συνθήκες)</h3><table class="sum">
+    ${RT.legs.map((l) => `<tr><td>${l.name}</td><td>${hms(l.t1 - l.t0)}</td></tr>`).join('')}
+    <tr><td><b>Συνολικός χρόνος</b></td><td>${hms(RT.T)}</td></tr>
+    <tr><td>Διορθωμένος (ToT ${f(S.tot, 4)})</td><td>${hms(RT.T * S.tot)}</td></tr>
+    <tr><td>Μίλια που πλεύσαμε / ευθεία</td><td>${f(sailed, 2)} / ${f(straight, 2)}</td></tr>
+    <tr><td>Αναστρ. · Υποσταυρ.</td><td>${tacks} · ${gybes}</td></tr>
+    <tr><td>Πανιά</td><td>${sails}</td></tr></table>
+    <p class="small muted" style="margin:8px 0 0">Χωρίς απώλεια στις αναστροφές και χωρίς ρεύμα. Ο αληθινός αγώνας θα είναι πιο αργός.</p></div>`;
+}
+
+function renderA() {
+  if (!RT) buildRoute();
+  const t = S.simT, st = stateAt(t);
+  return topBar('Προσομοίωση αγώνα', true) + `<div class="scr">
+    <div class="seg" role="group" aria-label="Άνεμος"><button data-act="wind:ideal" class="${S.wind === 'ideal' ? 'on' : ''}">Ιδανικές συνθήκες</button><button data-act="wind:fc" class="${S.wind === 'fc' ? 'on' : ''}">Πρόγνωση</button></div>
+    ${S.wind === 'fc' ? `<div class="msg warn">Με πρόγνωση ο άνεμος αλλάζει στη διαδρομή. Στο πρωτότυπο δείχνουμε μόνο τις ιδανικές.</div>` : ''}
+    <div class="row" style="margin-bottom:8px"><div class="grow">${stepper('Ένταση', S.tws + ' kn', '', 'tws-', 'tws+')}</div><div class="grow">${stepper('Από', deg(S.twd), '', 'twd-', 'twd+')}</div></div>
+    <div id="mapA">${mapSVG({ id: 'svgA', h: 270, bounds: courseBounds(), course: RT.course, track: true, boat: st.pos, hdg: st.s.hdg, t })}</div>
+    <div class="transport">
+      <button class="btn" data-act="rew" aria-label="Από την αρχή">⏮</button>
+      <button class="btn primary play" data-act="play" aria-label="${S.playing ? 'Παύση' : 'Αναπαραγωγή'}">${S.playing ? '⏸' : '▶'}</button>
+      <div class="seg" style="margin:0">${[10, 60, 300].map((v) => `<button data-act="spd:${v}" class="${S.speed === v ? 'on' : ''}">×${v}</button>`).join('')}</div>
+    </div>
+    <input class="range" id="simT" type="range" min="0" max="${RT.T}" step="0.0005" value="${t}" aria-label="Χρόνος αγώνα">
+    <div id="ro">${readouts(t)}</div>
+    <button class="switch ${S.toLive ? 'on' : ''}" data-act="live"><span class="knob"></span><span><b>Στείλε στο Live</b><br><span class="small muted">να δεις τις οθόνες σαν να πλέεις</span></span></button>
+    <div id="liveMini">${S.toLive ? liveMini(t) : ''}</div>
+    <div id="sum">${t >= RT.T - 1e-6 ? summary() : `<button class="btn big" data-act="end">Δες τη σύνοψη</button>`}</div>
+    <div class="msg">Ενδεικτικό, όχι για ναυσιπλοΐα.</div>
+  </div>`;
+}
+
+function renderB() {
+  const sel = S.sel === 'new' ? null : byId(S.sel);
+  const chips = S.pts.filter((p) => !(p.id === 'P' && S.startMode === 'point')).map((p) => `<button class="chip ${S.sel === p.id ? 'on' : ''}" data-act="sel:${p.id}">${p.id === 'C' && S.startMode === 'point' ? 'Εκκίνηση' : p.name}</button>`).join('') + `<button class="chip ${S.sel === 'new' ? 'on' : ''}" data-act="sel:new">+ Νέα</button>`;
+  let body = '';
+  if (S.tab === 'dm') {
+    const F = S.form;
+    body = `<div class="field"><span>Πλάτος</span><div class="coord">
+        <input id="latD" inputmode="numeric" value="${F.latD ?? ''}" aria-label="Μοίρες πλάτους" class="${F.err === 'latD' ? 'err' : ''}"><input id="latM" inputmode="decimal" value="${F.latM ?? ''}" aria-label="Λεπτά πλάτους" class="${F.err === 'latM' ? 'err' : ''}">
+        <div class="seg"><button data-act="h:latH:Β" class="${F.latH !== 'Ν' ? 'on' : ''}">Β</button><button data-act="h:latH:Ν" class="${F.latH === 'Ν' ? 'on' : ''}">Ν</button></div></div></div>
+      <div class="field"><span>Μήκος</span><div class="coord">
+        <input id="lonD" inputmode="numeric" value="${F.lonD ?? ''}" aria-label="Μοίρες μήκους" class="${F.err === 'lonD' ? 'err' : ''}"><input id="lonM" inputmode="decimal" value="${F.lonM ?? ''}" aria-label="Λεπτά μήκους" class="${F.err === 'lonM' ? 'err' : ''}">
+        <div class="seg"><button data-act="h:lonH:Α" class="${F.lonH !== 'Δ' ? 'on' : ''}">Α</button><button data-act="h:lonH:Δ" class="${F.lonH === 'Δ' ? 'on' : ''}">Δ</button></div></div></div>
+      <div class="small muted" style="margin:-2px 0 6px">Μοίρες · λεπτά (π.χ. 37 · 54,200). Δέχεται κόμμα ή τελεία, και δεκαδικές μοίρες χωρίς λεπτά.</div>
+      ${F.msg ? `<div class="msg ${F.msgK || 'bad'}">${F.msg}</div>` : ''}
+      <button class="btn primary big" data-act="saveDM">${sel ? 'Αποθήκευση θέσης' : 'Πρόσθεσε σημαδούρα'}</button>`;
+  } else if (S.tab === 'bd') {
+    const F = S.form, from = F.from || (S.sel === 'M1' ? 'C' : 'M1');
+    const opts = S.pts.filter((p) => p.id !== S.sel && !(p.id === 'P' && S.startMode === 'point')).map((p) => `<option value="${p.id}" ${p.id === from ? 'selected' : ''}>${p.name}</option>`).join('');
+    const pv = bdPreview();
+    body = `<label class="field"><span>Από</span><select id="bdFrom">${opts}</select></label>
+      <div class="row"><label class="field grow"><span>Διόπτευση (°)</span><input id="bdB" inputmode="numeric" value="${F.b ?? ''}"></label>
+      <label class="field grow"><span>Απόσταση (NM)</span><input id="bdD" inputmode="decimal" value="${F.d ?? ''}"></label></div>
+      <div class="seg"><button data-act="mag:1" class="${F.mag !== false ? 'on' : ''}">Μαγνητική</button><button data-act="mag:0" class="${F.mag === false ? 'on' : ''}">Αληθής</button></div>
+      <div class="msg ${pv.ok ? 'ok' : ''}" id="bdPv">${pv.html}</div>
+      ${F.msg ? `<div class="msg bad">${F.msg}</div>` : ''}
+      <button class="btn primary big" data-act="saveBD">${sel ? 'Αποθήκευση θέσης' : 'Πρόσθεσε σημαδούρα'}</button>`;
+  } else body = fixBody(sel);
+  const title = sel ? (sel.id === 'C' && S.startMode === 'point' ? 'Εκκίνηση' : sel.name) : 'Νέα σημαδούρα';
+  return topBar(title, true) + `<div class="scr">
+    <div class="chips">${chips}</div>
+    ${mapSVG({ id: 'svgB', h: 200, bounds: courseBounds(), course: [startXY(), ...marks().map(toXY)], hl: S.sel, fav: false })}
+    ${sel ? `<div class="small" style="margin-bottom:4px"><b>Τώρα:</b> <span class="preview">${dmLL(sel)}</span></div>` : ''}
+    <div class="seg" role="tablist"><button data-act="tab:dm" class="${S.tab === 'dm' ? 'on' : ''}">Μοίρες</button><button data-act="tab:bd" class="${S.tab === 'bd' ? 'on' : ''}">Από άλλη</button><button data-act="tab:fix" class="${S.tab === 'fix' ? 'on' : ''}">Πάρε στίγμα</button></div>
+    ${body}
+  </div>`;
+}
+function fixBody(sel) {
+  const X = S.fix;
+  const who = sel ? `δίπλα στ${sel.kind === 'end' ? (sel.id === 'C' ? 'ο σκάφος επιτροπής' : 'ην άκρη Pin') : 'η ' + sel.name}` : 'εκεί που θέλεις τη νέα σημαδούρα';
+  if (X.phase === 'run') return `<div class="fixring run"><div class="big">${X.left}″</div><div class="small">${X.n} μετρήσεις</div></div>
+      <div style="text-align:center;font-weight:800">Ακρίβεια τώρα ±${X.acc} m</div><p class="small muted" style="text-align:center">Κράτα το κινητό σταθερό, ${who}.</p>
+      <button class="btn big" data-act="fixStop">Άκυρο</button>`;
+  if (X.phase === 'error') return `<div class="msg bad">Δεν βρέθηκε θέση GPS.</div><div class="card small">Άνοιξε την <b>Τοποθεσία</b> στο κινητό και δώσε άδεια στην εφαρμογή (Ρυθμίσεις κινητού → Εφαρμογές → Sailing Navigator → Τοποθεσία → «Ακριβής»). Μετά πάτα ξανά.<br><br>Εναλλακτικά γράψε τις συντεταγμένες στο «Μοίρες».</div>
+      <button class="btn primary big" data-act="fixStart">Ξαναδοκίμασε</button>`;
+  if (X.phase === 'done') {
+    const r = X.res; const weak = r.acc > 25;
+    return `<div class="card"><div class="tl">Μέσος όρος ${r.n} μετρήσεων${r.rej ? ` · απορρίφθηκαν ${r.rej}` : ''}</div>
+      <div class="preview" style="font-size:1.05em;margin:4px 0">${dmLL(r)}</div>
+      <div class="row"><div class="grow"><div class="tl">Ακρίβεια</div><div class="tv" style="color:${weak ? 'var(--bad)' : 'var(--good)'}">±${r.acc} m</div></div>
+      ${sel ? `<div class="grow"><div class="tl">Μετακίνηση</div><div class="tv">${Math.round(r.shift)} m</div><div class="ts">προς ${deg(r.shiftB)}</div></div>` : ''}</div></div>
+      ${weak ? `<div class="msg bad">Αδύναμο σήμα — ξαναπάρε στίγμα, ή κράτησέ το αν δεν γίνεται καλύτερα.</div>` : ''}
+      <div class="row"><button class="btn primary grow" data-act="fixSave">${sel ? 'Αντικατάσταση θέσης' : 'Πρόσθεσε σημαδούρα'}</button><button class="btn" data-act="fixStart">Ξανά</button></div>`;
+  }
+  return `<div class="fixring"><div style="font-size:2.2em">⌖</div><div class="small">10″ μέσος όρος</div></div>
+    <p class="small" style="text-align:center">Πήγαινε ${who} και πάτα. Η εφαρμογή μετράει 10 δευτερόλεπτα και κρατά τον μέσο όρο.</p>
+    <button class="btn primary big" data-act="fixStart">Πάρε στίγμα</button>`;
+}
+function renderC() {
+  const L = lineInfo();
+  const pt = S.startMode === 'point';
+  const favName = L.fav === 'P' ? 'Pin' : 'Επιτροπή';
+  const bounds = [L.C, L.P, S.boatC, { x: L.C.x - 0.02, y: L.C.y + 0.02 }, { x: L.P.x + 0.02, y: L.P.y - 0.02 }];
+  const over = L.over > 0, dm_ = Math.round(Math.abs(L.over) * NM);
+  return topBar('Γραμμή εκκίνησης', true) + `<div class="scr">
+    <div class="seg"><button data-act="sm:point" class="${pt ? 'on' : ''}">Ένα σημείο</button><button data-act="sm:line" class="${pt ? '' : 'on'}">Γραμμή</button></div>
+    ${pt ? `<div class="msg">Η εκκίνηση είναι ένα σημείο (όπως σήμερα). Γύρισέ τη σε «Γραμμή» για Επιτροπή + Pin.</div>
+      <div class="endrow"><div><div class="nm">Εκκίνηση</div><div class="cc">${dmLL(byId('C'))}</div></div><button class="btn" data-act="goFix:C">⌖ Στίγμα</button></div>` : `
+    <div id="mapC">${mapSVG({ id: 'svgC', h: 230, bounds, boat: S.boatC, boatId: 'boatC', hdg: S.twd, drag: true, fav: true, endLabels: true })}</div>
+    <div class="small muted" style="margin:-4px 0 8px">Σύρε το σκάφος για να δεις την απόσταση από τη γραμμή.</div>
+    <div class="tiles">
+      <div class="tile good"><div class="tl">Ευνοημένη άκρη</div><div class="tv">${L.bias < 1 ? 'Ίσια' : favName}</div><div class="ts">${L.bias < 1 ? 'καμία διαφορά' : `${f(L.bias, 0)}° · κερδίζεις ~${Math.round(L.adv * NM)} m`}</div></div>
+      <div class="tile ${over ? 'bad' : ''}"><div class="tl">Σκάφος</div><div class="tv" style="${over ? 'color:var(--bad)' : ''}">${dm_} m</div><div class="ts" style="${over ? 'color:var(--bad);font-weight:800' : ''}">${over ? 'ΠΑΝΩ από τη γραμμή' : 'κάτω από τη γραμμή'}</div></div>
+      <div class="tile"><div class="tl">Μήκος</div><div class="tv">${Math.round(L.len * NM)} m</div></div>
+      <div class="tile"><div class="tl">Pin → Επιτροπή</div><div class="tv">${deg(L.brg)}</div><div class="ts">μαγν. ${deg(L.brg - DECL)}</div></div>
+    </div>
+    ${stepper('Άνεμος τώρα από', deg(S.twd), S.tws + ' kn', 'twd-', 'twd+')}
+    <div class="card" style="margin-top:10px">
+      ${['C', 'P'].map((id) => `<div class="endrow"><div><div class="nm">${id === 'C' ? '■ Επιτροπή' : '● Pin'}</div><div class="cc">${dmLL(byId(id))}</div></div>
+        <div class="row" style="flex-wrap:nowrap"><button class="btn" data-act="goFix:${id}">⌖ Στίγμα</button><button class="btn" data-act="goDM:${id}" aria-label="Μοίρες">°′</button></div></div>`).join('')}
+    </div>
+    <div class="msg ok">Η βέλτιστη πορεία θα ξεκινά από την πλευρά <b>${favName}</b>.</div>
+    <div class="msg">GPS κινητού ±5–10 m: δείχνει σωστά την ευνοημένη άκρη, όχι την πρόωρη εκκίνηση. Ενδεικτικό, όχι για ναυσιπλοΐα.</div>`}
+  </div>`;
+}
+
+/* ===================== form logic ===================== */
+function fillForm(p) {
+  if (!p) { S.form = { latH: 'Β', lonH: 'Α' }; return; }
+  const sp = (v) => { const a = Math.abs(v), d = Math.floor(a); return [String(d), ((a - d) * 60).toFixed(3).replace('.', ',')]; };
+  const [latD, latM] = sp(p.lat), [lonD, lonM] = sp(p.lon);
+  S.form = { latD, latM, lonD, lonM, latH: p.lat >= 0 ? 'Β' : 'Ν', lonH: p.lon >= 0 ? 'Α' : 'Δ' };
+}
+const num = (s) => { s = String(s ?? '').trim().replace(',', '.'); return s === '' ? NaN : Number(s); };
+function readDM() {
+  const F = S.form; ['latD', 'latM', 'lonD', 'lonM'].forEach((k) => { const el = document.getElementById(k); if (el) F[k] = el.value; });
+  const part = (dk, mk, max) => {
+    const d = num(F[dk]), mRaw = String(F[mk] ?? '').trim();
+    if (isNaN(d) || d < 0 || d > max) return { err: dk, msg: `Οι μοίρες πρέπει να είναι από 0 έως ${max}.` };
+    if (mRaw === '') return { v: d };
+    if (!Number.isInteger(d)) return { err: dk, msg: 'Με λεπτά, οι μοίρες γράφονται χωρίς δεκαδικά.' };
+    const m = num(mRaw);
+    if (isNaN(m) || m < 0 || m >= 60) return { err: mk, msg: 'Τα λεπτά πρέπει να είναι από 0 έως κάτω από 60.' };
+    return { v: d + m / 60 };
+  };
+  const a = part('latD', 'latM', 90); if (a.err) return a;
+  const b = part('lonD', 'lonM', 180); if (b.err) return b;
+  const lat = a.v * (F.latH === 'Ν' ? -1 : 1), lon = b.v * (F.lonH === 'Δ' ? -1 : 1);
+  if (lat < 34 || lat > 42 || lon < 19 || lon > 30) return { err: 'latD', msg: 'Το σημείο είναι εκτός Ελλάδας — έλεγξε Β/Α και τις μοίρες.' };
+  return { lat, lon };
+}
+function bdPreview() {
+  const F = S.form; const from = byId(F.from || (S.sel === 'M1' ? 'C' : 'M1'));
+  const b = num(F.b), d = num(F.d);
+  if (isNaN(b) || isNaN(d)) return { ok: false, html: 'Γράψε διόπτευση και απόσταση.' };
+  if (b < 0 || b >= 360) return { ok: false, html: 'Η διόπτευση πρέπει να είναι 0–359°.' };
+  if (d <= 0 || d > 20) return { ok: false, html: 'Η απόσταση πρέπει να είναι πάνω από 0 και έως 20 NM.' };
+  const tb = F.mag !== false ? b + DECL : b; const o = toXY(from), u = unit(tb);
+  const p = toLL(o.x + u.x * d, o.y + u.y * d);
+  return { ok: true, p, html: `→ <span class="preview">${dmLL(p)}</span>${F.mag !== false ? ` <span class="muted">(αληθής ${deg(tb)})</span>` : ''}` };
+}
+let undo = null;
+function place(p, how) {
+  if (S.sel === 'new') {
+    const n = marks().length; const id = 'M' + Date.now();
+    S.pts.splice(S.pts.length - 1, 0, { id, name: `Σημ. ${n}`, kind: 'mark', lat: p.lat, lon: p.lon });
+    undo = { kind: 'add', id }; S.sel = id; showToast(`Προστέθηκε η Σημ. ${n} (${how})`);
+  } else {
+    const m = byId(S.sel); undo = { kind: 'move', id: m.id, lat: m.lat, lon: m.lon };
+    m.lat = p.lat; m.lon = p.lon; showToast(`Άλλαξε η θέση: ${m.name} (${how})`);
+  }
+  fillForm(byId(S.sel)); RT = null;
+}
+function showToast(text) { S.toast = text; clearTimeout(showToast.t); showToast.t = setTimeout(() => { S.toast = null; render(); }, 6000); }
+
+/* ===================== GPS fix simulation ===================== */
+let fixTimer = null;
+function fixStart() {
+  clearInterval(fixTimer);
+  if (S.gps === 'none') { S.fix = { phase: 'error' }; render(); return; }
+  const sel = S.sel === 'new' ? null : byId(S.sel);
+  const base = sel ? toXY(sel) : { x: -0.5, y: -0.9 };
+  const truth = { x: base.x + 14 / NM, y: base.y - 9 / NM }; // the buoy is really ~17 m away from the old position
+  const weak = S.gps === 'weak';
+  const X = S.fix = { phase: 'run', left: 10, n: 0, rej: 0, sx: 0, sy: 0, accs: [], acc: weak ? 60 : 12, truth };
+  const gauss = () => (Math.random() + Math.random() + Math.random() - 1.5) * 1.4;
+  fixTimer = setInterval(() => {
+    const acc = weak ? 42 + Math.random() * 25 : 4 + Math.random() * 5;
+    if (acc > 50) X.rej++;
+    else { const e = acc / NM; X.sx += truth.x + gauss() * e; X.sy += truth.y + gauss() * e; X.n++; X.accs.push(acc); }
+    X.acc = Math.round(acc); X.left--;
+    if (X.left <= 0) {
+      clearInterval(fixTimer);
+      if (!X.n) { S.fix = { phase: 'done', res: { ...toLL(truth.x, truth.y), n: 0, rej: X.rej, acc: 60, shift: 0, shiftB: 0 } }; }
+      else {
+        const p = { x: X.sx / X.n, y: X.sy / X.n }; const med = X.accs.sort((a, b) => a - b)[Math.floor(X.accs.length / 2)];
+        const shift = sel ? distXY(toXY(sel), p) * NM : 0, shiftB = sel ? brgXY(toXY(sel), p) : 0;
+        S.fix = { phase: 'done', res: { ...toLL(p.x, p.y), n: X.n, rej: X.rej, acc: Math.max(3, Math.round(med * 0.6)), shift, shiftB } };
+      }
+    }
+    render();
+  }, 1000);
+  render();
+}
+
+/* ===================== events ===================== */
+let raf = null, last = 0;
+function loop(ts) {
+  if (!S.playing) { raf = null; return; }
+  const dt = last ? (ts - last) / 1000 : 0; last = ts;
+  S.simT = Math.min(RT.T, S.simT + dt * S.speed / 3600);
+  if (S.simT >= RT.T) { S.playing = false; render(); raf = null; return; }
+  tickA(); raf = requestAnimationFrame(loop);
+}
+function tickA() {
+  const st = stateAt(S.simT);
+  document.getElementById('mapA').innerHTML = mapSVG({ id: 'svgA', h: 270, bounds: courseBounds(), course: RT.course, track: true, boat: st.pos, hdg: st.s.hdg, t: S.simT });
+  document.getElementById('ro').innerHTML = readouts(S.simT);
+  if (S.toLive) document.getElementById('liveMini').innerHTML = liveMini(S.simT);
+  const r = document.getElementById('simT'); if (r && document.activeElement !== r) r.value = S.simT;
+}
+function go(screen) { if (screen !== S.screen) { S.prev = S.screen; if (S.screen === 'A') { S.playing = false; S.toLive = false; } S.screen = screen; } }
+
+phone.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const [a, v, w] = b.dataset.act.split(':');
+  switch (a) {
+    case 'back': go(S.prev === S.screen ? 'A' : S.prev); break;
+    case 'wind': S.wind = v; break;
+    case 'tws-': S.tws = Math.max(4, S.tws - 1); RT = null; break;
+    case 'tws+': S.tws = Math.min(25, S.tws + 1); RT = null; break;
+    case 'twd-': S.twd = norm(S.twd - 5); RT = null; break;
+    case 'twd+': S.twd = norm(S.twd + 5); RT = null; break;
+    case 'play': if (!RT) buildRoute(); if (S.simT >= RT.T) S.simT = 0; S.playing = !S.playing; if (S.playing) { last = 0; if (!raf) raf = requestAnimationFrame(loop); } break;
+    case 'rew': S.simT = 0; S.playing = false; break;
+    case 'spd': S.speed = +v; break;
+    case 'live': S.toLive = !S.toLive; break;
+    case 'end': if (!RT) buildRoute(); S.simT = RT.T; S.playing = false; break;
+    case 'sel': S.sel = v; fillForm(v === 'new' ? null : byId(v)); S.fix = { phase: 'idle' }; clearInterval(fixTimer); break;
+    case 'tab': S.tab = v; S.fix = { phase: 'idle' }; clearInterval(fixTimer); if (v === 'dm') fillForm(S.sel === 'new' ? null : byId(S.sel)); else if (v === 'bd') S.form = { mag: true }; break;
+    case 'h': readDMsafe(); S.form[v] = w; break;
+    case 'mag': S.form.mag = v === '1'; break;
+    case 'saveDM': { const r = readDM(); if (r.err) { S.form.err = r.err; S.form.msg = r.msg; } else { place(r, 'μοίρες'); } break; }
+    case 'saveBD': { const pv = bdPreview(); if (!pv.ok) S.form.msg = pv.html; else { place(pv.p, 'διόπτευση'); S.form = { mag: true }; } break; }
+    case 'fixStart': fixStart(); return;
+    case 'fixStop': clearInterval(fixTimer); S.fix = { phase: 'idle' }; break;
+    case 'fixSave': place(S.fix.res, 'στίγμα'); S.fix = { phase: 'idle' }; break;
+    case 'undo':
+      if (undo) { if (undo.kind === 'add') { S.pts = S.pts.filter((p) => p.id !== undo.id); S.sel = 'M1'; } else { const m = byId(undo.id); m.lat = undo.lat; m.lon = undo.lon; } undo = null; RT = null; fillForm(byId(S.sel)); }
+      S.toast = null; break;
+    case 'sm': S.startMode = v; RT = null; if (v === 'point' && S.sel === 'P') S.sel = 'C'; break;
+    case 'goFix': S.sel = v; S.tab = 'fix'; S.fix = { phase: 'idle' }; go('B'); break;
+    case 'goDM': S.sel = v; S.tab = 'dm'; fillForm(byId(v)); go('B'); break;
+  }
+  render();
+});
+function readDMsafe() { ['latD', 'latM', 'lonD', 'lonM'].forEach((k) => { const el = document.getElementById(k); if (el) S.form[k] = el.value; }); }
+phone.addEventListener('input', (e) => {
+  const id = e.target.id;
+  if (id === 'simT') { S.simT = +e.target.value; S.playing = false; tickA(); const pb = phone.querySelector('[data-act="play"]'); if (pb) pb.textContent = '▶'; const sm = document.getElementById('sum'); if (sm) sm.innerHTML = S.simT >= RT.T - 1e-6 ? summary() : `<button class="btn big" data-act="end">Δες τη σύνοψη</button>`; }
+  if (id === 'bdB' || id === 'bdD') { S.form[id === 'bdB' ? 'b' : 'd'] = e.target.value; S.form.msg = null; const pv = bdPreview(); const el = document.getElementById('bdPv'); el.innerHTML = pv.html; el.className = 'msg' + (pv.ok ? ' ok' : ''); }
+  if (['latD', 'latM', 'lonD', 'lonM'].includes(id)) { S.form[id] = e.target.value; }
+});
+phone.addEventListener('change', (e) => { if (e.target.id === 'bdFrom') { S.form.from = e.target.value; render(); } });
+
+// drag the boat on the start-line map
+let drag = false;
+phone.addEventListener('pointerdown', (e) => { if (e.target.closest('#boatC')) { drag = true; e.target.closest('svg').setPointerCapture(e.pointerId); } });
+phone.addEventListener('pointermove', (e) => {
+  if (!drag) return; const svg = document.getElementById('svgC'); if (!svg) return;
+  const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY; const q = pt.matrixTransform(svg.getScreenCTM().inverse());
+  S.boatC = { x: MAPT.cx + (q.x - MAPT.W / 2) / MAPT.k, y: MAPT.cy - (q.y - MAPT.H / 2) / MAPT.k };
+  const keep = { ...MAPT }; render(); MAPT = keep;
+});
+phone.addEventListener('pointerup', () => { drag = false; });
+
+/* ===================== render ===================== */
+function render() {
+  if (!RT) buildRoute();
+  phone.dataset.theme = S.theme; phone.style.setProperty('--pw', S.width + 'px');
+  const sc = phone.querySelector('.scr'); const y = sc ? sc.scrollTop : 0;
+  const prevScreen = render.last; render.last = S.screen;
+  phone.innerHTML = (S.screen === 'A' ? renderA() : S.screen === 'B' ? renderB() : renderC())
+    + (S.toast ? `<div class="toast" role="status"><span style="flex:1">${S.toast}</span>${undo ? '<button data-act="undo">Αναίρεση</button>' : ''}</div>` : '');
+  const sc2 = phone.querySelector('.scr'); if (sc2 && prevScreen === S.screen) sc2.scrollTop = y;
+  document.querySelectorAll('.pick').forEach((p) => {
+    const key = { pScreen: 'screen', pTheme: 'theme', pGps: 'gps', pWidth: 'width' }[p.id];
+    p.querySelectorAll('button').forEach((b) => b.classList.toggle('on', String(S[key]) === b.dataset.v));
+  });
+  if (S.screen === 'A' && S.playing && !raf) { last = 0; raf = requestAnimationFrame(loop); }
+}
+document.querySelector('.controls').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return; const p = b.parentElement.id; const v = b.dataset.v;
+  if (p === 'pScreen') go(v); if (p === 'pTheme') S.theme = v; if (p === 'pGps') { S.gps = v; S.fix = { phase: 'idle' }; clearInterval(fixTimer); } if (p === 'pWidth') S.width = +v;
+  render();
+});
+fillForm(byId(S.sel));
+S.simT = 0.12;
+render();
+</script>
+</body>
+</html>

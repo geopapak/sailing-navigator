@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Demo αγώνα</title>
+<style>
+  /* Canvas around the phone (not part of the design). */
+  body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans",sans-serif; background:#e5e7eb; color:#111; }
+  .controls { position:sticky; top:0; z-index:50; background:#fff; border-bottom:1px solid #d1d5db; padding:8px 16px; display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center; }
+  .controls label { font-size:.8rem; font-weight:700; color:#374151; margin-right:4px; }
+  .pick { display:inline-flex; border:1px solid #9ca3af; border-radius:999px; overflow:hidden; }
+  .pick button { border:0; background:#fff; padding:8px 12px; font:inherit; font-size:.85rem; font-weight:600; min-height:40px; cursor:pointer; }
+  .pick button + button { border-left:1px solid #d1d5db; }
+  .pick button.on { background:#0b2a4a; color:#fff; }
+  .cbtn { min-height:40px; min-width:52px; border-radius:999px; border:1px solid #0b2a4a; background:#0b2a4a; color:#fff; font-weight:800; font-size:1rem; cursor:pointer; }
+  .clock { font-variant-numeric:tabular-nums; font-weight:800; min-width:70px; }
+  #scrub { width:min(420px, 90vw); }
+  .page { display:flex; flex-wrap:wrap; gap:24px; padding:20px 16px 40px; justify-content:center; align-items:flex-start; }
+  .notes { width:440px; max-width:100%; background:#fff; border-radius:16px; padding:16px 20px; line-height:1.5; font-size:.95rem; box-sizing:border-box; }
+  .notes h2 { margin:.1em 0 .4em; font-size:1.2rem; }
+  .notes h3 { margin:1em 0 .3em; font-size:1rem; }
+  .now { background:#eff6ff; border-left:6px solid #0b2a4a; border-radius:8px; padding:10px 12px; margin:8px 0 12px; }
+  .now b { display:block; font-size:1.05rem; }
+  .ev { list-style:none; padding:0; margin:0; }
+  .ev li { display:flex; gap:10px; padding:6px 8px; border-radius:8px; cursor:pointer; }
+  .ev li:hover { background:#f3f4f6; }
+  .ev li.past { color:#6b7280; }
+  .ev li.cur { background:#dbeafe; color:#000; font-weight:700; }
+  .ev .tm { font-variant-numeric:tabular-nums; min-width:52px; font-weight:700; }
+  .warn { background:#fef2f2; border-left:4px solid #b91c1c; padding:8px 10px; border-radius:6px; font-size:.88rem; }
+
+  /* ---------- Phone & app tokens (as src/ui/styles.css, 0.9.0) ---------- */
+  .phone { width:var(--pw,390px); height:844px; max-width:100%; border-radius:34px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,.28); border:10px solid #111; position:relative; display:flex; flex-direction:column; }
+  .phone[data-theme='day']  { --bg:#fff; --fg:#000; --muted:#4b5563; --card:#f3f4f6; --line:#6b7280; --accent:#0b2a4a; --accent-fg:#fff; --good:#047857; --fair:#b45309; --bad:#b91c1c; --now:#dc2626; --sea:#e0ecf8; --grid:#9fb6cf; }
+  .phone[data-theme='dark'] { --bg:#0b1220; --fg:#f9fafb; --muted:#9ca3af; --card:#162033; --line:#64748b; --accent:#60a5fa; --accent-fg:#0b1220; --good:#34d399; --fair:#fbbf24; --bad:#f87171; --now:#f87171; --sea:#0d1b30; --grid:#24364f; }
+  .phone[data-theme='night']{ --bg:#000; --fg:#ff3b30; --muted:#d8372c; --card:#140303; --line:#b02a20; --accent:#ff3b30; --accent-fg:#000; --good:#ff6b5e; --fair:#d1342a; --bad:#ff3b30; --now:#ff8a80; --sea:#050000; --grid:#3a0805; }
+  .phone { background:var(--bg); color:var(--fg); font-size:17px; }
+  .phone * { box-sizing:border-box; }
+  .phone button { font:inherit; color:inherit; }
+  .demo { background:var(--fair); color:var(--bg); font-weight:900; font-size:.72em; letter-spacing:.1em; text-align:center; padding:3px; }
+  .phone[data-theme='night'] .demo { background:#000; color:var(--fg); border-bottom:1px solid var(--fg); }
+  .topbar { display:flex; align-items:center; gap:8px; padding:10px 12px; background:var(--accent); color:var(--accent-fg); }
+  .topbar b { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .topbar .gps { font-size:.75em; font-weight:800; border:2px solid currentColor; border-radius:999px; padding:2px 8px; }
+  .phone[data-theme='night'] .topbar { background:#000; color:var(--fg); border-bottom:2px solid var(--line); }
+  .scr { flex:1; overflow-y:auto; overflow-x:hidden; padding:10px 12px 16px; }
+  .tabbar { display:grid; grid-template-columns:repeat(6,1fr); background:var(--card); border-top:2px solid var(--line); }
+  .tabbar button { background:none; border:0; padding:6px 0 8px; font-size:.7em; font-weight:700; display:flex; flex-direction:column; align-items:center; gap:2px; color:var(--muted); min-height:60px; cursor:pointer; }
+  .tabbar button .ic { font-size:1.5em; line-height:1.1; }
+  .tabbar button.on { color:var(--fg); box-shadow:inset 0 3px 0 var(--accent); }
+  .tabbar button .dot { position:relative; }
+  .tabbar button .dot::after { content:''; position:absolute; top:-2px; right:-10px; width:9px; height:9px; border-radius:5px; background:var(--now); }
+
+  .seg { display:flex; border:2px solid var(--line); border-radius:10px; overflow:hidden; margin:0 0 10px; }
+  .seg button { flex:1; min-height:48px; border:0; background:var(--bg); font-weight:700; cursor:pointer; }
+  .seg button + button { border-left:2px solid var(--line); }
+  .seg button.on { background:var(--accent); color:var(--accent-fg); }
+  .phone[data-theme='night'] .seg button.on { background:#000; color:var(--fg); box-shadow:inset 0 0 0 2px var(--fg); }
+  .card { background:var(--card); border-radius:12px; padding:12px; margin-bottom:10px; }
+  .muted { color:var(--muted); } .small { font-size:.85em; }
+  h2 { margin:0 0 4px; font-size:1.2em; } h3 { margin:0 0 8px; font-size:1em; }
+
+  .tiles { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-bottom:10px; }
+  .tile { background:var(--card); border-radius:12px; padding:8px 10px; border:3px solid transparent; min-width:0; }
+  .tile.hero { grid-column:1 / -1; }
+  .tile.good { border-color:var(--good); } .tile.good .tv { color:var(--good); }
+  .tile.fair { border-color:var(--fair); } .tile.fair .tv { color:var(--fair); }
+  .tile.bad { border-color:var(--bad); } .tile.bad .tv { color:var(--bad); }
+  .tl { font-size:.8em; font-weight:800; text-transform:uppercase; color:var(--fg); }
+  .tl i { font-style:normal; text-transform:none; font-weight:600; display:block; font-size:.92em; color:var(--muted); }
+  .tv { font-size:2.2em; font-weight:800; line-height:1.1; font-variant-numeric:tabular-nums; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tile.hero .tv { font-size:3.4em; }
+  .ts { font-size:.85em; color:var(--muted); overflow-wrap:anywhere; }
+  .advice { list-style:none; margin:0 0 10px; padding:0; display:grid; gap:6px; }
+  .advice li { padding:10px 12px; border-radius:10px; border-left:8px solid var(--line); background:var(--card); font-weight:600; font-size:1.02em; }
+  .advice .alert { border-left-color:var(--bad); } .advice .warn { border-left-color:var(--fair); } .advice .ok { border-left-color:var(--good); }
+  .map { display:block; width:100%; border-radius:12px; border:2px solid var(--line); background:var(--sea); margin-bottom:8px; }
+  .map text { font-family:inherit; }
+  .hero2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:8px 0; }
+  .big-num { font-size:2em; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.1; }
+  table.leader { width:100%; border-collapse:collapse; }
+  .leader th { text-align:left; font-size:.75em; color:var(--muted); padding:4px; }
+  .leader td { padding:8px 4px; border-top:1px solid var(--line); vertical-align:top; }
+  .leader .num { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .leader tr.own td { font-weight:800; background:color-mix(in srgb, var(--accent) 12%, transparent); }
+  .bubble { border-radius:12px; padding:10px 12px; margin-bottom:8px; max-width:88%; }
+  .bubble.q { margin-left:auto; background:var(--accent); color:var(--accent-fg); font-weight:700; }
+  .phone[data-theme='night'] .bubble.q { background:#000; color:var(--fg); border:2px solid var(--fg); }
+  .bubble.a { background:var(--card); }
+  .toast { position:absolute; left:12px; right:12px; bottom:76px; border-radius:12px; padding:10px 14px; font-weight:800; background:var(--fg); color:var(--bg); z-index:5; }
+  .phone[data-theme='night'] .toast { background:#000; color:var(--fg); border:2px solid var(--fg); }
+</style>
+</head>
+<body>
+<div class="controls">
+  <button class="cbtn" id="play" aria-label="Αναπαραγωγή">▶</button>
+  <span class="clock" id="clock">−5:00</span>
+  <input id="scrub" type="range" min="0" max="1000" value="0" aria-label="Χρόνος demo">
+  <span><label>Ταχύτητα</label><span class="pick" id="pSpeed"><button data-v="10">×10</button><button data-v="30">×30</button><button data-v="60">×60</button></span></span>
+  <span><label>Θέμα</label><span class="pick" id="pTheme"><button data-v="day">Μέρα</button><button data-v="dark">Σκοτεινό</button><button data-v="night">Νύχτα</button></span></span>
+  <span><label>Πλάτος</label><span class="pick" id="pWidth"><button data-v="390">390</button><button data-v="320">320</button></span></span>
+  <span><label>Αλλάζει οθόνη μόνο του</label><span class="pick" id="pAuto"><button data-v="1">Ναι</button><button data-v="0">Όχι</button></span></span>
+</div>
+
+<div class="page">
+  <div class="phone" id="phone" data-theme="day"></div>
+  <div class="notes">
+    <h2>Demo αγώνα — έτσι θα ήταν live</h2>
+    <p class="small">Φανταστικός αγώνας στον Σαρωνικό (τρίγωνο ~5 NM, 4 σκάφη, άνεμος 12→16 kn από 210°). Εμείς είμαστε η <b>«Αύρα»</b>. Πάτα ▶. Η εφαρμογή αλλάζει μόνη της οθόνη στις σημαντικές στιγμές, αλλά μπορείς να πατάς και τις καρτέλες κάτω.</p>
+    <div class="now" id="now"></div>
+    <h3>Στιγμές του αγώνα <span class="small" style="font-weight:400">(πάτα για να πας εκεί)</span></h3>
+    <ul class="ev" id="events"></ul>
+    <h3>Τι είναι αληθινό και τι όχι</h3>
+    <ul class="small">
+      <li>Οι οθόνες <b>Live</b>, <b>Χάρτης</b> και <b>Αγώνας</b> ακολουθούν αυτές που υπάρχουν σήμερα (0.9.x): % target, συμβουλές, κατάταξη σε διορθωμένο, αντίπαλοι από AIS.</li>
+      <li>Η <b>αντίστροφη μέτρηση και η απόσταση από τη γραμμή</b> πριν την εκκίνηση είναι ιδέα (P-008 / P-010) και δεν υπάρχουν ακόμα.</li>
+      <li>Οι απαντήσεις του <b>Συμβούλου</b> είναι παραδείγματα γραμμένα με το χέρι. Στο demo δεν γίνεται καμία κλήση σε AI.</li>
+      <li>Σκάφη, αριθμοί και ToT είναι φανταστικά.</li>
+    </ul>
+    <p class="warn">Ενδεικτικό, όχι για ναυσιπλοΐα.</p>
+  </div>
+</div>
+
+<script>
+/* ===================== geometry ===================== */
+const LAT0 = 37 + 54.2 / 60, LON0 = 23 + 40.1 / 60, KX = 60 * Math.cos(LAT0 * Math.PI / 180), R = Math.PI / 180, NM = 1852;
+const toLL = (x, y) => ({ lat: LAT0 + y / 60, lon: LON0 + x / KX });
+const unit = (b) => ({ x: Math.sin(b * R), y: Math.cos(b * R) });
+const brgXY = (a, b) => ((Math.atan2(b.x - a.x, b.y - a.y) / R) + 360) % 360;
+const distXY = (a, b) => Math.hypot(b.x - a.x, b.y - a.y);
+const norm = (d) => ((d % 360) + 360) % 360;
+const sdiff = (a, b) => { let d = norm(a - b); return d > 180 ? d - 360 : d; };
+const add = (p, b, d) => { const u = unit(b); return { x: p.x + u.x * d, y: p.y + u.y * d }; };
+const f = (n, d = 0) => n.toFixed(d).replace('.', ',');
+const pad = (n, w = 2) => String(n).padStart(w, '0');
+const deg = (b) => pad(Math.round(norm(b)) % 360, 3) + '°';
+const hms = (h) => { const s = Math.round(Math.abs(h) * 3600); return `${Math.floor(s / 3600)}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}`; };
+const ms = (h) => { const s = Math.round(Math.abs(h) * 3600); return `${Math.floor(s / 60)}:${pad(s % 60)}`; };
+const gapTxt = (h) => { const s = Math.round(Math.abs(h) * 3600); return s < 60 ? `${s}″` : `${Math.floor(s / 60)}′ ${pad(s % 60)}″`; };
+
+/* ===================== course ===================== */
+const TWD = 210;
+const C = { x: 0, y: 0 }, P = { x: 0.0855, y: -0.0692 };
+const MARKS = [{ name: 'Σημ. 1', x: -0.957, y: -1.767 }, { name: 'Σημ. 2', x: -1.876, y: -0.996 }, { name: 'Τερματισμός', x: -0.3, y: 0.4 }];
+const wv = unit(TWD);
+const favPin = (P.x * wv.x + P.y * wv.y) > (C.x * wv.x + C.y * wv.y);
+const START = favPin ? { x: P.x + (C.x - P.x) * 0.15, y: P.y + (C.y - P.y) * 0.15 } : { x: C.x + (P.x - C.x) * 0.15, y: C.y + (P.y - C.y) * 0.15 };
+const LINE_LEN = distXY(C, P) * NM;
+const LINE_ADV = Math.abs((P.x - C.x) * wv.x + (P.y - C.y) * wv.y) * NM;
+const LINE_BIAS = Math.asin(LINE_ADV / LINE_LEN) / R;
+
+/* ===================== polar & ideal route ===================== */
+const PT = [[0, 0], [32, 0], [42, 6.2], [52, 6.7], [60, 7.0], [75, 7.3], [90, 7.5], [110, 7.6], [120, 7.6], [135, 7.4], [150, 7.0], [165, 6.4], [180, 6.0]];
+function polar(twa, tws) {
+  const k = Math.min(1.2, 0.45 + 0.55 * Math.min(tws, 20) / 12);
+  for (let i = 1; i < PT.length; i++) if (twa <= PT[i][0]) { const [a0, v0] = PT[i - 1], [a1, v1] = PT[i]; return (v0 + (v1 - v0) * (twa - a0) / (a1 - a0)) * k; }
+  return PT[PT.length - 1][1] * k;
+}
+const course = [{ name: 'Εκκίνηση', ...START }, ...MARKS];
+const segs = [], legs = []; let T = 0;
+for (let i = 0; i < course.length - 1; i++) {
+  const a = course[i], b = course[i + 1], br = brgXY(a, b), d = distXY(a, b), rel = sdiff(br, TWD), abs = Math.abs(rel);
+  const kind = abs < 42 ? 'upwind' : abs > 150 ? 'downwind' : 'reach';
+  const leg = { i, name: `${a.name} → ${b.name}`, to: b, t0: T, kind };
+  let pcs;
+  if (kind !== 'reach') {
+    const twa = kind === 'upwind' ? 42 : 150, h1 = norm(TWD - twa), h2 = norm(TWD + twa), u1 = unit(h1), u2 = unit(h2), v = { x: b.x - a.x, y: b.y - a.y };
+    const det = u1.x * u2.y - u1.y * u2.x, p = (v.x * u2.y - v.y * u2.x) / det, q = (u1.x * v.y - u1.y * v.x) / det;
+    pcs = [0, 1, 2, 3].map((k) => k % 2 === 0 ? { h: h1, len: p / 2, twa, side: 'δεξιές' } : { h: h2, len: q / 2, twa, side: 'αριστερές' });
+  } else pcs = [{ h: br, len: d, twa: abs, side: rel < 0 ? 'δεξιές' : 'αριστερές' }];
+  let cur = { x: a.x, y: a.y };
+  pcs.forEach((pc, k) => {
+    const nx = add(cur, pc.h, pc.len), dur = pc.len / polar(pc.twa, 12);
+    segs.push({ a: cur, b: nx, hdg: pc.h, twa: pc.twa, side: pc.side, t0: T, t1: T + dur, leg: i, man: k > 0 ? (kind === 'upwind' ? 'tack' : 'gybe') : null });
+    T += dur; cur = nx;
+  });
+  leg.t1 = T; legs.push(leg);
+}
+function atP(p) {
+  p = Math.max(0, Math.min(T, p));
+  const s = segs.find((g) => p <= g.t1) || segs[segs.length - 1];
+  const k = (p - s.t0) / ((s.t1 - s.t0) || 1);
+  return { s, leg: legs[s.leg], pos: { x: s.a.x + (s.b.x - s.a.x) * k, y: s.a.y + (s.b.y - s.a.y) * k } };
+}
+const legFrac = (p, i) => (p - legs[i].t0) / (legs[i].t1 - legs[i].t0);
+
+/* ===================== script: our performance over the course ===================== */
+function script(p, t) {
+  const st = atP(p), i = st.leg.i, fr = legFrac(p, i), wob = 0.012 * Math.sin(t * 95) + 0.006 * Math.sin(t * 260);
+  let perf = 0.99 + wob, off = 0, tws = 12;
+  if (i === 0 && fr > 0.14 && fr < 0.3) { perf = 0.92 + wob; off = -6; }          // pinching
+  if (i === 0 && fr > 0.62 && fr < 0.7) { perf = 1.04 + wob; }                     // fast, could point higher
+  if (i === 1 && fr > 0.3 && fr < 0.55) { perf = 0.91 + wob; }                     // slow on the reach
+  if (i === 2) { tws = Math.min(16, 12 + 6 * fr); }
+  if (i === 2 && fr > 0.42 && fr < 0.58) { perf = 0.94 + wob; }                    // still on A2 while A4 is recommended
+  if (i === 2 && fr > 0.75 && fr < 0.85) { perf = 0.95 + wob; off = 9; }           // too deep
+  return { perf, off, tws };
+}
+const SAILS = (i, fr) => i === 0 ? 'Τζένοα' : i === 1 ? 'Code 0' : fr < 0.58 ? 'A2' : 'A4';
+const recSail = (twa, tws) => twa < 65 ? 'Τζένοα' : twa < 115 ? 'Code 0' : tws >= 14 ? 'A4' : 'A2';
+
+/* ===================== boats & timeline ===================== */
+const US = { name: 'Αύρα', tot: 1.015, own: true };
+const OPP = [
+  { name: 'Ζέφυρος', tot: 1.000, f: 0.968, off: 0.16, ph: 1.3 },
+  { name: 'Μελτέμι', tot: 1.080, f: 1.035, off: -0.2, ph: 0.4 },
+  { name: 'Πόντος', tot: 0.985, f: 0.925, off: 0.32, ph: 2.1 },
+];
+const T0 = -5 / 60, DT = 2 / 3600;
+const TL = { t: [], p: [], opp: OPP.map(() => []) };
+{
+  let t = T0, p = 0; const po = OPP.map(() => 0); let finUs = null; const finO = OPP.map(() => null);
+  while (t < 3) {
+    TL.t.push(t); TL.p.push(p); OPP.forEach((o, k) => TL.opp[k].push(po[k]));
+    if (t >= 0) {
+      if (p < T) { p += DT * script(p, t).perf; if (p >= T) { p = T; finUs = t + DT; } }
+      OPP.forEach((o, k) => { if (po[k] < T) { po[k] += DT * o.f * (1 + 0.035 * Math.sin(t * 40 + o.ph)); if (po[k] >= T) { po[k] = T; finO[k] = t + DT; } } });
+    }
+    t += DT;
+    if (finUs && finO.every(Boolean) && t > Math.max(finUs, ...finO) + 1.5 / 60) break;
+  }
+  US.fin = finUs; OPP.forEach((o, k) => (o.fin = finO[k]));
+}
+const TEND = TL.t[TL.t.length - 1];
+const idx = (t) => Math.max(0, Math.min(TL.t.length - 1, Math.round((t - T0) / DT)));
+const tOfP = (p) => { const i = TL.p.findIndex((v) => v >= p); return i < 0 ? TEND : TL.t[i]; };
+
+function standings(t) {
+  const i = idx(t);
+  const rows = [{ ...US, p: TL.p[i], rate: 0.975 }, ...OPP.map((o, k) => ({ ...o, p: TL.opp[k][i], rate: o.f }))].map((b) => {
+    const done = b.fin && t >= b.fin;
+    const el = done ? b.fin : Math.max(t, 0) + (T - b.p) / b.rate;
+    return { ...b, done, corr: el * b.tot };
+  });
+  rows.sort((a, b) => a.corr - b.corr);
+  const us = rows.find((r) => r.own);
+  rows.forEach((r, k) => { r.rank = k + 1; r.gap = r.corr - us.corr; });
+  return rows;
+}
+
+/* ===================== state at time t ===================== */
+function ourState(t) {
+  const i = idx(t), p = TL.p[i];
+  if (t < 0) {
+    const k = -t / -T0, pos = add(START, TWD + 180, 0.25 * k);
+    return { pre: true, pos, hdg: TWD - 35, bsp: 3.2 + 2.6 * (1 - k), dLine: 0.25 * k * NM * Math.cos(35 * R) / Math.cos(35 * R) * 0.99 };
+  }
+  const st = atP(p), sc = script(p, t), s = st.s;
+  const done = US.fin && t >= US.fin;
+  const tTwa = s.twa, twa = Math.max(30, Math.min(178, tTwa + sc.off));
+  const tBsp = polar(tTwa, sc.tws), bsp = tBsp * sc.perf;
+  const hdg = st.leg.kind === 'reach' ? s.hdg : s.side === 'δεξιές' ? TWD - twa : TWD + twa;
+  const fr = legFrac(p, st.leg.i);
+  const tacks = segs.filter((g) => g.man === 'tack' && g.t0 <= p).length, gybes = segs.filter((g) => g.man === 'gybe' && g.t0 <= p).length;
+  return { pre: false, done, p, st, s, sc, mode: st.leg.kind, twa, tTwa, bsp, tBsp, pct: bsp / tBsp, hdg, pos: st.pos,
+    vmg: bsp * Math.abs(Math.cos(twa * R)), tVmg: tBsp * Math.abs(Math.cos(tTwa * R)), pol: polar(twa, sc.tws),
+    sail: SAILS(st.leg.i, fr), rec: recSail(tTwa, sc.tws), fr, tacks, gybes,
+    toMark: distXY(st.pos, st.leg.to), brgMark: brgXY(st.pos, st.leg.to), eta: (tOfP(st.leg.t1) - t) };
+}
+function advice(o) {
+  const out = [], r0 = Math.round, pct = r0(o.pct * 100), diff = o.twa - o.tTwa;
+  if (o.mode === 'upwind') {
+    if (diff < -3) out.push(['warn', `Πολύ ψηλά (${r0(o.twa)}° vs ${r0(o.tTwa)}°): πέσε ${r0(-diff)}° και χτίσε ταχύτητα.`]);
+    else if (diff > 4) out.push(['warn', `Χαμηλά (${r0(o.twa)}° vs ${r0(o.tTwa)}°) με ταχύτητα: όρτσαρε ${r0(diff)}°.`]);
+    else if (o.pct < 0.95) out.push(['warn', `Αργός (${pct}%): πέσε 2–3° για ταχύτητα, άνοιξε λίγο τα πανιά, έλεγξε twist.`]);
+    else if (o.pct > 1.03) out.push(['info', `Πάνω από target (${pct}%): όρτσαρε 1–2° για καλύτερο VMG.`]);
+    else out.push(['ok', `Στο target: ${f(o.tBsp, 1)} kt στις ${r0(o.tTwa)}°.`]);
+  } else if (o.mode === 'downwind') {
+    if (diff > 6) out.push(['warn', `Πολύ βαθιά (${r0(o.twa)}° vs ${r0(o.tTwa)}°): όρτσαρε ${r0(diff)}° για πίεση στα πανιά.`]);
+    else if (o.pct < 0.95) out.push(['warn', `Αργός (${pct}%): όρτσαρε λίγο για να χτίσεις φαινόμενο άνεμο.`]);
+    else out.push(['ok', `Στο target: ${f(o.tBsp, 1)} kt στις ${r0(o.tTwa)}°.`]);
+  } else {
+    if (o.pct < 0.95) out.push(['warn', `Αργός στα ανοιχτά (${pct}%): λάσκαρε λίγο τα πανιά, βάρη στην κουπαστή, έλεγξε το πανί.`]);
+    else out.push(['ok', `Ανοιχτά: ${pct}% του polar (${f(o.tBsp, 1)} kt).`]);
+  }
+  if (o.rec !== o.sail) out.unshift(['alert', `Προτεινόμενο πανί: ${o.rec} (τώρα ${o.sail}).`]);
+  else if (o.mode === 'downwind' && o.sc.tws >= 13 && o.sc.tws < 14) out.push(['info', 'Κοντά στο όριο: ετοίμασε A4 αν δυναμώσει.']);
+  return out;
+}
+
+/* ===================== scripted events ===================== */
+const pAt = (i, fr) => legs[i].t0 + fr * (legs[i].t1 - legs[i].t0);
+const firstTack = segs.find((g) => g.man === 'tack');
+const EV = [
+  { t: T0, tab: 'race', title: 'Προεκκίνηση', text: 'Αντίστροφη μέτρηση, ευνοημένη άκρη και απόσταση από τη γραμμή. Η εκκίνηση είναι πιο φθηνή από την πλευρά του Pin.' },
+  { t: -1 / 60, tab: 'live', title: 'Τελευταίο λεπτό', text: 'Το Live δείχνει πόσα μέτρα λείπουν ως τη γραμμή και αν θα φτάσεις νωρίς ή αργά με την τωρινή ταχύτητα.' },
+  { t: 0, tab: 'live', title: 'Εκκίνηση!', text: 'Το Live γυρίζει σε όρτσα: % target, ταχύτητα και γωνία-στόχος, και μια συμβουλή κάθε φορά.' },
+  { t: tOfP(pAt(0, 0.15)), tab: 'live', title: 'Πολύ ψηλά', text: 'Ο τιμονιέρης «σφίγγει». Η ταχύτητα πέφτει στο ~92% και το Live λέει πόσες μοίρες να πέσει.' },
+  { t: tOfP(firstTack.t0), tab: 'map', title: 'Αναστροφή', text: 'Ο χάρτης δείχνει το ίχνος μας, τους αντιπάλους (AIS) και πόσο μένει ως τη Σημ. 1.' },
+  { t: tOfP(pAt(0, 0.63)), tab: 'live', title: 'Πάνω από target', text: 'Πάμε πιο γρήγορα από το target: το Live λέει να ορτσάρουμε 1–2° για καλύτερο VMG.' },
+  { t: tOfP(legs[0].t1), tab: 'race', title: 'Γύρος Σημ. 1', text: 'Η κατάταξη σε διορθωμένο ξαναϋπολογίζεται. Πρώτο ανοιχτό σκέλος: προτείνεται Code 0.' },
+  { t: tOfP(pAt(1, 0.31)), tab: 'live', title: 'Αργοί στα ανοιχτά', text: 'Η ταχύτητα πέφτει στο ~91% του polar. Το Live δίνει τι να ελέγξεις στη ρύθμιση.' },
+  { t: tOfP(pAt(1, 0.7)), tab: 'chat', title: 'Ερώτηση στον Σύμβουλο', text: 'Το πλήρωμα πατά «Πώς πάμε;» και ο σύμβουλος απαντά με βάση τα νούμερα του αγώνα (παράδειγμα).' },
+  { t: tOfP(legs[1].t1), tab: 'map', title: 'Γύρος Σημ. 2 — πρίμα', text: 'Υποσταυρώσεις στο πρίμα. Ο άνεμος αρχίζει να δυναμώνει.' },
+  { t: tOfP(pAt(2, 0.17)), tab: 'live', title: 'Δυναμώνει', text: 'Στα 13 kn το Live προειδοποιεί: «ετοίμασε A4».' },
+  { t: tOfP(pAt(2, 0.34)), tab: 'live', title: 'Άλλαξε πανί!', text: 'Στα 14 kn συμβουλή κόκκινη: «Προτεινόμενο πανί: A4». Το πλήρωμα αργεί λίγο και χάνει ταχύτητα.' },
+  { t: tOfP(pAt(2, 0.76)), tab: 'live', title: 'Πολύ βαθιά', text: 'Με το A4 πάμε πολύ βαθιά: το Live λέει να ορτσάρουμε για πίεση.' },
+  { t: US.fin, tab: 'race', title: 'Τερματισμός', text: 'Η Αύρα τερματίζει. Η κατάταξη δείχνει πού είμαστε σε διορθωμένο όσο περιμένουμε τους άλλους.' },
+  { t: Math.max(...OPP.map((o) => o.fin)), tab: 'race', title: 'Αποτελέσματα', text: 'Τερμάτισαν όλοι: τελική κατάταξη σε διορθωμένο χρόνο. Μετά ακολουθεί η ανάλυση αγώνα.' },
+].sort((a, b) => a.t - b.t);
+const curEv = (t) => { let e = EV[0]; EV.forEach((x) => { if (x.t <= t + 1e-9) e = x; }); return e; };
+
+/* ===================== map ===================== */
+function mapSVG(t, o) {
+  const W = 370, H = 330, pd = 26, pts = [C, P, ...MARKS, add(START, TWD + 180, 0.26)];
+  const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y);
+  const minx = Math.min(...xs), maxx = Math.max(...xs), miny = Math.min(...ys), maxy = Math.max(...ys);
+  const k = Math.min((W - 2 * pd) / (maxx - minx), (H - 2 * pd) / (maxy - miny)), cx = (minx + maxx) / 2, cy = (miny + maxy) / 2;
+  const X = (p) => (W / 2 + (p.x - cx) * k).toFixed(1), Y = (p) => (H / 2 - (p.y - cy) * k).toFixed(1);
+  let g = '';
+  for (let m = Math.ceil((LAT0 * 60 + cy - H / 2 / k) / 0.5) * 0.5; m <= LAT0 * 60 + cy + H / 2 / k; m += 0.5) { const y = Y({ y: m - LAT0 * 60 }); g += `<line x1="0" x2="${W}" y1="${y}" y2="${y}" stroke="var(--grid)"/><text x="${W - 4}" y="${y - 3}" text-anchor="end" font-size="9" fill="var(--muted)">37°${f(m - 37 * 60, 1)}′</text>`; }
+  for (let i = 0; i < course.length - 1; i++) g += `<line x1="${X(course[i])}" y1="${Y(course[i])}" x2="${X(course[i + 1])}" y2="${Y(course[i + 1])}" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="3 5"/>`;
+  g += `<line x1="${X(P)}" y1="${Y(P)}" x2="${X(C)}" y2="${Y(C)}" stroke="var(--good)" stroke-width="3" stroke-dasharray="6 3"/>`;
+  MARKS.forEach((m) => { g += `<circle cx="${X(m)}" cy="${Y(m)}" r="6.5" fill="var(--fair)" stroke="var(--bg)" stroke-width="2"/><text x="${+X(m) + 10}" y="${+Y(m) + 4}" font-size="12" font-weight="800" fill="var(--fg)" stroke="var(--sea)" stroke-width="3" paint-order="stroke">${m.name}</text>`; });
+  // our track
+  const i = idx(t); const tr = [];
+  for (let j = idx(0); j <= i; j += 15) tr.push(atP(TL.p[j]).pos);
+  if (t > 0) { tr.push(o.pos); g += `<polyline points="${tr.map((p) => `${X(p)},${Y(p)}`).join(' ')}" fill="none" stroke="var(--accent)" stroke-width="3"/>`; }
+  // opponents
+  OPP.forEach((op, kk) => {
+    const p = TL.opp[kk][i]; let pos, h;
+    if (t < 0) { pos = add(add(START, TWD + 90, op.off * 0.3), TWD + 180, 0.25 * (t / T0) + 0.02); h = TWD + 40; }
+    else { const s = atP(p); pos = add(s.pos, s.s.hdg + 90, op.off * Math.min(1, t * 20) * Math.sin(Math.PI * legFrac(Math.min(p, T - 1e-9), s.leg.i))); h = s.s.hdg; }
+    g += `<g transform="translate(${X(pos)},${Y(pos)}) rotate(${h})"><path d="M0,-8 L4.5,5 L0,3 L-4.5,5Z" fill="var(--muted)" stroke="var(--bg)" stroke-width="1"/></g><text x="${+X(pos) + 8}" y="${+Y(pos) - 6}" font-size="10" font-weight="700" fill="var(--muted)" stroke="var(--sea)" stroke-width="3" paint-order="stroke">${op.name}</text>`;
+  });
+  g += `<g transform="translate(${X(o.pos)},${Y(o.pos)}) rotate(${o.hdg})"><path d="M0,-11 L6,7 L0,4 L-6,7Z" fill="var(--now)" stroke="var(--bg)" stroke-width="1.5"/></g>`;
+  const tws = o.sc ? o.sc.tws : 12;
+  g += `<g transform="translate(34,34)"><circle r="24" fill="var(--bg)" opacity=".85" stroke="var(--line)" stroke-width="1.5"/><g transform="rotate(${TWD + 180})"><path d="M0,-14 L0,12 M-6,6 L0,13 L6,6" stroke="var(--fg)" stroke-width="3" fill="none" stroke-linecap="round"/></g></g><text x="34" y="72" text-anchor="middle" font-size="11" font-weight="800" fill="var(--fg)" stroke="var(--sea)" stroke-width="3" paint-order="stroke">${f(tws, 0)} kn · ${deg(TWD)}</text>`;
+  return `<svg class="map" viewBox="0 0 ${W} ${H}" role="img" aria-label="Χάρτης αγώνα">${g}</svg>`;
+}
+
+/* ===================== screens ===================== */
+const S = { t: T0, playing: false, speed: 30, theme: 'day', width: 390, auto: true, tab: 'race', simple: true, lastEv: null, toast: null };
+const pctCls = (x) => x >= 0.97 ? 'good' : x >= 0.92 ? 'fair' : 'bad';
+const MODE = { upwind: 'Όρτσα', reach: 'Ανοιχτά', downwind: 'Πρίμα' };
+
+function liveScreen(t, o) {
+  if (o.pre) {
+    const tToLine = (o.dLine / NM) / o.bsp; const late = tToLine * 3600 - (-t * 3600);
+    return `<div class="tiles">
+      <div class="tile hero fair"><div class="tl">Εκκίνηση σε <i>ιδέα P-008 · δεν υπάρχει ακόμα</i></div><div class="tv">${ms(-t)}</div><div class="ts">${Math.round(o.dLine)} m ως τη γραμμή · με ${f(o.bsp, 1)} kt φτάνεις σε ${ms(tToLine)}</div></div>
+      <div class="tile ${Math.abs(late) < 10 ? 'good' : late < 0 ? 'bad' : ''}"><div class="tl">Άφιξη στη γραμμή</div><div class="tv">${Math.abs(late) < 10 ? 'Στην ώρα' : late < 0 ? `${Math.round(-late)}″ νωρίς` : `${Math.round(late)}″ αργά`}</div></div>
+      <div class="tile good"><div class="tl">Ευνοημένη άκρη</div><div class="tv">${favPin ? 'Pin' : 'Επιτροπή'}</div><div class="ts">${f(LINE_BIAS, 0)}° · ~${Math.round(LINE_ADV)} m</div></div>
+    </div><ul class="advice"><li class="info">Στόχος: γραμμή με ταχύτητα, κοντά στο ${favPin ? 'Pin' : 'σκάφος επιτροπής'}.</li></ul>`;
+  }
+  if (o.done) return `<div class="card"><h2>🏁 Τερματίσαμε</h2><p>Πραγματικός χρόνος ${hms(US.fin)}. Η τελική θέση στην καρτέλα <b>Αγώνας</b>.</p></div>`;
+  const adv = advice(o);
+  return `<div class="seg"><button data-act="simple:1" class="${S.simple ? 'on' : ''}">Απλό</button><button data-act="simple:0" class="${S.simple ? '' : 'on'}">Πλήρες</button></div>
+  <div class="tiles">
+    <div class="tile hero ${pctCls(o.pct)}"><div class="tl">% target <i>πόσο κοντά είσαι στη σωστή ταχύτητα</i></div><div class="tv">${Math.round(o.pct * 100)}%</div><div class="ts">${MODE[o.mode]} · ${f(o.bsp, 1)} από ${f(o.tBsp, 1)} kt</div></div>
+    <div class="tile"><div class="tl">Target BSP <i>ταχύτητα-στόχος</i></div><div class="tv">${f(o.tBsp, 1)}</div><div class="ts">${o.bsp - o.tBsp >= 0 ? '+' : '−'}${f(Math.abs(o.bsp - o.tBsp), 1)} kt από target</div></div>
+    <div class="tile"><div class="tl">Target TWA <i>γωνία-στόχος</i></div><div class="tv">${Math.round(o.tTwa)}°</div><div class="ts">τώρα ${Math.round(o.twa)}° · ${o.s.side}</div></div>
+    ${S.simple ? '' : `
+    <div class="tile ${pctCls(o.vmg / o.tVmg)}"><div class="tl">VMG / target</div><div class="tv">${f(o.vmg, 1)}<small style="font-size:.5em">/${f(o.tVmg, 1)}</small></div><div class="ts">${Math.round(o.vmg / o.tVmg * 100)}%</div></div>
+    <div class="tile"><div class="tl">Polar @ TWA</div><div class="tv">${f(o.pol, 1)}</div><div class="ts">${Math.round(o.bsp / o.pol * 100)}%</div></div>
+    <div class="tile ${o.rec !== o.sail ? 'bad' : ''}"><div class="tl">Πανί</div><div class="tv">${o.rec}</div><div class="ts">τώρα ${o.sail}</div></div>
+    <div class="tile"><div class="tl">Άνεμος</div><div class="tv">${f(o.sc.tws, 0)} kt</div><div class="ts">από ${deg(TWD)}</div></div>`}
+  </div>
+  <ul class="advice">${adv.map(([lv, tx]) => `<li class="${lv}">${tx}</li>`).join('')}</ul>`;
+}
+function mapScreen(t, o) {
+  if (o.pre) return mapSVG(t, o) + `<div class="tiles"><div class="tile"><div class="tl">Ως τη γραμμή</div><div class="tv">${Math.round(o.dLine)} m</div></div><div class="tile"><div class="tl">Εκκίνηση σε</div><div class="tv">${ms(-t)}</div></div></div>`;
+  return mapSVG(t, o) + (o.done ? '' : `<div class="tiles">
+    <div class="tile"><div class="tl">${o.st.leg.to.name}</div><div class="tv">${f(o.toMark, 2)}</div><div class="ts">NM · διόπτευση ${deg(o.brgMark)}</div></div>
+    <div class="tile"><div class="tl">Άφιξη σε</div><div class="tv">${ms(o.eta)}</div><div class="ts">σκέλος ${o.st.leg.i + 1}/${legs.length}</div></div>
+    <div class="tile"><div class="tl">Πορεία</div><div class="tv">${deg(o.hdg)}</div><div class="ts">${f(o.bsp, 1)} kt</div></div>
+    <div class="tile"><div class="tl">Αναστρ. · Υποσταυρ.</div><div class="tv">${o.tacks} · ${o.gybes}</div></div></div>`)
+    + `<p class="small muted">Μικρά βέλη: αντίπαλοι από AIS. Μεγάλο βέλος με ίχνος: εμείς.</p>`;
+}
+function raceScreen(t, o) {
+  const rows = standings(t), us = rows.find((r) => r.own), ahead = rows[us.rank - 2], behind = rows[us.rank];
+  const allDone = rows.every((r) => r.done);
+  return `<div class="card"><h2>Κύπελλο Σαρωνικού (demo)</h2><div class="small muted">ORC ToT · Εκκίνηση → Σημ. 1 → Σημ. 2 → Τερματισμός</div>
+    <div class="hero2"><div><div class="big-num">${t < 0 ? '−' + ms(-t) : hms(o.done ? US.fin : t)}</div><div class="small muted">${t < 0 ? 'μέχρι την εκκίνηση' : o.done ? 'τερματίσαμε' : 'πραγματικός'}</div></div>
+    <div><div class="big-num">${t < 0 ? '—' : us.rank + 'ος'}</div><div class="small muted">${allDone ? 'τελική σε διορθωμένο' : 'σε διορθωμένο (εκτίμηση)'}</div></div></div>
+    ${t >= 0 ? `<p style="margin:4px 0 0">${[ahead && `${gapTxt(ahead.gap)} πίσω από ${ahead.name}`, behind && `${gapTxt(behind.gap)} μπροστά από ${behind.name}`].filter(Boolean).join(' · ')}</p>` : `<p class="small" style="margin:4px 0 0">Ευνοημένη άκρη: <b>${favPin ? 'Pin' : 'Επιτροπή'}</b> (${f(LINE_BIAS, 0)}°, ~${Math.round(LINE_ADV)} m) · γραμμή ${Math.round(LINE_LEN)} m</p>`}
+  </div>
+  <div class="card"><table class="leader"><thead><tr><th>#</th><th>Σκάφος</th><th class="num">Διαφορά από εμάς</th></tr></thead><tbody>
+    ${(t < 0 ? [{ ...US, own: true }, ...OPP] : rows).map((r) => `<tr class="${r.own ? 'own' : ''}"><td>${t < 0 ? '—' : r.rank}</td><td><b>${r.name}</b><div class="small muted">${r.own ? `ToT ${f(r.tot, 3)}` : `AIS πριν ${1 + (r.name.length % 3)}′ · ToT ${f(r.tot, 3)}`}${r.done ? ' · τερμάτισε ' + hms(r.fin) : ''}</div></td>
+      <td class="num">${r.own ? 'εμείς' : t < 0 ? '—' : (r.gap < 0 ? '−' : '+') + gapTxt(r.gap)}</td></tr>`).join('')}
+  </tbody></table>
+  <p class="small muted">${allDone ? 'Τελικοί χρόνοι: πραγματικός × ToT.' : 'Άνεμος για την εκτίμηση: ' + (o.sc ? f(o.sc.tws, 0) : 12) + ' kt / 210° (όργανα). «+» = πίσω από εμάς σε διορθωμένο.'}</p></div>`;
+}
+function chatScreen(t) {
+  const e = EV.find((x) => x.tab === 'chat');
+  if (t < e.t) return `<div class="card small muted">Ο σύμβουλος απαντά σε ερωτήσεις του πληρώματος με βάση τα νούμερα του αγώνα. Στο demo η ερώτηση έρχεται στο δεύτερο σκέλος.</div>`;
+  const rows = standings(e.t), us = rows.find((r) => r.own), ahead = rows[us.rank - 2];
+  return `<div class="bubble q">Πώς πάμε;</div>
+    <div class="bubble a">${us.rank}οι σε διορθωμένο${ahead ? `, ~${gapTxt(ahead.gap)} πίσω από ${ahead.name}` : ''}. Στο ανοιχτό χάσαμε λίγο (91% του polar) — λάσκαρε το Code 0 και βάρη στην κουπαστή. Στο πρίμα ο άνεμος ανεβαίνει στους 14–16: ετοίμασε το A4 πριν τη Σημ. 2 για να μη χαθεί χρόνος στην αλλαγή.</div>
+    <p class="small muted">Παράδειγμα απάντησης γραμμένο με το χέρι — στην εφαρμογή απαντά ο σύμβουλος AI.</p>`;
+}
+
+const TABS = [['live', 'Live', '◎'], ['map', 'Χάρτης', '⌖'], ['race', 'Αγώνας', '⏱'], ['chat', 'Σύμβουλος', '💬'], ['polar', 'Polar', '◔'], ['boats', 'Σκάφη', '⛵']];
+const phone = document.getElementById('phone');
+function render() {
+  const t = S.t, o = ourState(t);
+  phone.dataset.theme = S.theme; phone.style.setProperty('--pw', S.width + 'px');
+  let body;
+  if (S.tab === 'live') body = liveScreen(t, o);
+  else if (S.tab === 'map') body = mapScreen(t, o);
+  else if (S.tab === 'race') body = raceScreen(t, o);
+  else if (S.tab === 'chat') body = chatScreen(t);
+  else body = `<div class="card small muted">Η καρτέλα αυτή δεν αλλάζει στο demo.</div>`;
+  const chatEv = EV.find((x) => x.tab === 'chat');
+  const sc = phone.querySelector('.scr'), y = sc ? sc.scrollTop : 0;
+  phone.innerHTML = `<div class="demo">DEMO — ΦΑΝΤΑΣΤΙΚΟΣ ΑΓΩΝΑΣ</div>
+    <div class="topbar"><b>Αύρα · ${TABS.find((x) => x[0] === S.tab)[1]}</b><span class="gps">GPS · AIS</span></div>
+    <div class="scr">${body}</div>
+    ${S.toast ? `<div class="toast" role="status">${S.toast}</div>` : ''}
+    <nav class="tabbar">${TABS.map(([id, lb, ic]) => `<button data-act="tab:${id}" class="${S.tab === id ? 'on' : ''}"><span class="ic ${id === 'chat' && t >= chatEv.t && S.tab !== 'chat' ? 'dot' : ''}">${ic}</span>${lb}</button>`).join('')}</nav>`;
+  const sc2 = phone.querySelector('.scr'); if (sc2) sc2.scrollTop = y;
+  // canvas
+  document.getElementById('clock').textContent = (t < 0 ? '−' : '') + (t < 0 ? ms(-t) : hms(t));
+  const sl = document.getElementById('scrub'); if (document.activeElement !== sl) sl.value = Math.round((t - T0) / (TEND - T0) * 1000);
+  document.getElementById('play').textContent = S.playing ? '⏸' : '▶';
+  const ce = curEv(t);
+  document.getElementById('now').innerHTML = `<b>${ce.title}</b>${ce.text}`;
+  document.getElementById('events').innerHTML = EV.map((e, k) => `<li data-k="${k}" class="${e === ce ? 'cur' : e.t < t ? 'past' : ''}"><span class="tm">${e.t < 0 ? '−' + ms(-e.t) : hms(e.t).replace(/^0:/, '')}</span><span>${e.title}</span></li>`).join('');
+  document.querySelectorAll('.pick').forEach((p) => { const key = { pSpeed: 'speed', pTheme: 'theme', pWidth: 'width', pAuto: 'auto' }[p.id]; p.querySelectorAll('button').forEach((b) => b.classList.toggle('on', String(key === 'auto' ? +S.auto : S[key]) === b.dataset.v)); });
+}
+function onEvents(prevT, t) {
+  EV.forEach((e) => {
+    if (e.t > prevT && e.t <= t) { if (S.auto) S.tab = e.tab; S.toast = e.title; clearTimeout(onEvents.h); onEvents.h = setTimeout(() => { S.toast = null; }, 2500); }
+  });
+}
+let last = 0, timer = null;
+function step() {
+  const now = performance.now(), dt = (now - last) / 1000; last = now;
+  const prev = S.t; S.t = Math.min(TEND, S.t + dt * S.speed / 3600);
+  onEvents(prev, S.t);
+  if (S.t >= TEND) { S.playing = false; clearInterval(timer); timer = null; }
+  render();
+}
+function play(on) {
+  S.playing = on; clearInterval(timer); timer = null;
+  if (on) { if (S.t >= TEND) S.t = T0; last = performance.now(); timer = setInterval(step, 120); }
+  render();
+}
+
+phone.addEventListener('pointerdown', (e) => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const [a, v] = b.dataset.act.split(':');
+  if (a === 'tab') S.tab = v; if (a === 'simple') S.simple = v === '1';
+  render();
+});
+document.getElementById('play').onclick = () => play(!S.playing);
+document.getElementById('scrub').oninput = (e) => { S.t = T0 + (TEND - T0) * e.target.value / 1000; const ev = curEv(S.t); if (S.auto) S.tab = ev.tab; render(); };
+document.getElementById('events').onclick = (e) => { const li = e.target.closest('li'); if (!li) return; const ev = EV[+li.dataset.k]; S.t = ev.t + 1 / 3600; S.tab = ev.tab; render(); };
+document.querySelector('.controls').addEventListener('click', (e) => {
+  const b = e.target.closest('.pick button'); if (!b) return; const id = b.parentElement.id, v = b.dataset.v;
+  if (id === 'pSpeed') S.speed = +v; if (id === 'pTheme') S.theme = v; if (id === 'pWidth') S.width = +v; if (id === 'pAuto') S.auto = v === '1';
+  render();
+});
+render();
+</script>
+</body>
+</html>
