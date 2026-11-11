@@ -100,8 +100,9 @@ describe('crews and invitations (P-022)', () => {
     const m = await call<{ member: { races: { data: Record<string, unknown> }[] }[] }>(env, 'GET', '/crews', undefined, mate);
     expect(m.member[0].races[0].data).toMatchObject({ name: 'Χειμερινό 3η', note: 'Στις 10 στη μαρίνα', crew: [{ name: 'Μαρία Π', role: 'helm' }] });
     expect(m.member[0].races[0].data).not.toHaveProperty('track');
-    const me = await call<{ user: { id: string } }>(env, 'GET', '/me', undefined, mate);
-    await call(env, 'DELETE', `/crews/${crewId}/members/${me.user.id}`, undefined, mate);
+    await call(env, 'PATCH', `/crews/${crewId}/members/me`, { athleteCard: '42' }, mate);
+    expect((await call<{ member: { athleteCard: string }[] }>(env, 'GET', '/crews', undefined, mate)).member[0].athleteCard).toBe('42');
+    await call(env, 'DELETE', `/crews/${crewId}/members/me`, undefined, mate);
     expect((await call<{ member: unknown[] }>(env, 'GET', '/crews', undefined, mate)).member).toEqual([]);
   });
 

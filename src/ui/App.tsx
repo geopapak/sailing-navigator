@@ -7,6 +7,8 @@ import { LiveView } from './LiveView';
 import { PolarView } from './PolarView';
 import { RaceView } from './RaceView';
 import { RaceProvider } from './RaceContext';
+import { InviteScreen } from './CrewViews';
+import { pendingInvite } from '../crew/api';
 import { KnowledgeProvider } from './KnowledgeContext';
 import { BoatsView } from './BoatsView';
 import { SettingsView } from './SettingsView';
@@ -49,6 +51,7 @@ function Shell() {
 
   // All hooks must run before the early returns below (else React throws and the page is blank).
   const [themeOpen, setThemeOpen] = useState(false);
+  const [invite, setInvite] = useState(() => pendingInvite());
 
   // Sign-in comes first; then a new password after a temporary one; then the terms.
   if (ready && !account) return <AuthFlow />;
@@ -124,7 +127,9 @@ function Shell() {
           <p className="muted">Φόρτωση…</p>
         ) : (
           <Suspense fallback={<p className="muted">Φόρτωση χάρτη…</p>}>
-            {showOnboarding ? (
+            {invite && account ? (
+              <InviteScreen token={invite} onDone={() => setInvite(undefined)} />
+            ) : showOnboarding ? (
               <Onboarding />
             ) : (
             <>

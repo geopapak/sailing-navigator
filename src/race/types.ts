@@ -70,5 +70,10 @@ export interface Race {
   /** Account that sailed this race on this device. Races stay local, so they are kept per account, never wiped. */
   owner?: string;
   analysis?: { lessons: { text: string; impact?: string }[]; at: number; model?: string };
+  /** Who sails in which position (P-022), and the owner's note to the crew. */
+  crew?: import('../crew/api').CrewPlace[];
+  crewNote?: string;
+  /** When the plan was last sent to the crew. */
+  crewSharedAt?: number;
   updatedAt: number;
 }

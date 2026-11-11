@@ -326,7 +326,9 @@ export async function crewRoutes(env: AccountEnv, u: UserRow, method: string, pa
   if (m && method === 'POST') return acceptInvite(env, u, m[1], await body());
   m = path.match(/^\/crews\/([0-9a-f]{24})(?:\/(invites|members|races)(?:\/([A-Za-z0-9_-]{1,64}))?)?$/);
   if (!m) throw new HttpError(404, 'Not found');
-  const [, crewId, sub, id] = m;
+  const [, crewId, sub, rawId] = m;
+  // "me" = the signed-in member (change my own card, or leave).
+  const id = sub === 'members' && rawId === 'me' ? u.id : rawId;
   if (!sub && method === 'DELETE') return deleteCrew(env, u, crewId);
   if (sub === 'invites' && !id && method === 'POST') return createInvite(env, u, crewId, await body());
   if (sub === 'members' && id && method === 'PATCH') return updateMember(env, u, crewId, id, await body());
