@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { onOpenTab, type AppTab } from './openTab';
 import { AppProvider, useApp } from './AppContext';
 import { NavProvider } from './NavContext';
@@ -17,6 +17,10 @@ import { WhatsNew } from './WhatsNew';
 import { AcceptTermsScreen, AuthFlow, SetPasswordScreen } from './AuthFlow';
 import { useStoredState } from './hooks';
 import { Icon, type IconName } from './Icons';
+import { Dialogs } from './Dialogs';
+import { Onboarding } from './Onboarding';
+import { THEME_INFO } from './Appearance';
+import type { Theme } from './settings';
 
 // The map (MapLibre) is large: load it only when the tab is opened.
 const PlanView = lazy(() => import('./PlanView').then((m) => ({ default: m.PlanView })));
@@ -31,12 +35,6 @@ const TABS: { id: Tab; label: string; icon: IconName }[] = [
   { id: 'polar', label: 'Polar', icon: 'polar' },
   { id: 'boats', label: 'Σκάφη', icon: 'boats' },
 ];
-
-const THEMES = {
-  day: { icon: 'sun', label: 'Μέρα' },
-  dark: { icon: 'dusk', label: 'Σούρουπο' },
-  night: { icon: 'moon', label: 'Νύχτα (κόκκινο)' },
-} as const;
 
 function Shell() {
   const { ready, error, activeBoat, boats, settings, updateSettings, account } = useApp();
@@ -54,6 +52,8 @@ function Shell() {
   if (ready && account?.mustChangePassword) return <SetPasswordScreen />;
   if (ready && account && account.termsOk === false) return <AcceptTermsScreen />;
   if (ready && account && account.termsOk === undefined) return <AcceptTermsScreen />;
+  const [themeOpen, setThemeOpen] = useState(false);
+  const showOnboarding = ready && !settings.onboarded && !(['boats', 'settings', 'guide'] as Tab[]).includes(nav.tab);
   const go = (tab: Tab) => setNav({ tab: nav.tab === tab && (tab === 'guide' || tab === 'settings') ? 'live' : tab });
 
   return (
@@ -76,21 +76,45 @@ function Shell() {
         {activeBoat && activeBoat.performanceFactor !== 1 && (
           <span className="badge">{Math.round(activeBoat.performanceFactor * 100)}%</span>
         )}
-        <button className={`icon-btn top-btn ${nav.tab === 'guide' ? 'on' : ''}`} aria-label="Οδηγός" title="Οδηγός" onClick={() => go('guide')}>
+        <button className={`icon-btn top-btn ${nav.tab === 'guide' ? 'on' : ''}`} onClick={() => go('guide')}>
           <Icon name="help" />
+          <small>Οδηγός</small>
         </button>
         <button
-          className="icon-btn top-btn"
-          aria-label={`Θέμα: ${THEMES[settings.theme].label}. Πάτα για αλλαγή`}
-          title={`Θέμα: ${THEMES[settings.theme].label}`}
-          onClick={() => updateSettings({ theme: settings.theme === 'day' ? 'dark' : settings.theme === 'dark' ? 'night' : 'day' })}
+          className={`icon-btn top-btn ${themeOpen ? 'on' : ''}`}
+          aria-haspopup="true"
+          aria-expanded={themeOpen}
+          aria-label={`Θέμα: ${THEME_INFO[settings.theme].label}. Πάτα για να διαλέξεις`}
+          onClick={() => setThemeOpen((o) => !o)}
         >
-          <Icon name={THEMES[settings.theme].icon} />
+          <Icon name={THEME_INFO[settings.theme].icon} />
+          <small>{THEME_INFO[settings.theme].label}</small>
         </button>
-        <button className={`icon-btn top-btn ${nav.tab === 'settings' ? 'on' : ''}`} aria-label="Ρυθμίσεις" title="Ρυθμίσεις" onClick={() => go('settings')}>
+        <button className={`icon-btn top-btn ${nav.tab === 'settings' ? 'on' : ''}`} onClick={() => go('settings')}>
           <Icon name="gear" />
+          <small>Ρυθμίσεις</small>
         </button>
+        {themeOpen && (
+          <div className="theme-menu" role="menu" aria-label="Θέμα">
+            {(Object.keys(THEME_INFO) as Theme[]).map((t) => (
+              <button
+                key={t}
+                role="menuitemradio"
+                aria-checked={settings.theme === t}
+                className={settings.theme === t ? 'on' : ''}
+                onClick={() => {
+                  updateSettings({ theme: t });
+                  setThemeOpen(false);
+                }}
+              >
+                <Icon name={THEME_INFO[t].icon} />
+                {THEME_INFO[t].label}
+              </button>
+            ))}
+          </div>
+        )}
       </header>
+      <NetStrip />
       <main className="content">
         {error && <p className="errors">{error}</p>}
         {ready && <WhatsNew />}
@@ -98,6 +122,10 @@ function Shell() {
           <p className="muted">Φόρτωση…</p>
         ) : (
           <Suspense fallback={<p className="muted">Φόρτωση χάρτη…</p>}>
+            {showOnboarding ? (
+              <Onboarding />
+            ) : (
+            <>
             {boats.length === 0 && (nav.tab === 'live' || nav.tab === 'map' || nav.tab === 'polar') ? (
               <WelcomeCard />
             ) : (
@@ -112,6 +140,8 @@ function Shell() {
             {nav.tab === 'boats' && <BoatsView />}
             {nav.tab === 'settings' && <SettingsView />}
             {nav.tab === 'guide' && <GuideView />}
+            </>
+            )}
           </Suspense>
         )}
       </main>
@@ -125,6 +155,40 @@ function Shell() {
           </button>
         ))}
       </nav>
+      <Dialogs />
+    </div>
+  );
+}
+
+/** Thin strip under the top bar: shown only while offline, then «Συνδέθηκε ξανά ✓» for 3 seconds. */
+function NetStrip() {
+  const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine));
+  const [back, setBack] = useState(false);
+  useEffect(() => {
+    let t: number | undefined;
+    const on = () => {
+      setOnline(true);
+      setBack(true);
+      window.clearTimeout(t);
+      t = window.setTimeout(() => setBack(false), 3000);
+    };
+    const off = () => {
+      setOnline(false);
+      setBack(false);
+    };
+    window.addEventListener('online', on);
+    window.addEventListener('offline', off);
+    return () => {
+      window.removeEventListener('online', on);
+      window.removeEventListener('offline', off);
+      window.clearTimeout(t);
+    };
+  }, []);
+  if (online && !back) return null;
+  return (
+    <div className={`net-strip ${online ? 'ok' : ''}`} role="status">
+      <span className="dot" aria-hidden="true" />
+      <span>{online ? 'Συνδέθηκε ξανά ✓' : 'Χωρίς ίντερνετ. Οι υπολογισμοί δουλεύουν· οι αλλαγές θα σωθούν μόλις επιστρέψει.'}</span>
     </div>
   );
 }
@@ -135,9 +199,9 @@ function InstrumentPill() {
   const inst = useInstruments();
   if (!settings.instruments?.enabled) return null;
   return (
-    <button type="button" className={`inst-pill ${inst.live ? 'ok' : 'bad'}`} onClick={() => onOpenSettings()} aria-label="Κατάσταση οργάνων">
+    <button type="button" className={`inst-pill ${inst.live ? 'ok' : 'bad'}`} onClick={() => onOpenSettings()} aria-label={inst.live ? 'Όργανα: συνδεδεμένα' : 'Όργανα: χωρίς σύνδεση'}>
       <span className="dot" aria-hidden="true" />
-      {inst.live ? 'Όργανα' : 'Όργανα ✕'}
+      <span className="inst-text">{inst.live ? 'Όργανα' : 'Όργανα ✕'}</span>
     </button>
   );
 }

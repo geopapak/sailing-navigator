@@ -3,6 +3,7 @@ import { useApp } from './AppContext';
 import { useNav } from './NavContext';
 import { useInstruments } from './InstrumentsContext';
 import { useKnowledge } from './KnowledgeContext';
+import { offerUndo } from './Dialogs';
 import { SECTORS, SPEEDS, sectorOf, type KnowledgeNote, type Sector } from '../knowledge/types';
 import { relevantNotes, windLabel } from '../knowledge/match';
 import { getLiveSnapshot } from '../ai/snapshot';
@@ -212,8 +213,8 @@ function NoteEditor({ note, onDone }: { note?: KnowledgeNote; onDone: () => void
           <button
             className="btn danger"
             onClick={async () => {
-              if (!confirm('Διαγραφή της σημείωσης;')) return;
               await k.remove(note.id);
+              offerUndo('Διαγράφηκε η σημείωση', () => k.restore(note));
               onDone();
             }}
           >

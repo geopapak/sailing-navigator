@@ -60,8 +60,35 @@ function pctClass(v?: number) {
 
 const MODE_LABEL = { upwind: 'Όρτσα', reach: 'Ανοιχτά', downwind: 'Πρίμα' } as const;
 
+/** Plain-Greek meaning under each abbreviation (the label itself stays for experienced crews). */
+const TILE_HINT: Record<string, string> = {
+  '% target': 'πόσο κοντά είσαι στη σωστή ταχύτητα',
+  'Target BSP': 'ταχύτητα-στόχος',
+  'Target TWA': 'γωνία-στόχος από τον άνεμο',
+  'VMG / target': 'πρόοδος προς/από τον άνεμο',
+  'Polar @ TWA': 'ταχύτητα polar στη γωνία σου',
+  Πανί: 'προτείνεται',
+};
+
+function Label({ text }: { text: string }) {
+  return (
+    <>
+      <div className="tile-label">{text}</div>
+      <div className="tile-hint">{TILE_HINT[text]}</div>
+    </>
+  );
+}
+
+/** Scrolls to a stepper and puts the cursor in it. */
+function goToField(id: string) {
+  const el = document.getElementById(id);
+  el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  window.setTimeout(() => el?.querySelector('input')?.focus({ preventScroll: true }), 350);
+}
+
 export function LiveView() {
-  const { activeBoat: boat, settings } = useApp();
+  const { activeBoat: boat, settings, updateSettings } = useApp();
+  const simple = settings.liveMode !== 'full';
   const [s, setS] = useStoredState<LiveState>('live-state', INITIAL);
   const set = (patch: Partial<LiveState>) => setS((p) => ({ ...p, ...patch }));
   // Instruments fill TWS / TWA / BSP while they are live; a field the user edits is locked to manual.
@@ -225,9 +252,17 @@ export function LiveView() {
           <span>{outlook?.recommended?.name ?? '—'}</span>
         </button>
       )}
+      <div className="seg live-mode" role="group" aria-label="Προβολή">
+        <button className={simple ? 'on' : ''} aria-pressed={simple} onClick={() => updateSettings({ liveMode: 'simple' })}>
+          Απλό
+        </button>
+        <button className={!simple ? 'on' : ''} aria-pressed={!simple} onClick={() => updateSettings({ liveMode: 'full' })}>
+          Πλήρες
+        </button>
+      </div>
       <section
         ref={resultsRef}
-        className="results"
+        className={`results ${simple ? 'simple' : ''}`}
         aria-live="polite"
         onClick={(e) => {
           const label = (e.target as HTMLElement).closest('.tile')?.querySelector('.tile-label')?.textContent ?? '';
@@ -235,12 +270,27 @@ export function LiveView() {
         }}
       >
         <div className={`tile hero ${pctClass(result?.pctTarget)}`}>
-          <div className="tile-label">% target</div>
-          <div className="tile-value">{pct(result?.pctTarget)}</div>
-          <div className="tile-sub">{result ? MODE_LABEL[result.mode] : ''}</div>
+          <Label text="% target" />
+          {!result ? (
+            <button type="button" className="missing" onClick={(e) => (e.stopPropagation(), goToField('live-tws'))}>
+              ⚠ Βάλε άνεμο (TWS και γωνία) ↓
+            </button>
+          ) : result.bsp === undefined ? (
+            <button type="button" className="missing" onClick={(e) => (e.stopPropagation(), goToField('live-bsp'))}>
+              ⚠ Βάλε ταχύτητα σκάφους (BSP) ↓
+            </button>
+          ) : (
+            <>
+              <div className="tile-value">{pct(result.pctTarget)}</div>
+              <div className="tile-sub">
+                {MODE_LABEL[result.mode]}
+                {result.targetBsp !== undefined && ` · ${f1(result.bsp)} από ${f1(result.targetBsp)} kt`}
+              </div>
+            </>
+          )}
         </div>
         <div className="tile">
-          <div className="tile-label">Target BSP</div>
+          <Label text="Target BSP" />
           <div className="tile-value">{f1(result?.targetBsp)}</div>
           <div className="tile-sub">
             {result?.bsp !== undefined && result.targetBsp !== undefined
@@ -249,34 +299,50 @@ export function LiveView() {
           </div>
         </div>
         <div className="tile">
-          <div className="tile-label">Target TWA</div>
+          <Label text="Target TWA" />
           <div className="tile-value">{result?.targetTwa !== undefined ? `${f0(result.targetTwa)}°` : '—'}</div>
           <div className="tile-sub">
-            όρτσα {f0(result?.beat.angle)}° · πρίμα {f0(result?.run.angle)}°
+            {simple
+              ? result
+                ? `τώρα ${f0(Math.abs(result.twa))}°`
+                : ''
+              : `όρτσα ${f0(result?.beat.angle)}° · πρίμα ${f0(result?.run.angle)}°`}
           </div>
         </div>
-        <div className={`tile ${pctClass(result?.pctVmg)}`}>
-          <div className="tile-label">VMG / target</div>
-          <div className="tile-value">
-            {f1(result?.vmg)}
-            <span className="slash">/</span>
-            {f1(result?.targetVmg)}
-          </div>
-          <div className="tile-sub">{result?.pctVmg !== undefined ? pct(result.pctVmg) : 'kt'}</div>
-        </div>
-        <div className="tile">
-          <div className="tile-label">Polar @ TWA</div>
-          <div className="tile-value">{f1(result?.polarBsp)}</div>
-          <div className="tile-sub">{result?.pctPolar !== undefined ? pct(result.pctPolar) : 'kt'}</div>
-        </div>
-        <div className={`tile ${outlook?.recommended && s.sailId && outlook.recommended.id !== s.sailId ? 'bad' : ''}`}>
-          <div className="tile-label">Πανί</div>
-          <div className="tile-value">{outlook?.recommended?.name ?? '—'}</div>
-          <div className="tile-sub">
-            {outlook?.ifStronger ? `↑ ${outlook.ifStronger.name}` : ''}
-            {outlook?.ifLighter ? ` ↓ ${outlook.ifLighter.name}` : ''}
-          </div>
-        </div>
+        {!simple && (
+          <>
+            <div className={`tile ${pctClass(result?.pctVmg)}`}>
+              <Label text="VMG / target" />
+              <div className="tile-value">
+                {f1(result?.vmg)}
+                <span className="slash">/</span>
+                {f1(result?.targetVmg)}
+              </div>
+              <div className="tile-sub">{result?.pctVmg !== undefined ? pct(result.pctVmg) : 'kt'}</div>
+            </div>
+            <div className="tile">
+              <Label text="Polar @ TWA" />
+              <div className="tile-value">{f1(result?.polarBsp)}</div>
+              <div className="tile-sub">{result?.pctPolar !== undefined ? pct(result.pctPolar) : 'kt'}</div>
+            </div>
+            <div className={`tile ${outlook?.recommended && s.sailId && outlook.recommended.id !== s.sailId ? 'bad' : ''}`}>
+              <Label text="Πανί" />
+              {result && !outlook?.recommended && sails.length <= 1 ? (
+                <button type="button" className="missing" onClick={(e) => (e.stopPropagation(), openTab('boats'))}>
+                  Δεν έχεις πανιά — Πρόσθεσε στα Σκάφη
+                </button>
+              ) : (
+                <>
+                  <div className="tile-value">{outlook?.recommended?.name ?? '—'}</div>
+                  <div className="tile-sub">
+                    {outlook?.ifStronger ? `↑ ${outlook.ifStronger.name}` : ''}
+                    {outlook?.ifLighter ? ` ↓ ${outlook.ifLighter.name}` : ''}
+                  </div>
+                </>
+              )}
+            </div>
+          </>
+        )}
       </section>
 
       {help && TILE_HELP[help] && (
@@ -305,26 +371,26 @@ export function LiveView() {
       )}
 
       <section className="inputs">
-        <NumberStepper label="TWS" unit="kt" value={s.tws} onChange={(v) => setManual('tws', { tws: v })} small={1} big={3} min={0} max={60} decimals={0} />
+        <NumberStepper id="live-tws" hint="άνεμος" label="TWS" unit="kt" value={s.tws} onChange={(v) => setManual('tws', { tws: v })} small={1} big={3} min={0} max={60} decimals={0} />
 
         <div className="seg" role="group" aria-label="Είσοδος ανέμου">
           <button className={s.windInput === 'twa' ? 'on' : ''} onClick={() => set({ windInput: 'twa' })}>
-            TWA
+            TWA · γωνία
           </button>
           <button className={s.windInput === 'twd' ? 'on' : ''} onClick={() => set({ windInput: 'twd' })}>
-            TWD
+            TWD · κατεύθυνση
           </button>
         </div>
 
         {s.windInput === 'twa' ? (
           <>
-            <NumberStepper label="TWA" unit="°" value={s.twa} onChange={(v) => setManual('twa', { twa: v })} small={1} big={5} min={0} max={180} />
+            <NumberStepper hint="γωνία ανέμου" label="TWA" unit="°" value={s.twa} onChange={(v) => setManual('twa', { twa: v })} small={1} big={5} min={0} max={180} />
             <div className="seg" role="group" aria-label="Ποδαρικό">
               <button className={`stbd ${s.side === 'stbd' ? 'on' : ''}`} onClick={() => setManual('twa', { side: 'stbd' })}>
-                Δεξιές (stbd)
+                Δεξιές{!simple && ' (stbd)'}
               </button>
               <button className={`port ${s.side === 'port' ? 'on' : ''}`} onClick={() => setManual('twa', { side: 'port' })}>
-                Αριστερές (port)
+                Αριστερές{!simple && ' (port)'}
               </button>
             </div>
           </>
@@ -332,6 +398,7 @@ export function LiveView() {
           <>
             <NumberStepper
               label={`TWD${settings.manualMagnetic ? ' (μαγν.)' : ''}`}
+              hint="από πού φυσάει"
               unit="°"
               value={s.twd}
               onChange={(v) => set({ twd: v })}
@@ -366,7 +433,7 @@ export function LiveView() {
           </>
         )}
 
-        <NumberStepper label="BSP" unit="kt" value={s.bsp} onChange={(v) => setManual('bsp', { bsp: v })} small={0.1} big={1} min={0} max={40} decimals={1} />
+        <NumberStepper id="live-bsp" hint="ταχύτητα σκάφους" label="BSP" unit="kt" value={s.bsp} onChange={(v) => setManual('bsp', { bsp: v })} small={0.1} big={1} min={0} max={40} decimals={1} />
 
         <div className="field-label">Πανί που έχουμε</div>
         <div className="chips">

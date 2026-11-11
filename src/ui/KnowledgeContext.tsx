@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
-import { LOCAL_CHANGE, deleteNote, getKV, listNotes, saveNote, setKV } from '../boat/store';
+import { LOCAL_CHANGE, deleteNote, getKV, listNotes, restoreNote, saveNote, setKV } from '../boat/store';
 import type { KnowledgeNote } from '../knowledge/types';
 import { setKnowledgeCache } from '../knowledge/match';
 import { REMOTE_CHANGE } from '../sync/sync';
@@ -13,6 +13,7 @@ interface KnowledgeState {
   crewError?: string;
   save: (n: KnowledgeNote) => Promise<void>;
   remove: (id: string) => Promise<void>;
+  restore: (n: KnowledgeNote) => Promise<void>;
   refreshCrew: () => Promise<void>;
 }
 
@@ -57,8 +58,9 @@ export function KnowledgeProvider({ children }: { children: ReactNode }) {
 
   const save = useCallback(async (n: KnowledgeNote) => saveNote(n), []);
   const remove = useCallback(async (id: string) => deleteNote(id), []);
+  const restore = useCallback(async (n: KnowledgeNote) => restoreNote(n), []);
 
-  return <Ctx.Provider value={{ mine, crew, crewError, save, remove, refreshCrew }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ mine, crew, crewError, save, remove, restore, refreshCrew }}>{children}</Ctx.Provider>;
 }
 
 export function useKnowledge(): KnowledgeState {

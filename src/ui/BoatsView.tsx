@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { NEW_BOAT_FLAG } from './WelcomeCard';
 import { useApp } from './AppContext';
+import { askConfirm, offerUndo } from './Dialogs';
 import { BoatEditor } from './BoatEditor';
 import type { BoatProfile } from '../boat/types';
 import { newBoatId, parseBoatJson } from '../boat/store';
@@ -30,16 +31,19 @@ function download(name: string, text: string) {
 }
 
 export function BoatsView() {
-  const { boats, activeBoat, settings, updateSettings, saveBoat, deleteBoat } = useApp();
+  const { boats, activeBoat, settings, updateSettings, saveBoat, deleteBoat, restoreBoat } = useApp();
   const [editing, setEditing] = useState<{ boat: BoatProfile; isNew: boolean; flags?: Flag[] }>();
   const [mode, setMode] = useState<'list' | 'add' | 'pdf'>('list');
   const hasOwn = boats.some((b) => b.isOwn);
   // Opened from the welcome screen: show the ways to add a boat.
   useEffect(() => {
     try {
-      if (sessionStorage.getItem(NEW_BOAT_FLAG)) {
+      const how = sessionStorage.getItem(NEW_BOAT_FLAG);
+      if (how) {
         sessionStorage.removeItem(NEW_BOAT_FLAG);
-        setMode('add');
+        if (how === 'pdf') setMode('pdf');
+        else if (how === 'manual') setEditing({ boat: blankBoat(!hasOwn), isNew: true });
+        else setMode('add');
       }
     } catch {
       /* ignore */
@@ -70,7 +74,7 @@ export function BoatsView() {
         if (!file) return;
         try {
           const b = parseBoatJson(await file.text());
-          if (boats.some((x) => x.id === b.id) && !confirm(`Υπάρχει ήδη «${b.name}». Αντικατάσταση;`)) return;
+          if (boats.some((x) => x.id === b.id) && !(await askConfirm(`Υπάρχει ήδη το «${b.name}». Να αντικατασταθεί με αυτό το αρχείο;`, { ok: 'Αντικατάσταση' }))) return;
           await saved(b);
           setMsg(`Εισήχθη: ${b.name}`);
         } catch (err) {
@@ -115,8 +119,8 @@ export function BoatsView() {
           </svg>
         </span>
         <span>
-          <b>Πιστοποιητικό ORC (PDF)</b>
-          <span className="small">Το AI το διαβάζει και τα συμπληρώνει όλα</span>
+          <b>Έχω το πιστοποιητικό ORC (PDF)</b>
+          <span className="small">Το διαβάζουμε για σένα και συμπληρώνουμε τα πάντα</span>
           <span className="add-tag">ΠΡΟΤΕΙΝΕΤΑΙ</span>
         </span>
       </button>
@@ -127,8 +131,8 @@ export function BoatsView() {
           </svg>
         </span>
         <span>
-          <b>Αρχείο JSON</b>
-          <span className="small">Από «Export» άλλης συσκευής ή πληρώματος</span>
+          <b>Έχω αρχείο σκάφους από άλλο κινητό</b>
+          <span className="small">Αρχείο που έβγαλες με «Export» (από σένα ή το πλήρωμα)</span>
         </span>
       </button>
       <button className="add-opt" onClick={() => setEditing({ boat: blankBoat(!hasOwn), isNew: true })}>
@@ -139,8 +143,8 @@ export function BoatsView() {
           </svg>
         </span>
         <span>
-          <b>Χειροκίνητα</b>
-          <span className="small">Γράφεις μόνος σου στοιχεία και polars</span>
+          <b>Θα τα γράψω μόνος μου</b>
+          <span className="small">Όνομα, αριθμός πανιού, τύπος. Τα υπόλοιπα αργότερα.</span>
         </span>
       </button>
       {boats.length > 0 && (
@@ -201,9 +205,13 @@ export function BoatsView() {
               <button
                 className="btn danger"
                 onClick={async () => {
-                  if (!confirm(`Διαγραφή του «${b.name}»;`)) return;
+                  const wasActive = settings.activeBoatId === b.id;
                   await deleteBoat(b.id);
-                  if (settings.activeBoatId === b.id) updateSettings({ activeBoatId: boats.find((x) => x.id !== b.id)?.id ?? '' });
+                  if (wasActive) updateSettings({ activeBoatId: boats.find((x) => x.id !== b.id)?.id ?? '' });
+                  offerUndo(`Διαγράφηκε το «${b.name}»`, async () => {
+                    await restoreBoat(b);
+                    if (wasActive) updateSettings({ activeBoatId: b.id });
+                  });
                 }}
               >
                 Διαγραφή

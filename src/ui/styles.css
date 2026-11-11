@@ -5,7 +5,7 @@
   --fg: #000000;
   --muted: #4b5563;
   --card: #f3f4f6;
-  --line: #9ca3af;
+  --line: #6b7280;
   --accent: #0b2a4a;
   --accent-fg: #ffffff;
   --good: #047857;
@@ -24,7 +24,7 @@
   --fg: #f9fafb;
   --muted: #9ca3af;
   --card: #162033;
-  --line: #374151;
+  --line: #64748b;
   --accent: #60a5fa;
   --accent-fg: #0b1220;
   --good: #34d399;
@@ -41,25 +41,34 @@
 :root[data-theme='night'] {
   --bg: #000000;
   --fg: #ff3b30;
-  --muted: #a3271f;
+  --muted: #d8372c;
   --card: #140303;
-  --line: #4a0b07;
+  --line: #b02a20;
   --accent: #ff3b30;
   --accent-fg: #000000;
   --good: #ff6b5e;
   --fair: #d1342a;
   --bad: #ff3b30;
   --stbd: #ff6b5e;
-  --port: #a3271f;
+  --port: #d8372c;
   --curve: #4a0b07;
   --curve-hl: #ff3b30;
   --opt: #ff8a80;
-  --now: #ffffff;
+  --now: #ff8a80;
   color-scheme: dark;
 }
 
 * {
   box-sizing: border-box;
+}
+html {
+  font-size: 17px;
+}
+:root[data-size='l'] {
+  font-size: 20px;
+}
+:root[data-size='xl'] {
+  font-size: 23px;
 }
 html,
 body {
@@ -67,7 +76,7 @@ body {
   background: var(--bg);
   color: var(--fg);
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', sans-serif;
-  font-size: 17px;
+  font-size: 1rem;
   -webkit-tap-highlight-color: transparent;
 }
 button,
@@ -1581,3 +1590,436 @@ legend { font-weight: 600; margin-bottom: 6px; }
 :root[data-theme='night'] .maplibregl-popup-close-button { color: #ff3b30; }
 :root[data-theme='dark'] .maplibregl-popup-tip { border-top-color: #162033; border-bottom-color: #162033; }
 :root[data-theme='night'] .maplibregl-popup-tip { border-top-color: #000; border-bottom-color: #000; }
+
+/* ---- 0.9 Ευχρηστία (design/ux-review-2026-11) ---- */
+
+/* Night: no large bright surfaces; filled controls become black with a red outline. */
+:root[data-theme='night'] .topbar {
+  background: #000;
+  color: var(--fg);
+  border-bottom: 2px solid var(--line);
+}
+:root[data-theme='night'] .boat-select,
+:root[data-theme='night'] .top-btn {
+  color: var(--fg);
+}
+:root[data-theme='night'] .btn.primary,
+:root[data-theme='night'] .seg button.on,
+:root[data-theme='night'] .seg button.stbd.on,
+:root[data-theme='night'] .seg button.port.on,
+:root[data-theme='night'] .toast {
+  background: #000;
+  color: var(--fg);
+  border-color: var(--fg);
+  box-shadow: inset 0 0 0 2px var(--fg);
+}
+:root[data-theme='night'] .tabbar button.on {
+  box-shadow: inset 0 3px 0 var(--fg);
+}
+:root[data-theme='night'] .step:active {
+  background: #000;
+  color: var(--fg);
+  box-shadow: inset 0 0 0 3px var(--fg);
+}
+
+/* Top bar: icon + word, 48px targets. */
+.topbar .top-btn {
+  flex-direction: column;
+  gap: 1px;
+  min-width: 48px;
+  min-height: 48px;
+  padding: 2px 4px;
+  border-radius: 10px;
+}
+.top-btn small {
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+.theme-menu {
+  position: absolute;
+  right: 8px;
+  top: calc(100% + 4px);
+  z-index: 30;
+  background: var(--bg);
+  color: var(--fg);
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  padding: 6px;
+  display: grid;
+  gap: 6px;
+  min-width: 12em;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+}
+.theme-menu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background: none;
+  font-weight: 700;
+  text-align: left;
+}
+.theme-menu button.on {
+  border-color: var(--accent);
+}
+:root[data-theme='night'] .theme-menu button.on {
+  border-color: var(--fg);
+}
+
+/* Bigger, readable labels everywhere. */
+.tab-label {
+  font-size: clamp(0.66rem, 3.2vw, 0.82rem);
+}
+.tabbar button {
+  color: var(--fg);
+}
+.tile-label {
+  color: var(--fg);
+}
+.tile-hint {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: none;
+  color: var(--muted);
+}
+.hint-word {
+  font-weight: 600;
+  color: var(--muted);
+}
+.missing {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 52px;
+  margin-top: 4px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 2px dashed var(--fair);
+  background: var(--bg);
+  color: var(--fg);
+  font-weight: 700;
+  text-align: left;
+}
+.live-mode {
+  margin: 0 0 10px;
+}
+.results.simple .tile.hero {
+  grid-column: 1 / -1;
+}
+.results.simple .tile.hero .tile-value {
+  font-size: 3.6rem;
+}
+
+/* Steppers: on narrow phones (or very large text) the ±big buttons move to a second row. */
+@media (max-width: 359px) {
+  .stepper-row {
+    grid-template-columns: 1fr 1.6fr 1fr;
+    grid-template-areas: 'sm val sp' 'bm . bp';
+  }
+  .stepper-row .sm { grid-area: sm; }
+  .stepper-row .sp { grid-area: sp; }
+  .stepper-row .bm { grid-area: bm; }
+  .stepper-row .bp { grid-area: bp; }
+  .stepper-row .stepper-value { grid-area: val; }
+}
+@media (max-width: 480px) {
+  :root[data-size='xl'] .stepper-row,
+  :root[data-size='l'] .stepper-row {
+    grid-template-columns: 1fr 1.6fr 1fr;
+    grid-template-areas: 'sm val sp' 'bm . bp';
+  }
+  :root[data-size='xl'] .stepper-row .sm, :root[data-size='l'] .stepper-row .sm { grid-area: sm; }
+  :root[data-size='xl'] .stepper-row .sp, :root[data-size='l'] .stepper-row .sp { grid-area: sp; }
+  :root[data-size='xl'] .stepper-row .bm, :root[data-size='l'] .stepper-row .bm { grid-area: bm; }
+  :root[data-size='xl'] .stepper-row .bp, :root[data-size='l'] .stepper-row .bp { grid-area: bp; }
+  :root[data-size='xl'] .stepper-row .stepper-value, :root[data-size='l'] .stepper-row .stepper-value { grid-area: val; }
+}
+
+/* Offline / back-online strip. */
+.net-strip {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  background: color-mix(in srgb, var(--fair) 16%, var(--bg));
+  border-bottom: 2px solid var(--fair);
+}
+.net-strip .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--fair);
+  flex-shrink: 0;
+}
+.net-strip.ok {
+  background: color-mix(in srgb, var(--good) 14%, var(--bg));
+  border-color: var(--good);
+}
+.net-strip.ok .dot {
+  background: var(--good);
+}
+
+/* Undo snackbar and our own confirm sheet (follow the theme, never white at night). */
+.snack {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(76px + env(safe-area-inset-bottom));
+  z-index: 40;
+  max-width: 560px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--fg);
+  color: var(--bg);
+  font-weight: 700;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+.snack button {
+  margin-left: auto;
+  min-height: 48px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 2px solid currentColor;
+  background: none;
+  color: inherit;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+:root[data-theme='night'] .snack {
+  background: #000;
+  color: var(--fg);
+  border: 2px solid var(--fg);
+}
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 12px;
+}
+.sheet {
+  width: 100%;
+  max-width: 480px;
+  background: var(--bg);
+  color: var(--fg);
+  border: 2px solid var(--line);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: env(safe-area-inset-bottom);
+}
+.sheet p {
+  margin: 0 0 14px;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+.sheet-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8em, 1fr));
+  gap: 10px;
+}
+
+/* First run, step by step. */
+.onboard {
+  max-width: 560px;
+  margin: 0 auto;
+}
+.onboard h2 {
+  font-size: 1.35rem;
+}
+.onboard .center {
+  text-align: center;
+}
+.onboard .big-icon {
+  font-size: 3rem;
+  text-align: center;
+}
+.dots {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin: 6px 0 14px;
+}
+.dots span {
+  width: 10px;
+  height: 10px;
+  border-radius: 5px;
+  border: 2px solid var(--fg);
+}
+.dots span.on {
+  background: var(--fg);
+}
+.onboard-nav {
+  margin-top: 16px;
+}
+.onboard-nav .btn.primary {
+  width: 100%;
+  min-height: 56px;
+  font-size: 1.05rem;
+}
+.onboard-nav .row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+.btn.link-like {
+  border: 0;
+  background: none;
+  text-decoration: underline;
+  padding: 8px 4px;
+  min-height: 48px;
+}
+.opt {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+  padding: 14px;
+  margin-bottom: 10px;
+  border-radius: 12px;
+  border: 2px solid var(--line);
+  background: var(--bg);
+  min-height: 64px;
+}
+.opt b {
+  display: block;
+  font-size: 1.05rem;
+}
+.opt .ic {
+  font-size: 1.6rem;
+  width: 36px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.opt.on,
+.pick-grid button.on {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+:root[data-theme='night'] .opt.on,
+:root[data-theme='night'] .pick-grid button.on {
+  border-color: var(--fg);
+  box-shadow: inset 0 0 0 2px var(--fg);
+}
+ol.how {
+  padding-left: 1.4em;
+  margin: 6px 0;
+}
+ol.how li {
+  margin-bottom: 8px;
+}
+.kbd {
+  display: inline-block;
+  border: 2px solid var(--line);
+  border-radius: 6px;
+  padding: 0 6px;
+  font-weight: 800;
+}
+.pick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 6.2em), 1fr));
+  gap: 8px;
+  margin: 6px 0 4px;
+}
+.pick-grid button {
+  padding: 6px 4px;
+  min-height: 64px;
+  border-radius: 12px;
+  border: 2px solid var(--line);
+  background: var(--bg);
+  font-weight: 800;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+.settings-sub {
+  font-weight: 700;
+  margin: 12px 0 6px;
+}
+
+/* Map controls: 48px with room for a wet finger. */
+.maplibregl-ctrl-group button {
+  width: 48px !important;
+  height: 48px !important;
+}
+
+/* Race screen must never scroll sideways on a 320px phone. */
+.race-seg {
+  flex-wrap: wrap;
+}
+.race-seg button {
+  min-width: 0;
+  white-space: normal;
+}
+
+.chat-send {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+/* Narrow phones: the instruments pill keeps only its dot so the boat name has room. */
+@media (max-width: 420px) {
+  .topbar .inst-text {
+    display: none;
+  }
+  .topbar .inst-pill {
+    padding: 0 10px;
+    min-height: 44px;
+  }
+  .topbar .top-btn {
+    min-width: 46px;
+    padding: 2px 1px;
+  }
+}
+
+.live-strip {
+  overflow: hidden;
+}
+.live-strip > span {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Large text must not squeeze the boat name or cut the tab names. */
+.top-btn small {
+  font-size: min(0.62rem, 12px);
+}
+.topbar .top-btn svg {
+  width: 24px;
+  height: 24px;
+}
+.tab-label {
+  font-size: min(0.82rem, 3.25vw);
+}
+.topbar .boat-select {
+  font-size: min(1rem, 19px);
+  padding-left: 4px;
+  padding-right: 2px;
+}
+
+/* Colour emoji would glow white at night: tint them red. */
+:root[data-theme='night'] .opt .ic {
+  filter: grayscale(1) sepia(1) saturate(8) hue-rotate(-50deg) brightness(0.7);
+}

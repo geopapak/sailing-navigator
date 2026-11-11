@@ -3,6 +3,7 @@ import type { BoatProfile, PolarTable, Sail, SailKind, SailRule } from '../boat/
 import { STANDARD_SCORING_OPTIONS } from '../boat/scoringOptions';
 import { validateBoat } from '../boat/validate';
 import { NumField } from './NumberStepper';
+import { offerUndo } from './Dialogs';
 
 interface Props {
   initial: BoatProfile;
@@ -339,7 +340,14 @@ export function BoatEditor({ initial, isNew, onSave, onCancel }: Props) {
               <button className="btn" onClick={() => setPolarJson(JSON.stringify(p, null, 1))}>
                 Επεξεργασία ως JSON
               </button>
-              <button className="btn danger" onClick={() => confirm('Αφαίρεση polars;') && setPolar(undefined)}>
+              <button
+                className="btn danger"
+                onClick={() => {
+                  const prev = p;
+                  setPolar(undefined);
+                  offerUndo('Αφαιρέθηκαν τα polars', () => setPolar(prev));
+                }}
+              >
                 Αφαίρεση polars
               </button>
             </div>

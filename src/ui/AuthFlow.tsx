@@ -106,7 +106,7 @@ export function AuthFlow() {
               <path d="M8 12.5l2.5 2.5L16 9.5" />
             </svg>
             <h2>Το αίτημα στάλθηκε</h2>
-            <p>Ο διαχειριστής βλέπει το αίτημα στη λίστα χρηστών και θα σου δώσει προσωρινό κωδικό, από τηλέφωνο ή μήνυμα.</p>
+            <p>Το αίτημά σου στάλθηκε. Ο διαχειριστής της εφαρμογής θα σου δώσει προσωρινό κωδικό, συνήθως την ίδια μέρα, από τηλέφωνο ή μήνυμα. <b>Δεν θα έρθει email.</b> Αν βιάζεσαι, πες το στον υπεύθυνο του σκάφους ή του ομίλου σου.</p>
             <p>Με τον προσωρινό κωδικό συνδέεσαι και βάζεις αμέσως δικό σου.</p>
             <button className="btn primary auth-cta" onClick={() => go('login')}>
               Πίσω στη σύνδεση
@@ -230,7 +230,7 @@ export function AuthFlow() {
         </label>
         <label>
           Κωδικός
-          <input type="password" autoComplete="current-password" required value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} placeholder="••••••••" />
+          <input type="password" autoComplete="current-password" required value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} placeholder="Ο κωδικός σου" />
         </label>
         <div className="auth-forgot">
           <button type="button" className="link inline" onClick={() => go('forgot')}>

@@ -5,13 +5,9 @@ import { AccountCard } from './AccountCard';
 import { InstrumentsCard } from './InstrumentsCard';
 import { DEFAULT_SERVER } from './settings';
 import { NumField } from './NumberStepper';
-import type { Theme } from './settings';
-
-const THEMES: { id: Theme; label: string }[] = [
-  { id: 'day', label: 'Μέρα' },
-  { id: 'dark', label: 'Σούρουπο' },
-  { id: 'night', label: 'Νύχτα (κόκκινο)' },
-];
+import { AppearancePickers } from './Appearance';
+import { openTab } from './openTab';
+import { InstallHelp, isStandalone } from './InstallHelp';
 
 export function SettingsView() {
   const { settings, updateSettings } = useApp();
@@ -19,19 +15,45 @@ export function SettingsView() {
   const [checking, setChecking] = useState(false);
   return (
     <div className="settings">
+      <section className="card">
+        <h3>Εμφάνιση</h3>
+        <AppearancePickers />
+        <div className="settings-sub">Live</div>
+        <div className="seg" role="group" aria-label="Προβολή Live">
+          <button className={settings.liveMode === 'simple' ? 'on' : ''} onClick={() => updateSettings({ liveMode: 'simple' })}>
+            Απλό
+          </button>
+          <button className={settings.liveMode === 'full' ? 'on' : ''} onClick={() => updateSettings({ liveMode: 'full' })}>
+            Πλήρες
+          </button>
+        </div>
+        <label className="check">
+          <input type="checkbox" checked={settings.keepAwake} onChange={(e) => updateSettings({ keepAwake: e.target.checked })} />
+          Η οθόνη να μένει αναμμένη
+        </label>
+        <p>
+          <button className="btn" onClick={() => {
+              updateSettings({ onboarded: false });
+              openTab('live');
+            }}>
+            Δείξε ξανά τα πρώτα βήματα
+          </button>
+        </p>
+      </section>
+      {!isStandalone() && (
+        <section className="card">
+          <h3>Η εφαρμογή στο κινητό</h3>
+          <p className="small">Βάλε την εφαρμογή στην αρχική οθόνη, για να ανοίγει με ένα άγγιγμα και χωρίς ίντερνετ.</p>
+          <InstallHelp />
+        </section>
+      )}
       <AccountCard />
       <InstrumentsCard />
-      <section className="card form-grid">
-        <label>
-          Θέμα
-          <div className="seg">
-            {THEMES.map((t) => (
-              <button key={t.id} className={settings.theme === t.id ? 'on' : ''} onClick={() => updateSettings({ theme: t.id })}>
-                {t.label}
-              </button>
-            ))}
-          </div>
-        </label>
+      <details className="card">
+        <summary>
+          <b>Για προχωρημένους</b> <span className="small muted">— μαγνητική απόκλιση, server</span>
+        </summary>
+      <section className="form-grid">
         <label className="check">
           <input
             type="checkbox"
@@ -44,12 +66,8 @@ export function SettingsView() {
           Μαγνητική απόκλιση (°, ανατολική +)
           <NumField value={settings.declination} onChange={(v) => updateSettings({ declination: v ?? 0 })} width="5em" />
         </label>
-        <label className="check">
-          <input type="checkbox" checked={settings.keepAwake} onChange={(e) => updateSettings({ keepAwake: e.target.checked })} />
-          Η οθόνη να μένει αναμμένη
-        </label>
       </section>
-      <section className="card form-grid">
+      <section className="form-grid">
         <h3>Server & σύμβουλος AI</h3>
         <p className="small full">
           Ο server κρατά τους λογαριασμούς και ρωτά το Claude για τον σύμβουλο. Το κλειδί του Claude API μένει στον server,
@@ -89,6 +107,7 @@ export function SettingsView() {
           {check && <p className="small">{check}</p>}
         </div>
       </section>
+      </details>
       <section className="card">
         <h3>Σχετικά</h3>
         <p className="small">

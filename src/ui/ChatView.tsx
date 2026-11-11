@@ -5,6 +5,7 @@ import { useNav } from './NavContext';
 import { useStoredState } from './hooks';
 import { Icon } from './Icons';
 import { openTab } from './openTab';
+import { ADVISOR_WAITING } from './AdvisorCard';
 import { advisorConfig, advisorReady, askChat, AdvisorError } from '../ai/client';
 import { modelsContext, type ChatContext, type ChatMessage, type ChatSource } from '../ai/chat';
 import { buildPlanContext, localIso } from '../ai/context';
@@ -74,7 +75,7 @@ function RichText({ text }: { text: string }) {
 }
 
 export function ChatView() {
-  const { settings, activeBoat, boats } = useApp();
+  const { settings, activeBoat, boats, account } = useApp();
   const nav = useNav();
   const [log, setLog] = useStoredState<{ entries: Entry[] }>('advisor-chat', { entries: [] });
   const [draft, setDraft] = useState('');
@@ -88,6 +89,7 @@ export function ChatView() {
   const endRef = useRef<HTMLDivElement>(null);
   const cfg = advisorConfig(settings);
   const configured = advisorReady(cfg);
+  const waiting = configured && !!account && !account.ai.allowed && !settings.aiCode.trim();
 
   const live = getLiveSnapshot();
   const planned = nav.planned;
@@ -195,6 +197,7 @@ export function ChatView() {
           <p className="muted small">Η σύγκριση μοντέλων είναι για άλλη ώρα εκκίνησης από το σχέδιο ({localIso(comparison.start).slice(11, 16)}).</p>
         )}
         {nav.plan.startLocal && !planned && <p className="muted small">Χωρίς υπολογισμένη διαδρομή — ο σύμβουλος δεν θα ξέρει το σχέδιο.</p>}
+        {waiting && <p className="small">{ADVISOR_WAITING}</p>}
         {!configured && (
           <p className="small">
             Για να μιλήσεις με τον σύμβουλο, συνδέσου στον λογαριασμό σου.{' '}
@@ -205,10 +208,11 @@ export function ChatView() {
         )}
       </section>
 
-      {log.entries.length === 0 && configured && (
+      {log.entries.length === 0 && configured && !waiting && (
         <section className="chat-suggest">
+          <p className="muted small">Έτοιμες ερωτήσεις: πάτα για να μπει στο πεδίο, μετά «Ρώτα».</p>
           {SUGGESTIONS.map((s) => (
-            <button key={s} className="chip" onClick={() => send(s)} disabled={busy}>
+            <button key={s} className={`chip ${draft === s ? 'on' : ''}`} onClick={() => setDraft(s)} disabled={busy}>
               {s}
             </button>
           ))}
@@ -270,8 +274,9 @@ export function ChatView() {
           rows={2}
           aria-label="Ερώτηση στον σύμβουλο"
         />
-        <button className="btn primary" disabled={busy || !draft.trim() || !configured} aria-label="Αποστολή">
+        <button className="btn primary chat-send" disabled={busy || !draft.trim() || !configured || waiting} aria-label="Ρώτα (περίπου 10 λεπτά του ευρώ)">
           <Icon name="send" />
+          <span>Ρώτα ≈ €0,10</span>
         </button>
       </form>
       <p className="muted small chat-foot">Συμβουλή AI — η απόφαση είναι του κυβερνήτη. Κόστος περίπου €0,05–0,15 ανά ερώτηση.</p>

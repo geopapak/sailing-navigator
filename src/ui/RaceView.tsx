@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from './AppContext';
 import { useNav, localToMs } from './NavContext';
 import { useRace } from './RaceContext';
+import { askConfirm, offerUndo } from './Dialogs';
 import { useInstruments } from './InstrumentsContext';
 import { useStoredState } from './hooks';
 import { ScoringView } from './ScoringView';
@@ -501,8 +502,9 @@ function RaceSetup({ id, onDone, onCancel }: { id?: string; onDone: (started: bo
           <button
             className="btn danger"
             onClick={async () => {
-              if (!confirm(`Διαγραφή του αγώνα «${existing.name}» από αυτή τη συσκευή;`)) return;
-              await race.remove(existing.id);
+              const gone = existing;
+              await race.remove(gone.id);
+              offerUndo(`Διαγράφηκε ο αγώνας «${gone.name}»`, () => race.save(gone));
               onCancel();
             }}
           >
@@ -543,8 +545,8 @@ function RaceLive({ onBack, onOpponent, onFinished }: { onBack: () => void; onOp
   const next = ownEntry ? nextMarkOf(r.fixes.filter((f) => f.entryId === ownEntry.id), r.marks) : 1;
   const legText = next < r.marks.length ? `σκέλος ${next}/${r.marks.length - 1} προς ${r.marks[next].name}` : 'προς τον τερματισμό';
 
-  const finish = () => {
-    if (!confirm('Τερματίσαμε τώρα;')) return;
+  const finish = async () => {
+    if (!(await askConfirm('Τερματίσαμε τώρα; Ο χρόνος σταματά σε αυτή τη στιγμή.', { ok: 'Ναι, τερματίσαμε' }))) return;
     const t = Date.now();
     update((x) => ({ status: 'finished', finish: t, results: { ...(x.results ?? {}), ...(ownEntry ? { [ownEntry.id]: (t - x.start) / 1000 } : {}) } }));
     onFinished(r.id);

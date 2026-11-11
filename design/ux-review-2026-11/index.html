@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Ευχρηστία — πρωτότυπο</title>
+<style>
+  /* Canvas around the phone (not part of the design). */
+  body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans",sans-serif; background:#e5e7eb; color:#111; }
+  .controls { position:sticky; top:0; z-index:50; background:#fff; border-bottom:1px solid #d1d5db; padding:10px 16px; display:flex; flex-wrap:wrap; gap:10px 18px; align-items:center; }
+  .controls label { font-size:.8rem; font-weight:700; color:#374151; margin-right:4px; }
+  .pick { display:inline-flex; border:1px solid #9ca3af; border-radius:999px; overflow:hidden; }
+  .pick button { border:0; background:#fff; padding:8px 12px; font:inherit; font-size:.85rem; font-weight:600; min-height:40px; cursor:pointer; }
+  .pick button + button { border-left:1px solid #d1d5db; }
+  .pick button.on { background:#0b2a4a; color:#fff; }
+  .page { display:flex; flex-wrap:wrap; gap:24px; padding:20px 16px 40px; justify-content:center; align-items:flex-start; }
+  .notes { width:440px; max-width:100%; background:#fff; border-radius:16px; padding:16px 20px; line-height:1.5; font-size:.95rem; }
+  .notes h2 { margin:.1em 0 .4em; font-size:1.2rem; }
+  .notes h3 { margin:1em 0 .3em; font-size:1rem; }
+  .notes ul { padding-left:1.2em; margin:.3em 0; }
+  .notes .tag { display:inline-block; font-size:.72rem; font-weight:800; padding:2px 7px; border-radius:6px; background:#fef3c7; color:#78350f; margin-right:4px; }
+  .notes .warn { background:#fef2f2; border-left:4px solid #b91c1c; padding:8px 10px; border-radius:6px; font-size:.88rem; }
+
+  /* ---------- Phone & app tokens (same as src/ui/styles.css) ---------- */
+  .phone { width:390px; height:844px; max-width:100%; border-radius:34px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,.28); border:10px solid #111; position:relative; display:flex; flex-direction:column; }
+  .phone[data-theme='day']  { --bg:#fff; --fg:#000; --muted:#4b5563; --card:#f3f4f6; --line:#9ca3af; --accent:#0b2a4a; --accent-fg:#fff; --good:#047857; --fair:#b45309; --bad:#b91c1c; --stbd:#047857; --port:#b91c1c; --now:#dc2626; --stbd-fg:#fff; }
+  .phone[data-theme='dark'] { --bg:#0b1220; --fg:#f9fafb; --muted:#9ca3af; --card:#162033; --line:#374151; --accent:#60a5fa; --accent-fg:#0b1220; --good:#34d399; --fair:#fbbf24; --bad:#f87171; --stbd:#34d399; --port:#f87171; --now:#f87171; --stbd-fg:#fff; }
+  .phone[data-theme='night']{ --bg:#000; --fg:#ff3b30; --muted:#a3271f; --card:#140303; --line:#4a0b07; --accent:#ff3b30; --accent-fg:#000; --good:#ff6b5e; --fair:#d1342a; --bad:#ff3b30; --stbd:#ff6b5e; --port:#a3271f; --now:#ffffff; --stbd-fg:#fff; }
+  /* NEW tokens (finding #3, #7, #9) */
+  .phone[data-ver='new'][data-theme='day']   { --line:#6b7280; }
+  .phone[data-ver='new'][data-theme='dark']  { --line:#64748b; }
+  .phone[data-ver='new'][data-theme='night'] { --muted:#d8372c; --line:#b02a20; --port:#d8372c; --now:#ff8a80; --stbd-fg:#000; }
+
+  .phone { background:var(--bg); color:var(--fg); font-size:var(--base,17px); }
+  .phone * { box-sizing:border-box; }
+  .phone button, .phone input { font:inherit; color:inherit; }
+  .scr { flex:1; overflow-y:auto; overflow-x:hidden; padding:12px 12px 16px; }
+  .topbar { display:flex; align-items:center; gap:6px; padding:10px 10px; background:var(--accent); color:var(--accent-fg); }
+  .topbar .boat { flex:1; font-weight:800; font-size:1.05em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tb { background:none; border:0; color:inherit; min-width:40px; min-height:44px; display:inline-flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; border-radius:10px; cursor:pointer; }
+  .phone[data-ver='new'] .tb { min-width:52px; min-height:52px; }
+  .tb small { font-size:.68em; font-weight:700; line-height:1; }
+  .tb svg { width:24px; height:24px; }
+  /* Night NEW: no big bright surfaces */
+  .phone[data-ver='new'][data-theme='night'] .topbar { background:#000; color:var(--fg); border-bottom:2px solid var(--line); }
+  .phone[data-ver='new'][data-theme='night'] .btn.primary,
+  .phone[data-ver='new'][data-theme='night'] .seg button.on,
+  .phone[data-ver='new'][data-theme='night'] .chip.on { background:#000; color:var(--fg); border-color:var(--fg); box-shadow:inset 0 0 0 2px var(--fg); }
+  .phone[data-ver='new'][data-theme='night'] .tabbar button.on { box-shadow:inset 0 3px 0 var(--fg); }
+
+  .strip { display:flex; gap:8px; align-items:center; padding:8px 12px; font-size:.82em; font-weight:700; background:color-mix(in srgb, var(--fair) 16%, var(--bg)); color:var(--fg); border-bottom:2px solid var(--fair); }
+  .strip .dot { width:10px; height:10px; border-radius:5px; background:var(--fair); flex-shrink:0; }
+  .strip.ok { background:color-mix(in srgb, var(--good) 14%, var(--bg)); border-color:var(--good); }
+  .strip.ok .dot { background:var(--good); }
+
+  .card { background:var(--card); border-radius:12px; padding:12px; margin-bottom:12px; }
+  .muted { color:var(--muted); }
+  .small { font-size:.85em; }
+  h2 { margin:0 0 8px; font-size:1.3em; }
+  h3 { margin:0 0 8px; font-size:1em; }
+  .btn { min-height:48px; padding:8px 14px; border-radius:10px; border:2px solid var(--line); background:var(--bg); font-weight:700; cursor:pointer; }
+  .btn.primary { background:var(--accent); color:var(--accent-fg); border-color:var(--accent); }
+  .btn.big { min-height:56px; width:100%; font-size:1.05em; }
+  .btn.danger { color:var(--bad); border-color:var(--bad); }
+  .btn.link { border:0; background:none; text-decoration:underline; padding:8px 4px; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; }
+  .seg { display:flex; border:2px solid var(--line); border-radius:10px; overflow:hidden; margin:6px 0 10px; }
+  .seg button { flex:1; min-height:48px; border:0; background:var(--bg); font-weight:700; cursor:pointer; }
+  .seg button + button { border-left:2px solid var(--line); }
+  .seg button.on { background:var(--accent); color:var(--accent-fg); }
+  .seg button.stbd.on { background:var(--stbd); color:var(--stbd-fg); }
+
+  .tiles { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-bottom:10px; }
+  .tile { background:var(--card); border-radius:12px; padding:8px 10px; border:3px solid transparent; min-width:0; }
+  .tile.hero { grid-column:1 / -1; }
+  .tile.good { border-color:var(--good); } .tile.good .tv { color:var(--good); }
+  .tile.fair { border-color:var(--fair); } .tile.fair .tv { color:var(--fair); }
+  .tl { font-size:.8em; font-weight:800; text-transform:uppercase; color:var(--muted); }
+  .tl i { font-style:normal; text-transform:none; font-weight:600; display:block; font-size:.95em; color:var(--muted); }
+  .phone[data-ver='new'] .tl { color:var(--fg); font-size:.85em; }
+  .tv { font-size:2.3em; font-weight:800; line-height:1.1; font-variant-numeric:tabular-nums; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tile.hero .tv { font-size:3.4em; }
+  .ts { font-size:.85em; color:var(--muted); }
+  .missing { display:flex; align-items:center; gap:8px; min-height:52px; width:100%; margin-top:4px; padding:8px 12px; border-radius:10px; border:2px dashed var(--fair); background:var(--bg); color:var(--fg); font-weight:700; text-align:left; cursor:pointer; }
+  .advice { padding:10px 12px; border-radius:10px; border-left:8px solid var(--fair); background:var(--card); font-weight:700; margin-bottom:10px; }
+
+  .step { display:grid; grid-template-columns:repeat(2,minmax(44px,52px)) minmax(0,1fr) repeat(2,minmax(44px,52px)); gap:6px; align-items:center; margin-bottom:10px; }
+  .step .lab { grid-column:1 / -1; font-weight:800; }
+  .step .lab i { font-style:normal; font-weight:600; color:var(--muted); }
+  .step button { min-height:56px; min-width:44px; border-radius:10px; border:2px solid var(--line); background:var(--bg); font-weight:800; cursor:pointer; }
+  .step .val { text-align:center; font-size:1.6em; font-weight:800; border:2px solid var(--line); border-radius:10px; min-height:56px; display:flex; align-items:center; justify-content:center; }
+
+  .chips { display:flex; flex-wrap:wrap; gap:8px; margin:6px 0 10px; }
+  .chip { min-height:48px; padding:6px 14px; border-radius:999px; border:3px solid var(--line); background:var(--bg); font-weight:700; cursor:pointer; text-align:left; }
+  .chip.on { background:var(--accent); color:var(--accent-fg); border-color:var(--accent); }
+  .ask { display:flex; gap:8px; }
+  .ask input { flex:1; min-width:0; min-height:52px; border:2px solid var(--line); border-radius:10px; background:var(--bg); padding:0 12px; }
+
+  .tabbar { display:grid; border-top:2px solid var(--line); background:var(--card); }
+  .tabbar button { background:none; border:0; padding:8px 0 10px; min-height:60px; font-size:.74em; font-weight:600; color:var(--muted); display:flex; flex-direction:column; align-items:center; gap:2px; cursor:pointer; }
+  .phone[data-ver='new'] .tabbar button { font-size:.82em; color:var(--fg); }
+  .tabbar button.on { color:var(--fg); box-shadow:inset 0 3px 0 var(--accent); font-weight:800; }
+  .tabbar svg { width:24px; height:24px; }
+
+  .dots { display:flex; gap:6px; justify-content:center; margin:6px 0 14px; }
+  .dots span { width:10px; height:10px; border-radius:5px; border:2px solid var(--fg); }
+  .dots span.on { background:var(--fg); }
+  .opt { display:flex; gap:12px; align-items:center; width:100%; text-align:left; padding:14px; margin-bottom:10px; border-radius:12px; border:2px solid var(--line); background:var(--bg); cursor:pointer; min-height:64px; }
+  .opt b { display:block; font-size:1.05em; }
+  .opt .ic { font-size:1.6em; width:36px; text-align:center; flex-shrink:0; }
+  .opt.on { border-color:var(--accent); box-shadow:inset 0 0 0 2px var(--accent); }
+  ol.how { padding-left:1.4em; margin:6px 0; } ol.how li { margin-bottom:8px; }
+  .kbd { display:inline-block; border:2px solid var(--line); border-radius:6px; padding:0 6px; font-weight:800; }
+
+  .boatrow { display:flex; align-items:center; gap:10px; }
+  .boatrow > div { flex:1; min-width:0; }
+  .snack { position:absolute; left:12px; right:12px; bottom:78px; display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:12px; background:var(--fg); color:var(--bg); font-weight:700; box-shadow:0 4px 16px rgba(0,0,0,.3); }
+  .phone[data-theme='night'][data-ver='new'] .snack { background:#000; color:var(--fg); border:2px solid var(--fg); }
+  .snack button { margin-left:auto; min-height:48px; padding:0 14px; border-radius:10px; border:2px solid currentColor; background:none; color:inherit; font-weight:800; cursor:pointer; }
+  /* Mock of the browser's own confirm() — always white, ignores the theme */
+  .native { position:absolute; inset:0; background:rgba(0,0,0,.35); display:flex; align-items:center; justify-content:center; padding:24px; }
+  .native > div { background:#fff; color:#000; border-radius:8px; padding:18px; width:100%; font-family:Arial,sans-serif; font-size:15px; box-shadow:0 8px 30px rgba(0,0,0,.4); }
+  .native .r { display:flex; justify-content:flex-end; gap:8px; margin-top:14px; }
+  .native button { background:#1a73e8; color:#fff; border:0; border-radius:4px; padding:8px 16px; font-size:14px; }
+  .native button.c { background:#fff; color:#1a73e8; }
+  .sizes { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,6.2em),1fr)); gap:8px; }
+  .sizes svg { width:26px; height:26px; }
+  .sizes button { padding:6px 4px; font-size:.85em; min-height:64px; border-radius:12px; border:2px solid var(--line); background:var(--bg); font-weight:800; cursor:pointer; }
+  .sizes button.on { border-color:var(--accent); box-shadow:inset 0 0 0 2px var(--accent); }
+  .toggle { display:flex; align-items:center; justify-content:space-between; gap:10px; min-height:52px; }
+  .sw { width:56px; height:32px; border-radius:16px; border:2px solid var(--line); position:relative; background:var(--bg); flex-shrink:0; }
+  .sw::after { content:''; position:absolute; top:3px; left:3px; width:22px; height:22px; border-radius:11px; background:var(--muted); }
+  .sw.on { border-color:var(--good); } .sw.on::after { left:27px; background:var(--good); }
+  .hr { border-top:1px solid var(--line); margin:10px 0; }
+</style>
+</head>
+<body>
+<div class="controls">
+  <span><label>Θέμα</label><span class="pick" id="pTheme"><button data-v="day" class="on">Μέρα</button><button data-v="dark">Σούρουπο</button><button data-v="night">Νύχτα</button></span></span>
+  <span><label>Έκδοση</label><span class="pick" id="pVer"><button data-v="cur">Σημερινό</button><button data-v="new" class="on">Νέο</button></span></span>
+  <span><label>Οθόνη</label><span class="pick" id="pScr"><button data-v="live" class="on">Live</button><button data-v="first">Πρώτη χρήση</button><button data-v="look">Εμφάνιση</button><button data-v="boats">Διαγραφή</button><button data-v="chat">Σύμβουλος</button></span></span>
+  <span><label>Κατάσταση</label><span class="pick" id="pState"><button data-v="ok" class="on">Κανονικά</button><button data-v="nobsp">Λείπει ταχύτητα</button><button data-v="offline">Χωρίς ίντερνετ</button></span></span>
+</div>
+
+<div class="page">
+  <div class="phone" id="phone" data-theme="day" data-ver="new"></div>
+
+  <div class="notes">
+    <h2>Ευχρηστία — 5 βασικές αλλαγές</h2>
+    <p class="muted" style="color:#4b5563">Πρωτότυπο για έγκριση. Σκάφος δοκιμής «ΑΥΡΑ» (First 36.7), Χειμερινό Σαρωνικού, άνεμος 12 kt από ΝΔ, μεταξύ Φαλήρου και Αίγινας. Όλα τα στοιχεία είναι φανταστικά. Δες το <code>README.md</code> για τα 31 ευρήματα και τις πηγές.</p>
+
+    <h3>Τι αλλάζει</h3>
+    <ul>
+      <li><span class="tag">Νίκος</span><b>Live «Απλό / Πλήρες»</b>: απλά ελληνικά κάτω από κάθε TWS/TWA/BSP. Στο «Απλό» 3 μεγάλα νούμερα. Όταν λείπει τιμή, ένα κουμπί λέει τι λείπει («Κατάσταση → Λείπει ταχύτητα»).</li>
+      <li><span class="tag">Νίκος</span><b>Πρώτη χρήση βήμα-βήμα</b>: ένα θέμα ανά οθόνη, μαζί με το «Βάλε την εφαρμογή στην αρχική οθόνη» για iPhone και Android.</li>
+      <li><span class="tag">Μαρία</span><b>Σωστή Νύχτα</b>: η μπάρα και τα κουμπιά είναι μαύρα με κόκκινο περίγραμμα, χωρίς λευκό. Τα αχνά κείμενα έχουν αντίθεση 4,5:1. Σύγκρινε «Σημερινό / Νέο» με «Νύχτα».</li>
+      <li><span class="tag">Νίκος</span><b>Μεγάλα γράμματα και εικονίδια με λέξεις</b>: «Εμφάνιση» με Κανονικά / Μεγάλα / Πολύ μεγάλα. Εικονίδια 52 px με ετικέτα. Πιο σκούρα περιγράμματα για τον ήλιο.</li>
+      <li><span class="tag">Νίκος</span><b>Ασφαλή αγγίγματα</b>: διαγραφή με «Αναίρεση» αντί για λευκό παράθυρο του browser. Τα έτοιμα ερωτήματα του Σύμβουλου δεν χρεώνουν με ένα άγγιγμα. Λωρίδα «Χωρίς ίντερνετ».</li>
+    </ul>
+
+    <h3>Τι μένει ίδιο</h3>
+    <ul>
+      <li>Τα χρώματα και οι μεγάλοι αριθμοί, τα κουμπιά −/+ με δόνηση, οι ναυτικοί όροι.</li>
+      <li>Το «Πλήρες» δείχνει ό,τι δείχνει σήμερα το Live, με υπότιτλους. Η επιλογή θυμάται.</li>
+      <li>Τα τρία θέματα με τα ίδια ονόματα. Αλλάζουν μόνο 4 tokens (<code>--line</code>, <code>--muted</code>, <code>--now</code> και το χρώμα του «Δεξιές»).</li>
+    </ul>
+
+    <h3>Όρια</h3>
+    <ul>
+      <li>Το κάτω μενού με 5 καρτέλες (χωρίς «Polar») είναι <b>ανοιχτό ερώτημα</b>. Εδώ φαίνεται ως πρόταση.</li>
+      <li>Η εγκατάσταση στο iPhone γίνεται μόνο από το Safari και μόνο χειροκίνητα. Η εφαρμογή μπορεί μόνο να δείξει τα βήματα.</li>
+      <li>Η αναίρεση κρατά το διαγραμμένο 8 δευτερόλεπτα πριν τη σβήσει από τον συγχρονισμό.</li>
+      <li>Το χρονόμετρο εκκίνησης (εύρημα #6) δεν είναι εδώ. Χρειάζεται δικό του πρωτότυπο.</li>
+    </ul>
+    <p class="warn">Τα νούμερα είναι ενδεικτικά για την παρουσίαση. Χάρτες και βάθη: «ενδεικτικό, όχι για ναυσιπλοΐα».</p>
+
+    <h3>Πηγές</h3>
+    <ul class="small">
+      <li>W3C COGA, WCAG 2.2 (2.5.8, 1.4.3)</li>
+      <li>NN/g: ηλικιωμένοι χρήστες, progressive disclosure, εικονίδια, επιβεβαιώσεις, σφάλματα</li>
+      <li>web.dev: offline UX, install. Practical Sailor: φως και νυχτερινή όραση</li>
+      <li>iRegatta, Velocitek, B&amp;G (PBO) για τα εργαλεία εκκίνησης</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+const S = { theme:'day', ver:'new', scr:'live', state:'ok', mode:'simple', step:0, os:'ios', size:'n', deleted:false, confirm:false, chip:null, sent:false };
+const $ = (id) => document.getElementById(id);
+const IC = {
+  help:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2.5-3 4.5"/><circle cx="12" cy="18" r=".6" fill="currentColor"/></svg>',
+  sun:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
+  moon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>',
+  dusk:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg>',
+  gear:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 14H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.2-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 10 3.1V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A1.7 1.7 0 0 0 21 10h.1a2 2 0 1 1 0 4z"/></svg>',
+  live:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v16M12 3l7 13H12M12 6 6 16h6M3 20h18"/></svg>',
+  map:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z M9 4v14M15 6v14"/></svg>',
+  clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6"/></svg>',
+  chat:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a8 8 0 0 1-11.8 7L4 20l1.2-4.4A8 8 0 1 1 21 12z"/></svg>',
+  polar:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 3v18M4 12c6-6 12-4 14 0M4 12c6 6 12 4 14 0"/></svg>',
+  boats:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>',
+};
+const themeName = { day:'Μέρα', dark:'Σούρουπο', night:'Νύχτα' };
+const themeIcon = { day:'sun', dark:'dusk', night:'moon' };
+const isNew = () => S.ver === 'new';
+
+function topbar() {
+  if (!isNew()) return `<div class="topbar"><div class="boat">ΑΥΡΑ ▾</div>
+    <button class="tb" aria-label="Οδηγός">${IC.help}</button>
+    <button class="tb" aria-label="Θέμα" data-act="cycle">${IC[themeIcon[S.theme]]}</button>
+    <button class="tb" aria-label="Ρυθμίσεις" data-go="look">${IC.gear}</button></div>`;
+  return `<div class="topbar"><div class="boat">ΑΥΡΑ ▾</div>
+    <button class="tb">${IC.help}<small>Οδηγός</small></button>
+    <button class="tb" data-go="look">${IC[themeIcon[S.theme]]}<small>${themeName[S.theme]}</small></button>
+    <button class="tb" data-go="look">${IC.gear}<small>Ρυθμίσεις</small></button></div>`;
+}
+function strip() {
+  if (!isNew() || S.state !== 'offline') return '';
+  return `<div class="strip" role="status"><span class="dot"></span><span>Χωρίς ίντερνετ. Οι υπολογισμοί δουλεύουν· οι αλλαγές θα σωθούν μόλις επιστρέψει.</span></div>`;
+}
+function tabbar() {
+  const tabs = isNew()
+    ? [['live','Live'],['map','Χάρτης'],['clock','Αγώνας'],['chat','Σύμβουλος'],['boats','Σκάφη']]
+    : [['live','Live'],['map','Χάρτης'],['clock','Αγώνας'],['chat','Σύμβουλος'],['polar','Polar'],['boats','Σκάφη']];
+  const cur = { live:'live', chat:'chat', boats:'boats' }[S.scr];
+  return `<nav class="tabbar" style="grid-template-columns:repeat(${tabs.length},minmax(0,1fr))">${tabs.map(([i,l]) =>
+    `<button class="${i===cur?'on':''}" data-go="${i==='live'?'live':i==='chat'?'chat':i==='boats'?'boats':''}">${IC[i]}<span>${l}</span></button>`).join('')}</nav>`;
+}
+
+/* ---------------- LIVE ---------------- */
+function live() {
+  const noBsp = S.state === 'nobsp';
+  const pct = noBsp ? '—' : '95%';
+  if (!isNew()) {
+    return `<div class="tiles">
+      <div class="tile ${noBsp?'':'good'}"><div class="tl">% target</div><div class="tv">${pct}</div><div class="ts">Όρτσα</div></div>
+      <div class="tile"><div class="tl">Target BSP</div><div class="tv">6.6</div><div class="ts">kt</div></div>
+      <div class="tile"><div class="tl">Target TWA</div><div class="tv">41°</div><div class="ts">όρτσα 41° · πρίμα 150°</div></div>
+      <div class="tile"><div class="tl">VMG / target</div><div class="tv">${noBsp?'—':'4.7'}<span class="muted">/</span>5.0</div><div class="ts">kt</div></div>
+      <div class="tile"><div class="tl">Polar @ TWA</div><div class="tv">6.7</div><div class="ts">kt</div></div>
+      <div class="tile"><div class="tl">Πανί</div><div class="tv">Τζένοα 1</div><div class="ts"></div></div>
+    </div>
+    <div class="advice">Target όρτσα: 6.6 kt στις 41° TWA.</div>
+    ${stepper('TWS','kt','12')}${stepper('TWA','°','42')}
+    <div class="seg"><button class="stbd on">Δεξιές (stbd)</button><button>Αριστερές (port)</button></div>
+    ${stepper('BSP','kt', noBsp ? '—' : '6.3')}`;
+  }
+  const missing = `<button class="missing" data-act="fixbsp">⚠ Βάλε ταχύτητα σκάφους (BSP) ↓</button>`;
+  const hero = `<div class="tile hero ${noBsp?'':'good'}"><div class="tl">% στόχου <i>πόσο κοντά είσαι στη σωστή ταχύτητα</i></div>
+      ${noBsp ? missing : `<div class="tv">95%</div><div class="ts">Όρτσα · δεξιές · 6.3 από 6.6 kt</div>`}</div>`;
+  const simple = `${hero}
+      <div class="tile"><div class="tl">Target BSP <i>ταχύτητα-στόχος</i></div><div class="tv">6.6</div><div class="ts">kt · τώρα ${noBsp?'—':'6.3'}</div></div>
+      <div class="tile"><div class="tl">Target TWA <i>γωνία-στόχος</i></div><div class="tv">41°</div><div class="ts">από τον άνεμο · τώρα 42°</div></div>`;
+  const full = `${simple}
+      <div class="tile"><div class="tl">VMG <i>πρόοδος προς τον άνεμο</i></div><div class="tv">${noBsp?'—':'4.7'}<span class="muted">/</span>5.0</div><div class="ts">kt</div></div>
+      <div class="tile"><div class="tl">Polar <i>ταχύτητα στα 42°</i></div><div class="tv">6.7</div><div class="ts">kt</div></div>
+      <div class="tile hero"><div class="tl">Πανί <i>προτείνεται</i></div><div class="tv" style="font-size:1.8em">Τζένοα 1</div><div class="ts">ίδιο με αυτό που έχεις ✓</div></div>`;
+  return `<div class="seg" role="group" aria-label="Προβολή"><button class="${S.mode==='simple'?'on':''}" data-mode="simple">Απλό</button><button class="${S.mode==='full'?'on':''}" data-mode="full">Πλήρες</button></div>
+    <div class="tiles">${S.mode==='simple'?simple:full}</div>
+    <div class="advice">${noBsp ? 'Λείπει η ταχύτητα σκάφους. Γράψε την από το log ή το GPS (SOG).' : 'Λίγο αργά: πέσε 1–2° για ταχύτητα, μετά ξανά στις 41°.'}</div>
+    ${stepper('TWS','kt','12','άνεμος')}${stepper('TWA','°','42','γωνία ανέμου')}
+    <div class="seg" role="group" aria-label="Ποδαρικό"><button class="stbd on">Δεξιές</button><button>Αριστερές</button></div>
+    <div id="bspStep">${stepper('BSP','kt', noBsp ? '—' : '6.3','ταχύτητα σκάφους')}</div>`;
+}
+function stepper(ab, unit, v, plain) {
+  const lab = isNew() && plain ? `${ab} · ${plain} <i>(${unit})</i>` : `${ab} <i>${unit}</i>`;
+  const small = ab === 'BSP' ? '0.1' : ab === 'TWA' ? '5' : '3';
+  return `<div class="step"><div class="lab">${lab}</div>
+    <button aria-label="${ab} μείον ${small}">−${ab==='BSP'?1:small}</button><button aria-label="${ab} μείον">−</button>
+    <div class="val">${v}</div><button aria-label="${ab} συν">+</button><button aria-label="${ab} συν ${small}">+${ab==='BSP'?1:small}</button></div>`;
+}
+
+/* ---------------- FIRST RUN ---------------- */
+function first() {
+  if (!isNew()) {
+    return `<h2 style="text-align:center">Πρόσθεσε το σκάφος σου</h2>
+      <p class="muted small" style="text-align:center">Με τα polars και τους συντελεστές του υπολογίζονται targets, διαδρομή και διορθωμένος χρόνος.</p>
+      <button class="opt"><span class="ic">📄</span><span><b>Πιστοποιητικό ORC (PDF)</b><span class="small">Το AI το διαβάζει και τα συμπληρώνει όλα</span></span></button>
+      <button class="opt"><span class="ic">{ }</span><span><b>Αρχείο JSON</b><span class="small">Από «Export» άλλης συσκευής ή πληρώματος</span></span></button>
+      <button class="opt"><span class="ic">✎</span><span><b>Χειροκίνητα</b><span class="small">Γράφεις μόνος σου στοιχεία και polars</span></span></button>`;
+  }
+  const dots = `<div class="dots" aria-label="Βήμα ${S.step+1} από 5">${[0,1,2,3,4].map(i=>`<span class="${i<=S.step?'on':''}"></span>`).join('')}</div>`;
+  const nav = (next='Επόμενο', skip=true) => `<div style="margin-top:16px"><button class="btn primary big" data-act="next">${next}</button>
+     <div class="row" style="justify-content:space-between;margin-top:6px">${S.step>0?'<button class="btn link" data-act="prev">‹ Πίσω</button>':'<span></span>'}${skip?'<button class="btn link" data-act="next">Αργότερα</button>':''}</div></div>`;
+  const steps = [
+    () => `<div style="text-align:center;font-size:3em">⛵</div><h2 style="text-align:center">Καλώς ήρθες, Νίκο</h2>
+      <p>Η εφαρμογή σού λέει <b>πόσο γρήγορα πρέπει να πηγαίνει το σκάφος</b> σε κάθε άνεμο και <b>πώς πάτε σε διορθωμένο χρόνο</b>.</p>
+      <p>Θα σου πάρει 2 λεπτά να τη στήσεις. Μπορείς να σταματήσεις και να συνεχίσεις αργότερα.</p>${nav('Ξεκινάμε', false)}`,
+    () => `<h2>1. Το σκάφος σου</h2><p class="small">Διάλεξε έναν τρόπο. Μπορείς να το αλλάξεις μετά.</p>
+      <button class="opt on"><span class="ic">📄</span><span><b>Έχω το πιστοποιητικό ORC (PDF)</b><span class="small">Το διαβάζουμε εμείς και συμπληρώνουμε τα πάντα. <b>Προτείνεται.</b></span></span></button>
+      <button class="opt"><span class="ic">📲</span><span><b>Έχω αρχείο σκάφους από άλλο κινητό</b><span class="small">Από συμπλήρωμα ή δεύτερη συσκευή</span></span></button>
+      <button class="opt"><span class="ic">✎</span><span><b>Θα τα γράψω μόνος μου</b><span class="small">Όνομα, αριθμός πανιού, τύπος. Τα υπόλοιπα αργότερα.</span></span></button>${nav()}`,
+    () => `<h2>2. Βάλ' την στην αρχική οθόνη</h2><p class="small">Έτσι ανοίγει σαν κανονική εφαρμογή, με ένα άγγιγμα, ακόμα και χωρίς ίντερνετ.</p>
+      <div class="seg"><button class="${S.os==='ios'?'on':''}" data-os="ios">iPhone</button><button class="${S.os==='and'?'on':''}" data-os="and">Android</button></div>
+      ${S.os==='ios' ? `<ol class="how"><li>Άνοιξε την εφαρμογή στο <b>Safari</b>.</li><li>Πάτα <span class="kbd">⬆︎</span> <b>Κοινοποίηση</b> (κάτω στη μέση).</li><li>Κατέβα και πάτα <b>«Προσθήκη στην οθόνη Αφετηρίας»</b> → <b>Προσθήκη</b>.</li></ol>`
+        : `<p>Πάτα το κουμπί και μετά <b>«Εγκατάσταση»</b>.</p><button class="btn primary big">⬇ Εγκατάσταση εφαρμογής</button>`}
+      ${nav('Το έκανα')}`,
+    () => `<h2>3. Να βλέπεις καλά</h2><p class="small">Δοκίμασε. Η αλλαγή φαίνεται αμέσως.</p>
+      <h3>Γράμματα</h3>${sizes()}<h3 style="margin-top:14px">Θέμα</h3>${themes()}${nav()}`,
+    () => `<div style="text-align:center;font-size:3em">✓</div><h2 style="text-align:center">Έτοιμος</h2>
+      <p><b>Στον αγώνα:</b> άνοιξε το <b>Live</b> και γράψε άνεμο και ταχύτητα. Το μεγάλο νούμερο λέει πόσο κοντά είσαι στον στόχο.</p>
+      <p class="small muted">Χρειάζεσαι βοήθεια; Πάτα <b>Οδηγός</b> πάνω δεξιά, οποιαδήποτε στιγμή.</p>
+      <h3>Έχεις εμπειρία με όργανα αγώνων;</h3>
+      <div class="seg"><button class="on">Όχι — Απλό</button><button>Ναι — Πλήρες</button></div>${nav('Πάμε στο Live', false)}`,
+  ];
+  return dots + steps[S.step]();
+}
+function sizes() {
+  return `<div class="sizes" role="group" aria-label="Μέγεθος γραμμάτων">${[['n','Κανονικά','17px'],['l','Μεγάλα','20px'],['xl','Πολύ μεγάλα','23px']].map(([v,l,px]) =>
+    `<button class="${S.size===v?'on':''}" data-size="${v}" ><span style="font-size:${px}">Α</span><br><span>${l}</span></button>`).join('')}</div>`;
+}
+function themes() {
+  return `<div class="sizes">${['day','dark','night'].map(t => `<button class="${S.theme===t?'on':''}" data-theme="${t}">${IC[themeIcon[t]]}<br>${themeName[t]}</button>`).join('')}</div>`;
+}
+
+/* ---------------- LOOK (settings) ---------------- */
+function look() {
+  if (!isNew()) {
+    return `<div class="card"><h3>Όργανα σκάφους</h3><p class="small muted">Χωρίς σύνδεση οργάνων — όλα δουλεύουν χειροκίνητα.</p><p class="small">Τύπος σύνδεσης: Signal K (WebSocket)…<br>Διεύθυνση gateway…</p></div>
+      <div class="card"><h3>Θέμα</h3><div class="seg"><button class="${S.theme==='day'?'on':''}" data-theme="day">Μέρα</button><button class="${S.theme==='dark'?'on':''}" data-theme="dark">Σούρουπο</button><button class="${S.theme==='night'?'on':''}" data-theme="night">Νύχτα (κόκκινο)</button></div>
+      <p class="small">☐ Οι χειροκίνητες τιμές TWD και πορείας είναι μαγνητικές<br>Μαγνητική απόκλιση (°, ανατολική +)<br>☑ Η οθόνη να μένει αναμμένη</p></div>
+      <div class="card"><h3>Server &amp; σύμβουλος AI</h3><p class="small muted">Διεύθυνση server · Κωδικός ιδιοκτήτη (προαιρετικό) · Δοκιμή σύνδεσης</p></div>`;
+  }
+  return `<h2>Ρυθμίσεις</h2>
+    <div class="card"><h3>Εμφάνιση</h3>
+      <div class="small" style="font-weight:700;margin-bottom:6px">Γράμματα</div>${sizes()}
+      <div class="small" style="font-weight:700;margin:12px 0 6px">Θέμα</div>${themes()}
+      ${S.theme==='night' ? '<p class="small" style="margin-top:8px">💡 Τη νύχτα χαμήλωσε και τη φωτεινότητα του κινητού στο ελάχιστο.</p>' : ''}
+      <div class="hr"></div>
+      <div class="toggle"><span>Η οθόνη να μένει αναμμένη</span><span class="sw on" role="switch" aria-checked="true"></span></div>
+      <div class="toggle"><span>Δόνηση στις ειδοποιήσεις</span><span class="sw on" role="switch" aria-checked="true"></span></div>
+    </div>
+    <div class="card"><h3>Η εφαρμογή στο κινητό</h3><p class="small">Δεν είναι ακόμα στην αρχική οθόνη.</p><button class="btn" data-go="first" data-step="2">Πώς τη βάζω ›</button></div>
+    <div class="card"><h3>Λογαριασμός</h3><p class="small">Συγχρονισμός ${S.state==='offline'?'<b style="color:var(--fair)">σε αναμονή — χωρίς ίντερνετ</b>':'<b style="color:var(--good)">✓ σώθηκαν όλα</b>'}</p></div>
+    <div class="card"><h3>Όργανα σκάφους</h3><p class="small muted">Δεν είναι συνδεδεμένα. Όλα δουλεύουν και με το χέρι.</p></div>
+    <button class="opt"><span class="ic">⋯</span><span><b>Για προχωρημένους</b><span class="small">Μαγνητική απόκλιση, server, κωδικός ιδιοκτήτη</span></span></button>`;
+}
+
+/* ---------------- BOATS (delete / undo) ---------------- */
+function boats() {
+  const list = S.deleted ? '' : `<div class="card"><div class="boatrow"><div><b>ΑΥΡΑ</b> <span class="muted">GRE-0000</span><div class="small muted">First 36.7 · πιστοποιητικό ✓</div></div><span class="small" style="font-weight:800">Ενεργό</span></div>
+     <div class="row" style="margin-top:10px"><button class="btn">Επεξεργασία</button><button class="btn">Αντίγραφο</button><button class="btn danger" data-act="del">Διαγραφή</button></div></div>`;
+  return `<h2>Τα σκάφη μου</h2>${list}
+    <div class="card"><div class="boatrow"><div><b>ΜΕΛΤΕΜΙ</b> <span class="muted">GRE-0001</span><div class="small muted">Αντίπαλος · μόνο συντελεστές</div></div></div></div>
+    <button class="btn big" style="border-style:dashed">+ Προσθήκη σκάφους</button>
+    <p class="small muted" style="margin-top:12px">Πάτα «Διαγραφή» για να δεις τη διαφορά Σημερινό / Νέο. Στη Νύχτα, το σημερινό παράθυρο είναι λευκό.</p>`;
+}
+function overlays() {
+  let o = '';
+  if (S.confirm) o += `<div class="native"><div><b>localhost:5173 says</b><p>Διαγραφή του «ΑΥΡΑ»;</p><div class="r"><button class="c" data-act="cx">Cancel</button><button data-act="okdel">OK</button></div></div></div>`;
+  if (S.deleted === true && isNew()) o += `<div class="snack" role="status">Διαγράφηκε το ΑΥΡΑ<button data-act="undo">Αναίρεση</button></div>`;
+  return o;
+}
+
+/* ---------------- CHAT ---------------- */
+function chat() {
+  const chips = ['Τι κάνω τώρα;','Τι πανί για 16 kt στις 50°;','Πώς θα είναι ο άνεμος στην Αίγινα αύριο 11:00–17:00;'];
+  if (!isNew()) {
+    return `<div class="card"><h3>✦ Σύμβουλος</h3><p class="small muted">Ρώτα ό,τι θες: κανόνες, τακτική, πανιά, καιρό, ORC.</p></div>
+      ${S.sent ? '<div class="advice" style="border-left-color:var(--bad)">Στάλθηκε «Τι κάνω τώρα;» — χρέωση ≈ €0,10 (ή σφάλμα αν ο λογαριασμός δεν έχει εγκριθεί).</div>' : ''}
+      <div class="chips" style="flex-direction:column">${chips.map(c=>`<button class="chip" data-act="send">${c}</button>`).join('')}</div>
+      <div class="ask"><input placeholder="Γράψε ερώτηση…" /><button class="btn">➤</button></div>
+      <p class="small muted">Πάτα ένα έτοιμο ερώτημα: στέλνεται αμέσως.</p>`;
+  }
+  return `<div class="card"><h3>✦ Σύμβουλος</h3><p class="small">Ρώτα για κανόνες, τακτική, πανιά ή καιρό. Τα νούμερα τα υπολογίζει η εφαρμογή· ο σύμβουλος τα εξηγεί.</p></div>
+    <div class="advice" style="border-left-color:var(--muted)"><span class="small" style="font-weight:600">Όταν ο λογαριασμός δεν έχει ακόμα εγκριθεί, εδώ γράφει:</span><br>🔒 Ο Σύμβουλος θα ανοίξει όταν ο διαχειριστής εγκρίνει τον λογαριασμό σου. Ως τότε όλα τα άλλα δουλεύουν κανονικά.</div>
+    <div class="small" style="font-weight:700">Έτοιμες ερωτήσεις (πάτα για να μπει στο πεδίο)</div>
+    <div class="chips" style="flex-direction:column">${chips.map((c,i)=>`<button class="chip ${S.chip===i?'on':''}" data-chip="${i}">${c}</button>`).join('')}</div>
+    <div class="ask"><input value="${S.chip!==null?chips[S.chip]:''}" placeholder="Γράψε ερώτηση…" aria-label="Ερώτηση" /></div>
+    <button class="btn primary big" style="margin-top:8px${S.chip===null?';opacity:.5':''}" ${S.chip===null?'disabled':''}>Ρώτα (≈ €0,10)</button>`;
+}
+
+function render() {
+  const ph = $('phone');
+  ph.dataset.theme = S.theme; ph.dataset.ver = S.ver;
+  ph.style.setProperty('--base', isNew() ? ({ n:'17px', l:'20px', xl:'23px' })[S.size] : '17px');
+  const body = { live, first, look, boats, chat }[S.scr]();
+  ph.innerHTML = topbar() + strip() + `<div class="scr" id="scr">${body}</div>` + tabbar() + overlays();
+  for (const [id, key] of [['pTheme','theme'],['pVer','ver'],['pScr','scr'],['pState','state']])
+    $(id).querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === S[key]));
+}
+
+function pick(id, key) {
+  $(id).addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    S[key] = b.dataset.v;
+    if (key === 'scr') { S.step = 0; S.deleted = false; S.confirm = false; S.chip = null; S.sent = false; }
+    if (key === 'ver') { S.deleted = false; S.confirm = false; S.sent = false; }
+    render();
+  });
+}
+pick('pTheme','theme'); pick('pVer','ver'); pick('pScr','scr'); pick('pState','state');
+
+let undoTimer;
+$('phone').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  const d = b.dataset;
+  if (d.mode) S.mode = d.mode;
+  if (d.size) S.size = d.size;
+  if (d.theme) S.theme = d.theme;
+  if (d.os) S.os = d.os;
+  if (d.chip !== undefined) S.chip = +d.chip;
+  if (d.go) { S.scr = d.go; S.step = d.step ? +d.step : 0; }
+  switch (d.act) {
+    case 'cycle': S.theme = S.theme === 'day' ? 'dark' : S.theme === 'dark' ? 'night' : 'day'; break;
+    case 'next': if (S.step < 4) S.step++; else { S.scr = 'live'; S.step = 0; } break;
+    case 'prev': if (S.step > 0) S.step--; break;
+    case 'fixbsp': S.state = 'ok'; break;
+    case 'send': S.sent = true; break;
+    case 'del':
+      if (isNew()) { S.deleted = true; clearTimeout(undoTimer); undoTimer = setTimeout(() => { if (S.deleted) { S.deleted = 'gone'; render(); } }, 8000); }
+      else S.confirm = true;
+      break;
+    case 'cx': S.confirm = false; break;
+    case 'okdel': S.confirm = false; S.deleted = true; break;
+    case 'undo': S.deleted = false; clearTimeout(undoTimer); break;
+  }
+  render();
+});
+render();
+</script>
+</body>
+</html>

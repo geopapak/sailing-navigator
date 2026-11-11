@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { BoatProfile } from '../boat/types';
-import { LOCAL_CHANGE, deleteBoat, getKV, listBoats, saveBoat, setKV } from '../boat/store';
+import { LOCAL_CHANGE, deleteBoat, getKV, listBoats, restoreBoat, saveBoat, setKV } from '../boat/store';
 import { DEFAULT_SERVER, DEFAULT_SETTINGS, type Settings } from './settings';
 import { REMOTE_CHANGE, adoptAccount, syncNow } from '../sync/sync';
 import { ApiError, accountApi, type PublicUser } from '../sync/api';
@@ -20,6 +20,8 @@ interface AppState {
   updateSettings: (patch: Partial<Settings>) => void;
   saveBoat: (b: BoatProfile) => Promise<void>;
   deleteBoat: (id: string) => Promise<void>;
+  /** Puts a just-deleted boat back (Αναίρεση). */
+  restoreBoat: (b: BoatProfile) => Promise<void>;
 
   /** Signed-in account, if any. */
   account?: PublicUser;
@@ -46,6 +48,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const s = await getKV<Partial<Settings>>('settings', {});
         // Older installs stored an empty server address: use the project's server.
         if (!s.aiUrl) delete s.aiUrl;
+        // Users from before 0.9 keep the full Live screen and skip the first-run steps.
+        if (Object.keys(s).length > 0 && s.onboarded === undefined) {
+          s.onboarded = true;
+          s.liveMode ??= 'full';
+        }
         setSettings({ ...DEFAULT_SETTINGS, ...s, instruments: { ...DEFAULT_SETTINGS.instruments, ...(s.instruments ?? {}) } });
         await reload();
       } catch (e) {
@@ -58,7 +65,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     document.documentElement.dataset.theme = settings.theme;
-  }, [settings.theme]);
+    document.documentElement.dataset.size = settings.textSize ?? 'n';
+  }, [settings.theme, settings.textSize]);
 
   const updateSettings = useCallback((patch: Partial<Settings>) => {
     setSettings((prev) => {
@@ -165,6 +173,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       },
       deleteBoat: async (id) => {
         await deleteBoat(id);
+        await reload();
+      },
+      restoreBoat: async (b) => {
+        await restoreBoat(b);
         await reload();
       },
       account: settings.authToken ? settings.account : undefined,

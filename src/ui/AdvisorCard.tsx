@@ -6,6 +6,12 @@ import type { AdvisorContext, AdvisorResponse, AdvisorWhen } from '../ai/types';
 
 const WHEN: Record<AdvisorWhen, string> = { now: 'Τώρα', soon: 'Σύντομα', watch: 'Πρόσεξε' };
 
+/** The general question; sent without text so the server gives its default advice. */
+const GENERAL = 'Τι να κάνω;';
+
+export const ADVISOR_WAITING =
+  '🔒 Ο Σύμβουλος θα ανοίξει όταν ο διαχειριστής εγκρίνει τον λογαριασμό σου. Ως τότε όλα τα άλλα δουλεύουν κανονικά.';
+
 interface Stored {
   res?: AdvisorResponse;
   at?: number;
@@ -32,13 +38,15 @@ export function AdvisorCard({
   disabledReason?: string;
   onOpenSettings?: () => void;
 }) {
-  const { settings } = useApp();
+  const { settings, account } = useApp();
   const [stored, setStored] = useStoredState<Stored>(storageKey, {});
   const [question, setQuestion] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const cfg = advisorConfig(settings);
   const configured = advisorReady(cfg);
+  // Signed in but not yet approved for AI (and no owner code): say so before any tap.
+  const waiting = configured && !!account && !account.ai.allowed && !settings.aiCode.trim();
 
   const ask = async (q?: string) => {
     const ctx = build(q?.trim() || undefined);
@@ -75,14 +83,14 @@ export function AdvisorCard({
             </button>
           )}
         </p>
+      ) : waiting ? (
+        <p className="small">{ADVISOR_WAITING}</p>
       ) : (
         <>
+          <p className="muted small">Έτοιμες ερωτήσεις: πάτα για να μπει στο πεδίο, μετά «Ρώτα».</p>
           <div className="chips advisor-presets">
-            <button className="chip small-chip primary-chip" disabled={busy || !!disabledReason} onClick={() => ask()}>
-              {busy ? 'Σκέφτεται…' : 'Τι να κάνω;'}
-            </button>
-            {presets.map((p) => (
-              <button key={p} className="chip small-chip" disabled={busy || !!disabledReason} onClick={() => ask(p)}>
+            {[GENERAL, ...presets].map((p) => (
+              <button key={p} className={`chip small-chip ${question === p ? 'on' : ''}`} disabled={busy} onClick={() => setQuestion(p)}>
                 {p}
               </button>
             ))}
@@ -91,7 +99,8 @@ export function AdvisorCard({
             className="row advisor-ask"
             onSubmit={(e) => {
               e.preventDefault();
-              if (question.trim()) ask(question);
+              const q = question.trim();
+              if (q) ask(q === GENERAL ? undefined : q);
             }}
           >
             <input
@@ -102,8 +111,8 @@ export function AdvisorCard({
               enterKeyHint="send"
               aria-label="Ερώτηση στον σύμβουλο"
             />
-            <button className="btn" disabled={busy || !question.trim() || !!disabledReason}>
-              Ρώτα
+            <button className="btn primary" disabled={busy || !question.trim() || !!disabledReason}>
+              {busy ? 'Σκέφτεται…' : 'Ρώτα (≈ €0,10)'}
             </button>
           </form>
           {disabledReason && <p className="muted small">{disabledReason}</p>}

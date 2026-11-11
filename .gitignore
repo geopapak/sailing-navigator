@@ -5,3 +5,7 @@ dev-dist
 .DS_Store
 .dev.vars
 .wrangler/
+
+# Local MCP servers (contains paths on this computer)
+.mcp.json
+.serena/

@@ -12,6 +12,9 @@ interface Props {
   decimals?: number;
   /** Wrap around (for compass directions 0–359). */
   wrap?: boolean;
+  /** Plain-Greek meaning shown after the abbreviation, e.g. «άνεμος». */
+  hint?: string;
+  id?: string;
 }
 
 function clamp(v: number, min?: number, max?: number) {
@@ -21,7 +24,7 @@ function clamp(v: number, min?: number, max?: number) {
 }
 
 /** Large touch-friendly numeric input: −big −small [value] +small +big. Tap the value to type. */
-export function NumberStepper({ label, unit, value, onChange, small, big, min, max, decimals = 0, wrap }: Props) {
+export function NumberStepper({ label, unit, value, onChange, small, big, min, max, decimals = 0, wrap, hint, id }: Props) {
   const fmt = (v: number | null) => (v === null ? '' : v.toFixed(decimals));
   const [text, setText] = useState(fmt(value));
   const [editing, setEditing] = useState(false);
@@ -50,16 +53,17 @@ export function NumberStepper({ label, unit, value, onChange, small, big, min, m
   };
 
   return (
-    <div className="stepper">
+    <div className="stepper" id={id}>
       <div className="stepper-label">
         {label}
+        {hint && <span className="hint-word"> · {hint}</span>}
         {unit && <span className="unit"> {unit}</span>}
       </div>
       <div className="stepper-row">
-        <button type="button" className="step big" onClick={() => step(-big)} aria-label={`${label} −${big}`}>
+        <button type="button" className="step big bm" onClick={() => step(-big)} aria-label={`${label} −${big}`}>
           −{big}
         </button>
-        <button type="button" className="step" onClick={() => step(-small)} aria-label={`${label} −${small}`}>
+        <button type="button" className="step sm" onClick={() => step(-small)} aria-label={`${label} −${small}`}>
           −
         </button>
         <input
@@ -67,7 +71,7 @@ export function NumberStepper({ label, unit, value, onChange, small, big, min, m
           inputMode="decimal"
           value={text}
           placeholder="—"
-          aria-label={label}
+          aria-label={hint ? `${label} (${hint})` : label}
           onFocus={(e) => {
             setEditing(true);
             e.target.select();
@@ -78,10 +82,10 @@ export function NumberStepper({ label, unit, value, onChange, small, big, min, m
             if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
           }}
         />
-        <button type="button" className="step" onClick={() => step(small)} aria-label={`${label} +${small}`}>
+        <button type="button" className="step sp" onClick={() => step(small)} aria-label={`${label} +${small}`}>
           +
         </button>
-        <button type="button" className="step big" onClick={() => step(big)} aria-label={`${label} +${big}`}>
+        <button type="button" className="step big bp" onClick={() => step(big)} aria-label={`${label} +${big}`}>
           +{big}
         </button>
       </div>

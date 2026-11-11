@@ -1,9 +1,17 @@
 import { DEFAULT_INSTRUMENTS } from '../instruments/types';
 
 export type Theme = 'day' | 'dark' | 'night';
+export type TextSize = 'n' | 'l' | 'xl';
+export type LiveMode = 'simple' | 'full';
 
 export interface Settings {
   theme: Theme;
+  /** Base text size: Κανονικά / Μεγάλα / Πολύ μεγάλα. */
+  textSize: TextSize;
+  /** Live screen: a few big numbers (simple) or every tile (full). */
+  liveMode: LiveMode;
+  /** The step-by-step first run was finished or skipped. */
+  onboarded: boolean;
   activeBoatId: string;
   /** Magnetic declination, degrees East positive (Saronic ≈ +5°E). */
   declination: number;
@@ -26,6 +34,9 @@ export const DEFAULT_SERVER: string =
 
 export const DEFAULT_SETTINGS: Settings = {
   theme: 'day',
+  textSize: 'n',
+  liveMode: 'simple',
+  onboarded: false,
   activeBoatId: '',
   declination: 5,
   manualMagnetic: true,

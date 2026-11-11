@@ -160,6 +160,12 @@ export function MapView(p: Props) {
       const map = new MLMap({
         container: el.current,
         style,
+        // Greek names for the map buttons (read out by screen readers).
+        locale: {
+          'NavigationControl.ZoomIn': 'Μεγέθυνση',
+          'NavigationControl.ZoomOut': 'Σμίκρυνση',
+          'NavigationControl.ResetBearing': 'Βορράς πάνω',
+        },
         center: [23.5, 37.75],
         zoom: 9,
         attributionControl: { compact: true },

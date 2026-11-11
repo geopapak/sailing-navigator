@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { deleteCourse, getKV, listCourses, saveCourse, setKV, type Course } from '../boat/store';
+import { deleteCourse, getKV, listCourses, restoreCourse, saveCourse, setKV, type Course } from '../boat/store';
 import type { Mark, RouteResult } from '../routing/isochrones';
 import { routeInWorker, type WindSpec } from '../routing/protocol';
 import { fetchOpenMeteo } from '../weather/openMeteo';
@@ -64,6 +64,7 @@ interface NavState {
   updateCourse: (c: Course) => void;
   newCourse: (name: string) => Course;
   removeCourse: (id: string) => Promise<void>;
+  restoreCourse: (c: Course) => Promise<void>;
 
   plan: PlanSettings;
   setPlan: (p: Partial<PlanSettings>) => void;
@@ -308,6 +309,11 @@ export function NavProvider({ children }: { children: ReactNode }) {
     removeCourse: async (id) => {
       await deleteCourse(id);
       setCourses((cs) => cs.filter((c) => c.id !== id));
+    },
+    restoreCourse: async (c) => {
+      await restoreCourse(c);
+      setCourses((cs) => [c, ...cs.filter((x) => x.id !== c.id)]);
+      setUi((u) => ({ ...u, courseId: c.id }));
     },
     plan,
     setPlan: (p) => setPlanState((prev) => ({ ...prev, ...p })),

@@ -63,6 +63,27 @@ async function addTombstone(kind: Tombstone['kind'], id: string) {
   await setKV('tombstones', [...list.filter((t) => !(t.kind === kind && t.id === id)), { kind, id, at: Date.now() }]);
 }
 
+/** Undo of a delete: drop the pending tombstone so the item is not deleted on the server. */
+async function dropTombstone(kind: Tombstone['kind'], id: string) {
+  const list = await getKV<Tombstone[]>('tombstones', []);
+  await setKV('tombstones', list.filter((t) => !(t.kind === kind && t.id === id)));
+}
+
+export async function restoreBoat(b: BoatProfile): Promise<void> {
+  await dropTombstone('boat', b.id);
+  await saveBoat(b);
+}
+
+export async function restoreCourse(c: Course): Promise<void> {
+  await dropTombstone('course', c.id);
+  await saveCourse(c);
+}
+
+export async function restoreNote(n: KnowledgeNote): Promise<void> {
+  await dropTombstone('note', n.id);
+  await saveNote(n);
+}
+
 export async function saveBoat(b: BoatProfile): Promise<void> {
   await db.boats.put({ ...b, updatedAt: Date.now() });
   changed();

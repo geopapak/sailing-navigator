@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useApp } from './AppContext';
+import { askConfirm, showAlert } from './Dialogs';
 import { DEFAULT_SERVER } from './settings';
 import { ApiError, accountApi, type AdminUser } from '../sync/api';
 import { PrivacyText, TermsText, useServerConfig } from './legal';
@@ -167,12 +168,12 @@ export function AccountCard() {
           <button
             className="btn danger"
             onClick={async () => {
-              if (!window.confirm('Οριστική διαγραφή του λογαριασμού και των δεδομένων του στο cloud; Δεν αναιρείται.')) return;
+              if (!(await askConfirm('Οριστική διαγραφή του λογαριασμού και των δεδομένων του στο cloud; Δεν αναιρείται.', { ok: 'Διαγραφή λογαριασμού', danger: true }))) return;
               try {
                 await accountApi.deleteAccount(server, settings.authToken);
                 await signOut();
               } catch (err) {
-                window.alert(errText(err));
+                await showAlert(errText(err));
               }
             }}
           >
@@ -267,7 +268,7 @@ function AdminCard({ server, token }: { server: string; token: string }) {
                 {!u.isAdmin && (
                   <button
                     className={`btn small-btn ${u.resetRequestedAt ? 'primary' : ''}`}
-                    onClick={() => window.confirm(`Νέος προσωρινός κωδικός για ${u.email};`) && patch(u, { resetPassword: true })}
+                    onClick={async () => (await askConfirm(`Νέος προσωρινός κωδικός για ${u.email};`, { ok: 'Νέος κωδικός' })) && patch(u, { resetPassword: true })}
                   >
                     Νέος κωδικός
                   </button>

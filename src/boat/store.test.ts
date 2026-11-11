@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { describe, expect, it } from 'vitest';
-import { db, deleteBoat, getKV, listBoats, parseBoatJson, saveBoat, type Tombstone } from './store';
+import { db, deleteBoat, getKV, listBoats, parseBoatJson, restoreBoat, saveBoat, type Tombstone } from './store';
 import { TRE_IRENE } from './treIrene';
 import { adoptAccount, getSyncState } from '../sync/sync';
 
@@ -44,5 +44,21 @@ describe('adopting an account on a device', () => {
     await adoptAccount('user-b');
     expect(await listBoats()).toEqual([]);
     expect((await getSyncState()).owner).toBe('user-b');
+  });
+});
+
+describe('undo of a delete', () => {
+  it('puts the boat back and drops its tombstone so the server copy is kept', async () => {
+    await db.boats.clear();
+    await db.kv.clear();
+    const boat = { ...TRE_IRENE, id: 'undo-me', name: 'Αναίρεση' };
+    await saveBoat(boat);
+    await deleteBoat(boat.id);
+    expect((await listBoats()).map((b) => b.id)).not.toContain(boat.id);
+    expect((await getKV<Tombstone[]>('tombstones', [])).map((t) => t.id)).toContain(boat.id);
+
+    await restoreBoat(boat);
+    expect((await listBoats()).map((b) => b.id)).toContain(boat.id);
+    expect((await getKV<Tombstone[]>('tombstones', [])).map((t) => t.id)).not.toContain(boat.id);
   });
 });

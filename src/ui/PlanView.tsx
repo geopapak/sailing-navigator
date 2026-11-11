@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useApp } from './AppContext';
 import { useNav } from './NavContext';
+import { offerUndo } from './Dialogs';
 import { MapView, type WindArrow } from './MapView';
 import { NumberStepper, NumField } from './NumberStepper';
 import { GRID_MODELS, modelLabel, normalizeModel } from '../weather/models';
@@ -229,8 +230,9 @@ export function PlanView() {
                 <button
                   className="btn danger"
                   onClick={async () => {
-                    if (!confirm(`Διαγραφή της διαδρομής «${course.name}»;`)) return;
-                    await nav.removeCourse(course.id);
+                    const gone = course;
+                    await nav.removeCourse(gone.id);
+                    offerUndo(`Διαγράφηκε η διαδρομή «${gone.name}»`, () => nav.restoreCourse(gone));
                   }}
                 >
                   Διαγραφή
