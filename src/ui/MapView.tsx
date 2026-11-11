@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import type { LaylineResult } from '../nav/laylines';
 import { Map as MLMap, Marker, NavigationControl, Popup, ScaleControl, setWorkerUrl, type GeoJSONSource, type RasterTileSource } from 'maplibre-gl';
 import type { StyleSpecification } from '@maplibre/maplibre-gl-style-spec';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -95,6 +96,8 @@ interface Props {
   showDepth: boolean;
   wind?: WindArrow[];
   boatPos?: LatLon & { cog?: number };
+  /** Laylines to the next mark (P-019). */
+  laylines?: LaylineResult;
   simPos?: LatLon;
   fitKey?: string;
   /** Extra controls drawn over the map (buttons, legend). */
@@ -204,7 +207,7 @@ export function MapView(p: Props) {
           });
           map.addLayer({ id: 'seamarks', type: 'raster', source: 'seamarks', minzoom: 9 });
         }
-        for (const id of ['course', 'iso', 'planned', 'live', 'boat', 'sim', 'wind']) map.addSource(id, { type: 'geojson', data: EMPTY });
+        for (const id of ['course', 'iso', 'planned', 'live', 'lay', 'boat', 'sim', 'wind']) map.addSource(id, { type: 'geojson', data: EMPTY });
         if (!map.hasImage('nav-wind-arrow')) map.addImage('nav-wind-arrow', arrowImage(), { sdf: true });
         map.addLayer({
           id: 'wind',
@@ -229,6 +232,8 @@ export function MapView(p: Props) {
         map.addLayer({ id: 'iso', type: 'line', source: 'iso', paint: { 'line-color': '#7c3aed', 'line-width': 1, 'line-opacity': 0.5 } });
         map.addLayer({ id: 'planned', type: 'line', source: 'planned', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': 4 } });
         map.addLayer({ id: 'live', type: 'line', source: 'live', layout: { 'line-cap': 'round' }, paint: { 'line-color': '#e11d48', 'line-width': 4, 'line-dasharray': [1.5, 1] } });
+        // Laylines: starboard green, port red (as the navigation lights), dashed, as an indication.
+        map.addLayer({ id: 'lay', type: 'line', source: 'lay', paint: { 'line-color': ['get', 'color'], 'line-width': 2, 'line-dasharray': [3, 2], 'line-opacity': 0.9 } });
         map.addLayer({ id: 'sim', type: 'circle', source: 'sim', paint: { 'circle-radius': 7, 'circle-color': '#f59e0b', 'circle-stroke-color': '#000', 'circle-stroke-width': 2 } });
         map.addLayer({ id: 'boat', type: 'circle', source: 'boat', paint: { 'circle-radius': 8, 'circle-color': '#e11d48', 'circle-stroke-color': '#fff', 'circle-stroke-width': 3 } });
         setReady(true);
@@ -335,6 +340,24 @@ export function MapView(p: Props) {
     if (!ready) return;
     set('live', routeSegments(p.live));
   }, [ready, p.live]);
+
+  useEffect(() => {
+    if (!ready) return;
+    const l = p.laylines;
+    set(
+      'lay',
+      !l || l.leg === 'reach'
+        ? EMPTY
+        : {
+            type: 'FeatureCollection',
+            features: (['stbd', 'port'] as const).map((b) => ({
+              type: 'Feature',
+              geometry: { type: 'LineString', coordinates: l.lines[b].map((q) => [q.lon, q.lat]) },
+              properties: { color: b === 'stbd' ? '#16a34a' : '#dc2626' },
+            })),
+          },
+    );
+  }, [ready, p.laylines]);
 
   useEffect(() => {
     if (!ready) return;
