@@ -20,6 +20,7 @@ import { CHAT_LIMITS, validateChat } from '../src/ai/chat';
 import { AgentError, runAgent } from './agent';
 import { log } from './log';
 import { clientIp, ipKey } from './rateLimit';
+import { assertAiOn, assertCallerPace, useGlobalBudget, type BrakeEnv } from './aiBrakes';
 import { MAX_CERT_BASE64, readCertificate, validateCertificateBody } from './certificate';
 import { aisPositions, orcBoat, readEntryList } from './race';
 import { cacheGet, cachePut, fileHash } from './pdfCache';
@@ -47,7 +48,7 @@ import {
   type AccountEnv,
 } from './accounts';
 
-export interface Env extends AccountEnv {
+export interface Env extends AccountEnv, BrakeEnv {
   ANTHROPIC_API_KEY: string;
   /** Data controller shown in the Privacy policy (vars or secrets). */
   CONTROLLER_NAME?: string;
@@ -240,7 +241,9 @@ async function certificate(req: Request, env: Env, cors: Record<string, string>)
     log('ai', { kind: 'certificate', user: s.user.id, cache: 'hit', ms: Date.now() - t0 });
     return json({ extract: hit.result, model: hit.model, cached: true }, 200, cors);
   }
+  assertAiOn(env);
   await canReadPdf(env, s.user, await ipKey(clientIp(req)));
+  await useGlobalBudget(env);
   if (!env.ANTHROPIC_API_KEY) throw new HttpError(500, 'Ο server δεν έχει κλειδί Claude API.');
   const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY, maxRetries: 1, timeout: 110_000 });
   try {
@@ -267,7 +270,9 @@ async function entryList(req: Request, env: Env, cors: Record<string, string>): 
     log('ai', { kind: 'entrylist', user: s.user.id, cache: 'hit', ms: Date.now() - t0, entries: hit.result.entries.length });
     return json({ event: hit.result.event, entries: hit.result.entries, cached: true }, 200, cors);
   }
+  assertAiOn(env);
   await canReadPdf(env, s.user, await ipKey(clientIp(req)));
+  await useGlobalBudget(env);
   if (!env.ANTHROPIC_API_KEY) throw new HttpError(500, 'Ο server δεν έχει κλειδί Claude API.');
   const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY, maxRetries: 1, timeout: 110_000 });
   try {
@@ -372,16 +377,25 @@ async function handle(req: Request, env: Env): Promise<Response> {
       const aiRoute = req.method === 'POST' && (path === '/advice' || path === '/chat' || path === '/windy' || path === '/analysis');
       if (!aiRoute) return json({ error: 'Not found' }, 404, cors);
 
-      // AI routes: the owner's access code, or a signed-in user approved by the admin (counted per month).
-      if (!codeOk) {
+      // AI routes: the owner's access code (paced per connection), or a signed-in user approved
+      // by the admin (paced per minute, counted per month). Paid Claude calls also respect the
+      // kill switch and the server-wide monthly cap (P-016).
+      const paid = path !== '/windy';
+      if (paid) assertAiOn(env);
+      if (codeOk) {
+        await assertCallerPace(env, { ipKey: await ipKey(clientIp(req)) });
+      } else {
         const s = await sessionUser(env, req);
         if (!s) return json({ error: req.headers.get('x-access-code') ? 'Λάθος κωδικός πρόσβασης.' : 'Συνδέσου στον λογαριασμό σου για τον σύμβουλο AI.' }, 401, cors);
         if (path === '/windy') {
           if (!s.user.ai_allowed) throw new HttpError(403, 'Το Windy είναι διαθέσιμο σε εγκεκριμένους λογαριασμούς.');
+          await assertCallerPace(env, { user: s.user.id });
         } else {
+          await assertCallerPace(env, { user: s.user.id });
           await useAiQuota(env, s.user);
         }
       }
+      if (paid) await useGlobalBudget(env);
       if (path === '/windy') return windy(req, env, cors);
       if (!env.ANTHROPIC_API_KEY) return json({ error: 'Ο server δεν έχει κλειδί Claude API.' }, 500, cors);
       if (path === '/chat') return chat(req, env, cors);

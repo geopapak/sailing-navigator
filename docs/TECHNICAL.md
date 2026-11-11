@@ -174,7 +174,9 @@ scripts/         εικονίδια, CHANGELOG, ακτογραμμή
 | `GET /ais?mmsi=a,b&wait=` | χρήστης | τελευταίες θέσεις AIS από aisstream.io (θέλει `AISSTREAM_KEY`, αλλιώς 501) |
 | `GET /notes/crew` | χρήστης | σημειώσεις «Πλήρωμα» άλλων χρηστών για σκάφη με ίδιο αριθμό πανιού |
 
-\* AI = `ACCESS_CODE` ή χρήστης με `ai_allowed`. Κάθε κλήση μετρά στο μηνιαίο όριο.
+\* AI = `ACCESS_CODE` ή χρήστης με `ai_allowed`. Κάθε κλήση μετρά στο μηνιαίο όριο του χρήστη.
+
+**Φρένα κόστους (P-016, `server/aiBrakes.ts`):** `AI_DISABLED=1` κλείνει όλες τις πληρωμένες κλήσεις (503)· κάθε λογαριασμός έως 6 ερωτήσεις/λεπτό (429)· ο `ACCESS_CODE` έως 40 κλήσεις/ώρα ανά σύνδεση (429)· όλες μαζί οι πληρωμένες κλήσεις (σύμβουλος, συνομιλία, ανάλυση, νέα ανάγνωση PDF) σταματούν στο `AI_GLOBAL_MONTHLY_LIMIT` τον μήνα (503). Οι μετρητές είναι στον πίνακα `rate_limits`.
 
 **CORS:** επιτρέπονται τα origins του `ALLOWED_ORIGINS` (`wrangler.toml`) και κάθε `http://localhost:<port>` / `http://127.0.0.1:<port>`.
 
@@ -190,6 +192,8 @@ scripts/         εικονίδια, CHANGELOG, ακτογραμμή
 | `ORC_API_KEY` | secret | όχι | ORC API (sas.orc.org → Developers): συντελεστές/polars αντιπάλων |
 | `AISSTREAM_KEY` | secret | όχι | aisstream.io: θέσεις αντιπάλων από AIS μέσω internet |
 | `WEB_SEARCH` | var | όχι | `0` = ο σύμβουλος χωρίς αναζήτηση web |
+| `AI_DISABLED` | var | όχι | `1` = διακόπτης: καμία πληρωμένη κλήση AI |
+| `AI_GLOBAL_MONTHLY_LIMIT` | var | όχι | μέγιστες πληρωμένες κλήσεις AI τον μήνα για όλο τον server (προεπιλογή 1000) |
 | `ALLOWED_ORIGINS` | var | ναι | origins της εφαρμογής (CORS) |
 | `DB` | binding D1 | ναι | η βάση |
 
