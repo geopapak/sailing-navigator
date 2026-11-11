@@ -294,7 +294,7 @@ export async function runAgent(
     if (b.type !== 'text') continue;
     text += b.text;
     for (const c of b.citations ?? []) {
-      if (c.type === 'web_search_result_location' && c.url) sources.set(c.url, { url: c.url, title: c.title ?? c.url });
+      if (c.type === 'web_search_result_location' && /^https?:\/\//i.test(c.url ?? '')) sources.set(c.url, { url: c.url, title: c.title ?? c.url });
     }
   }
   text = text.trim();

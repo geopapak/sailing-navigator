@@ -17,6 +17,7 @@ export type LogEvent =
   | 'ai'
   | 'orc'
   | 'ais'
+  | 'rate_limited'
   | 'error';
 
 export function log(evt: LogEvent, fields: Record<string, unknown> = {}): void {

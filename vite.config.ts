@@ -6,6 +6,33 @@ import { VitePWA } from 'vite-plugin-pwa';
 // BASE_PATH is set by the GitHub Pages workflow (e.g. "/project-sailing/").
 const base = process.env.BASE_PATH ?? '/';
 
+/**
+ * Content-Security-Policy for the built app: only our own scripts run, so an
+ * injected <script> or inline handler cannot read the sign-in token.
+ * Network access stays open (https/wss) because the server, the weather and the
+ * instrument gateway are set by the user. Not in dev (Vite injects inline scripts).
+ */
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https:",
+  "font-src 'self' data: https:",
+  "connect-src 'self' https: wss: ws: http://localhost:* http://127.0.0.1:*",
+  "worker-src 'self' blob:",
+  "child-src 'self' blob:",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join('; ');
+
+const csp = {
+  name: 'csp',
+  apply: 'build' as const,
+  transformIndexHtml: (html: string) => html.replace('<meta charset="UTF-8" />', `<meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="${CSP}" />`),
+};
+
 export default defineConfig({
   base,
   define: {
@@ -14,6 +41,7 @@ export default defineConfig({
   worker: { format: 'es' },
   plugins: [
     react(),
+    csp,
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg'],

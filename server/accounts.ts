@@ -7,6 +7,7 @@
 
 /** The subset of Cloudflare's D1 API we use (kept local: no extra type package). */
 import { log } from './log';
+import { LIMITS, clear, hit, isLimited, prune } from './rateLimit';
 
 export interface D1Result<T = unknown> {
   results: T[];
@@ -104,6 +105,24 @@ const normEmail = (e: string) => e.trim().toLowerCase();
 const isAdminEmail = (env: AccountEnv, email: string) =>
   !!env.ADMIN_EMAIL && env.ADMIN_EMAIL.split(',').map(normEmail).includes(normEmail(email));
 
+/**
+ * ADMIN_EMAIL only sets up the first admin. Emails are not verified, so once an
+ * admin exists nobody becomes admin just by signing up with a listed email;
+ * further admins are added with `npm run make-admin`.
+ */
+async function bootstrapAdmin(env: AccountEnv, email: string): Promise<boolean> {
+  if (!isAdminEmail(env, email)) return false;
+  return !(await db(env).prepare('SELECT id FROM users WHERE is_admin = 1 LIMIT 1').first());
+}
+
+/** Wrong passwords for one account (from any connection) before it locks for 15 minutes. */
+const ACCOUNT_LOCK_FAILS = 50;
+
+const tooMany = (what: string) => {
+  log('rate_limited', { what });
+  return new HttpError(429, 'Πάρα πολλές προσπάθειες από αυτή τη σύνδεση. Δοκίμασε ξανά αργότερα.');
+};
+
 export function publicUser(u: UserRow): PublicUser {
   const used = u.ai_month === month() ? u.ai_count : 0;
   return {
@@ -146,6 +165,7 @@ async function newSession(env: AccountEnv, userId: string): Promise<string> {
 export async function register(
   env: AccountEnv,
   body: { email?: unknown; password?: unknown; name?: unknown; acceptTerms?: unknown; acceptPrivacy?: unknown; marketing?: unknown },
+  ip = 'unknown',
 ) {
   if (body.acceptTerms !== true || body.acceptPrivacy !== true) {
     throw new HttpError(400, 'Χρειάζεται αποδοχή των Όρων χρήσης και της Πολιτικής απορρήτου.');
@@ -156,9 +176,11 @@ export async function register(
   if (!EMAIL_RE.test(email) || email.length > 120) throw new HttpError(400, 'Άκυρο email.');
   if (password.length < 8 || password.length > 200) throw new HttpError(400, 'Ο κωδικός θέλει τουλάχιστον 8 χαρακτήρες.');
   const d = db(env);
+  await prune(env.DB);
+  if (!(await hit(env.DB, LIMITS.register, ip))) throw tooMany('register');
   if (await d.prepare('SELECT id FROM users WHERE email = ?').bind(email).first()) throw new HttpError(409, 'Υπάρχει ήδη λογαριασμός με αυτό το email.');
   const salt = randomHex(16);
-  const admin = isAdminEmail(env, email) ? 1 : 0;
+  const admin = (await bootstrapAdmin(env, email)) ? 1 : 0;
   const u: UserRow = {
     id: randomHex(12),
     email,
@@ -191,31 +213,39 @@ export async function register(
   return { token: await newSession(env, u.id), user: publicUser(u) };
 }
 
-export async function login(env: AccountEnv, body: { email?: unknown; password?: unknown }) {
+export async function login(env: AccountEnv, body: { email?: unknown; password?: unknown }, ip = 'unknown') {
   const email = typeof body.email === 'string' ? normEmail(body.email) : '';
   const password = typeof body.password === 'string' ? body.password : '';
   const d = db(env);
+  if (!(await hit(env.DB, LIMITS.login, ip))) throw tooMany('login');
   const u = await d.prepare('SELECT * FROM users WHERE email = ?').bind(email).first<UserRow>();
   const now = Date.now();
-  if (u && u.locked_until > now) throw new HttpError(429, 'Πολλές λάθος προσπάθειες. Δοκίμασε ξανά σε 15 λεπτά.');
+  // Wrong passwords lock the account for this connection only (so a stranger
+  // cannot lock the owner out); a high account-wide limit stops spread-out guessing.
+  const failKey = u ? `${ip}:${u.id}` : '';
+  if (u && (u.locked_until > now || (await isLimited(env.DB, LIMITS.loginFail, failKey)))) {
+    throw new HttpError(429, 'Πολλές λάθος προσπάθειες. Δοκίμασε ξανά σε 15 λεπτά.');
+  }
   // Hash even for unknown emails so timing doesn't reveal which emails exist.
   const ok = u ? sameHex(await hashPassword(password, u.pass_salt), u.pass_hash) : (await hashPassword(password, '00'.repeat(16)), false);
   if (!u || !ok) {
     if (u) {
       const fails = u.failed_logins + 1;
+      await hit(env.DB, LIMITS.loginFail, failKey, now);
       await d
         .prepare('UPDATE users SET failed_logins = ?, locked_until = ? WHERE id = ?')
-        .bind(fails >= 5 ? 0 : fails, fails >= 5 ? now + 15 * 60_000 : 0, u.id)
+        .bind(fails >= ACCOUNT_LOCK_FAILS ? 0 : fails, fails >= ACCOUNT_LOCK_FAILS ? now + 15 * 60_000 : 0, u.id)
         .run();
     }
-    log('login_failed', { user: u?.id ?? null, locked: !!u && u.failed_logins + 1 >= 5 });
+    log('login_failed', { user: u?.id ?? null, locked: !!u && u.failed_logins + 1 >= ACCOUNT_LOCK_FAILS });
     throw new HttpError(401, 'Λάθος email ή κωδικός.');
   }
-  const admin = isAdminEmail(env, u.email);
+  const admin = !!u.is_admin || (await bootstrapAdmin(env, u.email));
   if (admin && (!u.is_admin || !u.ai_allowed)) {
     u.is_admin = 1;
     u.ai_allowed = 1;
   }
+  await clear(env.DB, LIMITS.loginFail, failKey);
   await d.prepare('UPDATE users SET failed_logins = 0, locked_until = 0, is_admin = ?, ai_allowed = ? WHERE id = ?').bind(u.is_admin, u.ai_allowed, u.id).run();
   log('login', { user: u.id, temp: !!u.must_change_password });
   return { token: await newSession(env, u.id), user: publicUser(u) };
@@ -246,9 +276,10 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  * "Forgot my password" without email: marks the request for the admin, who
  * hands out a temporary password. Same answer whether or not the email exists.
  */
-export async function requestReset(env: AccountEnv, body: { email?: unknown }) {
+export async function requestReset(env: AccountEnv, body: { email?: unknown }, ip = 'unknown') {
   const email = typeof body.email === 'string' ? normEmail(body.email) : '';
   if (!EMAIL_RE.test(email)) throw new HttpError(400, 'Άκυρο email.');
+  if (!(await hit(env.DB, LIMITS.forgot, ip))) throw tooMany('forgot');
   const r = await db(env).prepare('UPDATE users SET reset_requested_at = ? WHERE email = ?').bind(Date.now(), email).run();
   log('password_reset_requested', { known: (r.meta?.changes ?? 0) > 0 });
   return { ok: true };
@@ -286,10 +317,19 @@ export async function exportData(env: AccountEnv, u: UserRow) {
   };
 }
 
-/** Checks the certificate-reading allowance before the (paid) AI call. */
-export function canReadPdf(u: UserRow): void {
-  if (!u.ai_allowed && (u.pdf_used ?? 0) >= FREE_PDF_READS) {
+/**
+ * Checks the certificate-reading allowance before the (paid) AI call. Free
+ * readings are also limited per connection, so new throwaway accounts don't
+ * get new free readings.
+ */
+export async function canReadPdf(env: AccountEnv, u: UserRow, ip = 'unknown'): Promise<void> {
+  if (u.ai_allowed) return;
+  if ((u.pdf_used ?? 0) >= FREE_PDF_READS) {
     throw new HttpError(403, `Χρησιμοποίησες τις ${FREE_PDF_READS} δωρεάν αναγνώσεις πιστοποιητικού. Ζήτα από τον διαχειριστή να σου ενεργοποιήσει το AI.`);
+  }
+  if (!(await hit(env.DB, LIMITS.freePdf, ip))) {
+    log('rate_limited', { what: 'freePdf', user: u.id });
+    throw new HttpError(429, 'Πάρα πολλές δωρεάν αναγνώσεις από αυτή τη σύνδεση σήμερα. Δοκίμασε αύριο ή ζήτα από τον διαχειριστή να σου ενεργοποιήσει το AI.');
   }
 }
 

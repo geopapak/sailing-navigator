@@ -1,7 +1,7 @@
 {
   "name": "sailing-navigator",
   "private": true,
-  "version": "0.8.3",
+  "version": "0.8.4",
   "type": "module",
   "scripts": {
     "dev": "vite --host",
@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit",
     "icons": "node scripts/make-icons.mjs",
     "changelog": "node scripts/changelog.mjs",
-    "reset-password": "node scripts/reset-password.mjs"
+    "reset-password": "node scripts/reset-password.mjs",
+    "make-admin": "node scripts/make-admin.mjs"
   },
   "dependencies": {
     "dexie": "^4.0.10",
@@ -30,7 +31,7 @@
     "typescript": "~5.6.3",
     "vite": "^6.0.7",
     "vite-plugin-pwa": "^0.21.1",
-    "vitest": "^3.0.4",
+    "vitest": "^5.1.0",
     "wrangler": "^4.158.0"
   }
 }

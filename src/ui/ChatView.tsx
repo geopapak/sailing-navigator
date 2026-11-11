@@ -226,7 +226,7 @@ export function ChatView() {
                 <span>{new Date(e.at).toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit' })}</span>
                 {e.sources && e.sources.length > 0 && (
                   <ul className="sources">
-                    {e.sources.slice(0, 5).map((s) => (
+                    {e.sources.filter((s) => /^https?:\/\//i.test(s.url)).slice(0, 5).map((s) => (
                       <li key={s.url}>
                         <a href={s.url} target="_blank" rel="noreferrer noopener">
                           {s.title}

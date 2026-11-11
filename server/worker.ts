@@ -19,6 +19,7 @@ import type { ModelSeries } from '../src/weather/compare';
 import { CHAT_LIMITS, validateChat } from '../src/ai/chat';
 import { AgentError, runAgent } from './agent';
 import { log } from './log';
+import { clientIp, ipKey } from './rateLimit';
 import { MAX_CERT_BASE64, readCertificate, validateCertificateBody } from './certificate';
 import { aisPositions, orcBoat, readEntryList } from './race';
 import { cacheGet, cachePut, fileHash } from './pdfCache';
@@ -65,9 +66,13 @@ export interface Env extends AccountEnv {
 const MODEL = 'claude-opus-5-5';
 const MAX_BODY = 48 * 1024;
 
-function corsHeaders(origin: string | null, env: Env): Record<string, string> {
+const LOCAL = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
+
+/** Allowed origins; local dev pages only when the server itself runs locally (wrangler dev). */
+function corsHeaders(origin: string | null, env: Env, reqUrl: string): Record<string, string> {
   const allowed = (env.ALLOWED_ORIGINS ?? '').split(',').map((s) => s.trim()).filter(Boolean);
-  const ok = origin && (allowed.includes(origin) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin));
+  const localServer = LOCAL.test(new URL(reqUrl).origin);
+  const ok = origin && (allowed.includes(origin) || (localServer && LOCAL.test(origin)));
   return ok
     ? {
         'Access-Control-Allow-Origin': origin,
@@ -79,8 +84,16 @@ function corsHeaders(origin: string | null, env: Env): Record<string, string> {
     : { Vary: 'Origin' };
 }
 
+/** Sent with every answer: no MIME sniffing, no caching of personal data, no referrer. */
+const SECURITY_HEADERS = {
+  'X-Content-Type-Options': 'nosniff',
+  'Cache-Control': 'no-store',
+  'Referrer-Policy': 'no-referrer',
+  'Strict-Transport-Security': 'max-age=31536000',
+};
+
 function json(data: unknown, status: number, cors: Record<string, string>): Response {
-  return new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json; charset=utf-8', ...cors } });
+  return new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json; charset=utf-8', ...SECURITY_HEADERS, ...cors } });
 }
 
 /** Constant-time string comparison for the access code. */
@@ -189,9 +202,10 @@ async function body(req: Request, limit = 64 * 1024): Promise<Record<string, unk
 /** /auth/*, /me, /sync, /admin/* */
 async function accountRoutes(req: Request, env: Env, path: string): Promise<unknown> {
   const m = req.method;
-  if (m === 'POST' && path === '/auth/register') return register(env, await body(req));
-  if (m === 'POST' && path === '/auth/login') return login(env, await body(req));
-  if (m === 'POST' && path === '/auth/forgot') return requestReset(env, await body(req));
+  const ip = await ipKey(clientIp(req));
+  if (m === 'POST' && path === '/auth/register') return register(env, await body(req), ip);
+  if (m === 'POST' && path === '/auth/login') return login(env, await body(req), ip);
+  if (m === 'POST' && path === '/auth/forgot') return requestReset(env, await body(req), ip);
   const s = await sessionUser(env, req);
   if (!s) throw new HttpError(401, 'Χρειάζεται σύνδεση.');
   const u = s.user;
@@ -226,7 +240,7 @@ async function certificate(req: Request, env: Env, cors: Record<string, string>)
     log('ai', { kind: 'certificate', user: s.user.id, cache: 'hit', ms: Date.now() - t0 });
     return json({ extract: hit.result, model: hit.model, cached: true }, 200, cors);
   }
-  canReadPdf(s.user);
+  await canReadPdf(env, s.user, await ipKey(clientIp(req)));
   if (!env.ANTHROPIC_API_KEY) throw new HttpError(500, 'Ο server δεν έχει κλειδί Claude API.');
   const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY, maxRetries: 1, timeout: 110_000 });
   try {
@@ -253,7 +267,7 @@ async function entryList(req: Request, env: Env, cors: Record<string, string>): 
     log('ai', { kind: 'entrylist', user: s.user.id, cache: 'hit', ms: Date.now() - t0, entries: hit.result.entries.length });
     return json({ event: hit.result.event, entries: hit.result.entries, cached: true }, 200, cors);
   }
-  canReadPdf(s.user);
+  await canReadPdf(env, s.user, await ipKey(clientIp(req)));
   if (!env.ANTHROPIC_API_KEY) throw new HttpError(500, 'Ο server δεν έχει κλειδί Claude API.');
   const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY, maxRetries: 1, timeout: 110_000 });
   try {
@@ -316,7 +330,7 @@ async function handle(req: Request, env: Env): Promise<Response> {
   {
     const url = new URL(req.url);
     const path = url.pathname;
-    const cors = corsHeaders(req.headers.get('Origin'), env);
+    const cors = corsHeaders(req.headers.get('Origin'), env, req.url);
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
 
     try {
