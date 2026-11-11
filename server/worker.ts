@@ -19,6 +19,7 @@ import type { ModelSeries } from '../src/weather/compare';
 import { CHAT_LIMITS, validateChat } from '../src/ai/chat';
 import { AgentError, runAgent } from './agent';
 import { log } from './log';
+import { crewRoutes } from './crews';
 import { clientIp, ipKey } from './rateLimit';
 import { assertAiOn, assertCallerPace, useGlobalBudget, type BrakeEnv } from './aiBrakes';
 import { MAX_CERT_BASE64, readCertificate, validateCertificateBody } from './certificate';
@@ -77,7 +78,7 @@ function corsHeaders(origin: string | null, env: Env, reqUrl: string): Record<st
   return ok
     ? {
         'Access-Control-Allow-Origin': origin,
-        'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
         'Access-Control-Allow-Headers': 'content-type, x-access-code, authorization',
         'Access-Control-Max-Age': '86400',
         Vary: 'Origin',
@@ -217,6 +218,7 @@ async function accountRoutes(req: Request, env: Env, path: string): Promise<unkn
   if (m === 'GET' && path === '/me/export') return exportData(env, u);
   if (m === 'DELETE' && path === '/me') return deleteAccount(env, u).then(() => ({ ok: true }));
   if (m === 'POST' && path === '/sync') return sync(env, u, await body(req, 4 * 1024 * 1024));
+  if (path === '/crews' || path.startsWith('/crews/') || path.startsWith('/invites/')) return crewRoutes(env, u, m, path, () => body(req));
   if (path.startsWith('/admin/')) {
     if (!u.is_admin) throw new HttpError(403, 'Μόνο για διαχειριστή.');
     if (m === 'GET' && path === '/admin/users') return { users: await listUsers(env) };
@@ -226,7 +228,7 @@ async function accountRoutes(req: Request, env: Env, path: string): Promise<unkn
   throw new HttpError(404, 'Not found');
 }
 
-const ACCOUNT_PATHS = /^\/(auth\/|me$|me\/|sync$|admin\/)/;
+const ACCOUNT_PATHS = /^\/(auth\/|me$|me\/|sync$|admin\/|crews$|crews\/|invites\/)/;
 
 /** Certificate (PDF/photo) → boat data, for signed-in users within their allowance. */
 async function certificate(req: Request, env: Env, cors: Record<string, string>): Promise<Response> {

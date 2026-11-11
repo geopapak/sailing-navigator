@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { RaceScreen } from './RaceScreen';
+import { RaceCrew, SharedRaces } from './CrewViews';
 import { useApp } from './AppContext';
 import { useNav, localToMs } from './NavContext';
 import { useRace } from './RaceContext';
@@ -117,6 +118,7 @@ function RacesList({ onNew, onOpen }: { onNew: () => void; onOpen: (r: Race) => 
           αυτά, από το GPS του κινητού και ό,τι γράφεις στο Live. Η καταγραφή μένει σε αυτή τη συσκευή.
         </p>
       </section>
+      <SharedRaces />
       {done.length > 0 && (
         <section className="card">
           <h3>Ολοκληρωμένοι</h3>
@@ -497,6 +499,8 @@ function RaceSetup({ id, onDone, onCancel }: { id?: string; onDone: (started: bo
           </button>
         </div>
       </section>
+
+      {existing && <RaceCrew race={r} boat={activeBoat?.isOwn ? activeBoat : boats.find((b) => b.isOwn)} onChange={set} />}
 
       {problems.length > 0 && (
         <ul className="errors">

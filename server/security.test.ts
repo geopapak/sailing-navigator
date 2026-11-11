@@ -8,7 +8,7 @@ import { LIMITS, hit, isLimited } from './rateLimit';
 /** Protections found missing in the 0.8.4 security review. */
 function fakeD1(withLimits = true): D1Database {
   const sql = new DatabaseSync(':memory:');
-  const files = ['0001_accounts.sql', '0002_terms_reset_pdf.sql', '0003_pdf_cache.sql', ...(withLimits ? ['0004_rate_limits.sql'] : [])];
+  const files = ['0001_accounts.sql', '0002_terms_reset_pdf.sql', '0003_pdf_cache.sql', ...(withLimits ? ['0004_rate_limits.sql'] : []), '0005_crews.sql'];
   for (const f of files) sql.exec(readFileSync(new URL(`../migrations/${f}`, import.meta.url), 'utf8'));
   const stmt = (q: string, args: unknown[] = []): D1PreparedStatement => ({
     bind: (...v: unknown[]) => stmt(q, v),
