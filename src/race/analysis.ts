@@ -40,7 +40,8 @@ export interface RaceAnalysis {
 
 const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : undefined);
 
-function sailed(track: TrackPoint[]): number {
+/** Sailed distance along a track (nm), ignoring GPS jumps. */
+export function sailed(track: TrackPoint[]): number {
   let d = 0;
   for (let i = 1; i < track.length; i++) {
     const step = distanceNm(track[i - 1], track[i]);

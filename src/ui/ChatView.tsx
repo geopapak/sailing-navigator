@@ -1,4 +1,5 @@
 import { knowledgeHints } from '../knowledge/match';
+import { useHoldUpdate } from './useHoldUpdate';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useApp } from './AppContext';
 import { useNav } from './NavContext';
@@ -79,6 +80,8 @@ export function ChatView() {
   const nav = useNav();
   const [log, setLog] = useStoredState<{ entries: Entry[] }>('advisor-chat', { entries: [] });
   const [draft, setDraft] = useState('');
+  // A half-written question keeps a waiting app update from reloading (P-043).
+  useHoldUpdate(draft.trim().length > 0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const [useData, setUseData] = useStoredState<{ live: boolean; plan: boolean; models: boolean }>('advisor-chat-data', {

@@ -1,57 +1,98 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { onOpenTab, type AppTab } from './openTab';
+import { isSessionTab, normalizeTab, onOpenTab, type AppTab } from './openTab';
 import { AppProvider, useApp } from './AppContext';
 import { NavProvider } from './NavContext';
 import { InstrumentsProvider, useInstruments } from './InstrumentsContext';
-import { LiveView } from './LiveView';
-import { PolarView } from './PolarView';
-import { RaceView } from './RaceView';
+import { RaceLive, RaceSetup, OpponentPosition } from './RaceView';
 import { RaceProvider, useRace } from './RaceContext';
 import { AlertBanner, AlertsProvider } from './RaceAlerts';
 import { InviteScreen } from './CrewViews';
 import { pendingInvite } from '../crew/api';
 import { KnowledgeProvider } from './KnowledgeContext';
-import { BoatsView } from './BoatsView';
-import { SettingsView } from './SettingsView';
-import { GuideView } from './GuideView';
 import { ChatView } from './ChatView';
-import { WelcomeCard } from './WelcomeCard';
-import { WhatsNew } from './WhatsNew';
 import { AcceptTermsScreen, AuthFlow, SetPasswordScreen } from './AuthFlow';
-import { useStoredState } from './hooks';
 import { Icon, type IconName } from './Icons';
 import { Dialogs } from './Dialogs';
 import { Onboarding } from './Onboarding';
-import { THEME_INFO } from './Appearance';
-import type { Theme } from './settings';
+import { HomeView, QuickLook, SessionLive, SessionSetup } from './HomeView';
+import { EndedScreen, HistoryView } from './HistoryView';
+import { BoatsHub, SettingsHub } from './HubViews';
+import { SessionBar, requestSessionEnd, type Ended } from './SessionBar';
+import type { SessionKind } from '../race/types';
+import { AppUpdater } from './AppUpdater';
 
 // The map (MapLibre) is large: load it only when the tab is opened.
 const PlanView = lazy(() => import('./PlanView').then((m) => ({ default: m.PlanView })));
 
-type Tab = AppTab;
-
-const TABS: { id: Tab; label: string; icon: IconName }[] = [
-  { id: 'live', label: 'Live', icon: 'live' },
-  { id: 'map', label: 'Χάρτης', icon: 'map' },
-  { id: 'scoring', label: 'Αγώνας', icon: 'clock' },
-  { id: 'chat', label: 'Σύμβουλος', icon: 'chat' },
-  { id: 'polar', label: 'Polar', icon: 'polar' },
+/** Outside a session (P-033). */
+const TABS_OUT: { id: AppTab; label: string; icon: IconName }[] = [
+  { id: 'home', label: 'Αρχική', icon: 'home' },
+  { id: 'history', label: 'Ιστορικό', icon: 'history' },
   { id: 'boats', label: 'Σκάφη', icon: 'boats' },
+  { id: 'settings', label: 'Ρυθμίσεις', icon: 'gear' },
 ];
+/** Inside a session: only what is needed at sea. */
+const TABS_IN: { id: AppTab; label: string; icon: IconName }[] = [
+  { id: 'session:live', label: 'Live', icon: 'live' },
+  { id: 'session:map', label: 'Χάρτης', icon: 'map' },
+  { id: 'session:chat', label: 'Σύμβουλος', icon: 'chat' },
+];
+
+const TITLE: Partial<Record<AppTab, string>> = {
+  home: 'Νέα έξοδος',
+  history: 'Οι έξοδοί μου',
+  boats: 'Σκάφη',
+  settings: 'Ρυθμίσεις',
+  quick: 'Γρήγορη ματιά',
+};
+
+/** Screens over the tabs: a session's setup (no tab bar, «←») or the end of a session. */
+type Screen = { s: 'setup'; kind: SessionKind; id?: string } | { s: 'ended'; e: Ended };
 
 function Shell() {
   const { ready, error, activeBoat, boats, settings, updateSettings, account } = useApp();
-  const [nav, setNav] = useStoredState<{ tab: Tab }>('nav', { tab: 'live' });
-  useEffect(() => onOpenTab((tab) => setNav({ tab })), [setNav]);
-  // Right after signing in, start at "Τα σκάφη μου".
+  const race = useRace();
+  const inSession = !!race.session;
+  // The app always opens at «Νέα έξοδος», or inside the running session (never at the last tab).
+  const [tab, setTab] = useState<AppTab>('home');
+  const [screen, setScreen] = useState<Screen>();
+  const [histOpen, setHistOpen] = useState<string>();
+  const [opponent, setOpponent] = useState<{ entryId?: string }>();
+  const [flash, setFlash] = useState<string>();
+  const inSessionRef = useRef(inSession);
+  inSessionRef.current = inSession;
+
+  useEffect(
+    () =>
+      onOpenTab((t) => {
+        setScreen(undefined);
+        setHistOpen(undefined);
+        setTab(normalizeTab(t, inSessionRef.current));
+      }),
+    [],
+  );
+  // Into the session as soon as one runs (also after a reload); back home when it ends.
+  useEffect(() => {
+    if (!race.loaded) return;
+    if (inSession) {
+      setScreen((s) => (s?.s === 'setup' ? undefined : s));
+      setTab((t) => (isSessionTab(t) ? t : 'session:live'));
+    } else setTab((t) => (isSessionTab(t) ? 'home' : t));
+    setOpponent(undefined);
+  }, [inSession, race.loaded]);
+  // Right after signing in, start at «Νέα έξοδος».
   const prevAccount = useRef(account?.id);
   useEffect(() => {
-    if (account?.id && !prevAccount.current) setNav({ tab: 'boats' });
+    if (account?.id && !prevAccount.current) setTab(inSessionRef.current ? 'session:live' : 'home');
     prevAccount.current = account?.id;
-  }, [account?.id, setNav]);
+  }, [account?.id]);
+  useEffect(() => {
+    if (!flash) return;
+    const t = window.setTimeout(() => setFlash(undefined), 4000);
+    return () => window.clearTimeout(t);
+  }, [flash]);
 
   // All hooks must run before the early returns below (else React throws and the page is blank).
-  const [themeOpen, setThemeOpen] = useState(false);
   const [invite, setInvite] = useState(() => pendingInvite());
 
   // Sign-in comes first; then a new password after a temporary one; then the terms.
@@ -59,73 +100,84 @@ function Shell() {
   if (ready && account?.mustChangePassword) return <SetPasswordScreen />;
   if (ready && account && account.termsOk === false) return <AcceptTermsScreen />;
   if (ready && account && account.termsOk === undefined) return <AcceptTermsScreen />;
-  const showOnboarding = ready && !settings.onboarded && !(['boats', 'settings', 'guide'] as Tab[]).includes(nav.tab);
-  const go = (tab: Tab) => setNav({ tab: nav.tab === tab && (tab === 'guide' || tab === 'settings') ? 'live' : tab });
+
+  const setup = !inSession && screen?.s === 'setup' ? screen : undefined;
+  const ended = !inSession && screen?.s === 'ended' ? screen.e : undefined;
+  const showOnboarding = ready && !settings.onboarded && !inSession && !screen && !(['boats', 'settings'] as AppTab[]).includes(tab);
+  // Setup and «Γρήγορη ματιά» hide the tab bar and get «←».
+  const hasBack = !inSession && (!!setup || tab === 'quick');
+  const goHome = () => {
+    setScreen(undefined);
+    setTab('home');
+  };
+  const pick = (t: AppTab) => {
+    setScreen(undefined);
+    setHistOpen(undefined);
+    setOpponent(undefined);
+    setTab(t);
+    window.scrollTo({ top: 0 });
+  };
+  const title = setup
+    ? setup.kind === 'race'
+      ? setup.id
+        ? 'Αγώνας'
+        : 'Νέος αγώνας'
+      : setup.kind === 'training'
+        ? 'Νέα προπόνηση'
+        : 'Νέα βόλτα'
+    : ended
+      ? 'Η έξοδος τελείωσε'
+      : (TITLE[tab] ?? 'Νέα έξοδος');
+  const tabs = inSession ? TABS_IN : TABS_OUT;
+  const tabClass = tab === 'session:map' ? 'map' : tab.replace(':', '-');
 
   return (
-    <div className={`app tab-${nav.tab}`}>
-      <header className="topbar">
-        <select
-          className="boat-select"
-          aria-label="Ενεργό σκάφος"
-          value={activeBoat?.id ?? ''}
-          onChange={(e) => updateSettings({ activeBoatId: e.target.value })}
-        >
-          {boats.length === 0 && <option value="">Χωρίς σκάφος</option>}
-          {boats.map((b) => (
-            <option key={b.id} value={b.id}>
-              {b.name}
-            </option>
-          ))}
-        </select>
-        <InstrumentPill />
-        {activeBoat && activeBoat.performanceFactor !== 1 && (
-          <span className="badge">{Math.round(activeBoat.performanceFactor * 100)}%</span>
-        )}
-        <button className={`icon-btn top-btn ${nav.tab === 'guide' ? 'on' : ''}`} onClick={() => go('guide')}>
-          <Icon name="help" />
-          <small>Οδηγός</small>
-        </button>
-        <button
-          className={`icon-btn top-btn ${themeOpen ? 'on' : ''}`}
-          aria-haspopup="true"
-          aria-expanded={themeOpen}
-          aria-label={`Θέμα: ${THEME_INFO[settings.theme].label}. Πάτα για να διαλέξεις`}
-          onClick={() => setThemeOpen((o) => !o)}
-        >
-          <Icon name={THEME_INFO[settings.theme].icon} />
-          <small>{THEME_INFO[settings.theme].label}</small>
-        </button>
-        <button className={`icon-btn top-btn ${nav.tab === 'settings' ? 'on' : ''}`} onClick={() => go('settings')}>
-          <Icon name="gear" />
-          <small>Ρυθμίσεις</small>
-        </button>
-        {themeOpen && (
-          <div className="theme-menu" role="menu" aria-label="Θέμα">
-            {(Object.keys(THEME_INFO) as Theme[]).map((t) => (
-              <button
-                key={t}
-                role="menuitemradio"
-                aria-checked={settings.theme === t}
-                className={settings.theme === t ? 'on' : ''}
-                onClick={() => {
-                  updateSettings({ theme: t });
-                  setThemeOpen(false);
-                }}
-              >
-                <Icon name={THEME_INFO[t].icon} />
-                {THEME_INFO[t].label}
-              </button>
-            ))}
-          </div>
-        )}
-      </header>
-      <NetStrip />
-      <RaceStrip />
+    <div className={`app tab-${tabClass} ${inSession ? 'in-session' : ''}`}>
+      {inSession ? (
+        <SessionBar
+          onEnded={(e) => {
+            setScreen({ s: 'ended', e });
+            setTab('home');
+          }}
+        />
+      ) : (
+        <header className="topbar">
+          {hasBack ? (
+            <button type="button" className="icon-btn top-btn back" aria-label="Πίσω" onClick={goHome}>
+              ←
+            </button>
+          ) : (
+            <span className="top-gap" />
+          )}
+          <b className="top-title">{title}</b>
+          {tab === 'home' && !screen && (
+            <select
+              className="boat-select"
+              aria-label="Ενεργό σκάφος"
+              value={activeBoat?.id ?? ''}
+              onChange={(e) => updateSettings({ activeBoatId: e.target.value })}
+            >
+              {boats.length === 0 && <option value="">Χωρίς σκάφος</option>}
+              {boats.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          )}
+          <InstrumentPill />
+        </header>
+      )}
+      <NetStrip where={inSession ? 'session' : tab === 'home' && !screen ? 'home' : 'other'} />
+      {flash && (
+        <div className="net-strip ok" role="status">
+          <span className="dot" aria-hidden="true" />
+          <span>{flash}</span>
+        </div>
+      )}
       <AlertBanner />
       <main className="content">
         {error && <p className="errors">{error}</p>}
-        {ready && <WhatsNew />}
         {!ready ? (
           <p className="muted">Φόρτωση…</p>
         ) : (
@@ -134,82 +186,92 @@ function Shell() {
               <InviteScreen token={invite} onDone={() => setInvite(undefined)} />
             ) : showOnboarding ? (
               <Onboarding />
-            ) : (
-            <>
-            {boats.length === 0 && (nav.tab === 'live' || nav.tab === 'map' || nav.tab === 'polar') ? (
-              <WelcomeCard />
+            ) : inSession ? (
+              <>
+                {!isSessionTab(tab) && (
+                  <button type="button" className="btn back-btn" onClick={() => pick('session:live')}>
+                    ← Πίσω στην έξοδο
+                  </button>
+                )}
+                {tab === 'settings' && <SettingsHub />}
+                {tab === 'boats' && <BoatsHub />}
+                {tab === 'session:live' &&
+                  (race.kind === 'race' ? (
+                    opponent ? (
+                      <OpponentPosition entryId={opponent.entryId} onDone={() => setOpponent(undefined)} />
+                    ) : (
+                      <RaceLive onOpponent={(entryId) => setOpponent({ entryId })} onEnd={requestSessionEnd} />
+                    )
+                  ) : (
+                    <SessionLive />
+                  ))}
+                {tab === 'session:map' && <PlanView />}
+                {tab === 'session:chat' && <ChatView />}
+              </>
+            ) : setup ? (
+              setup.kind === 'race' ? (
+                <RaceSetup id={setup.id} onDone={(started) => !started && goHome()} onCancel={goHome} />
+              ) : (
+                <SessionSetup kind={setup.kind} onStarted={() => undefined} />
+              )
+            ) : ended ? (
+              <EndedScreen
+                ended={ended}
+                onUndone={() => {
+                  setScreen(undefined);
+                  setFlash('Η έξοδος συνεχίζει');
+                }}
+                onHistory={(id) => {
+                  setScreen(undefined);
+                  setHistOpen(id);
+                  setTab('history');
+                }}
+              />
             ) : (
               <>
-                {nav.tab === 'live' && <LiveView />}
-                {nav.tab === 'map' && <PlanView />}
-                {nav.tab === 'polar' && <PolarView />}
+                {tab === 'home' && (
+                  <HomeView
+                    onSetup={(kind, id) => {
+                      if (id) race.setActiveId(id);
+                      setScreen({ s: 'setup', kind, id });
+                      window.scrollTo({ top: 0 });
+                    }}
+                    onQuick={() => pick('quick')}
+                    onHistory={() => pick('history')}
+                    onOpen={(r) => {
+                      setHistOpen(r.id);
+                      setTab('history');
+                    }}
+                  />
+                )}
+                {tab === 'quick' && <QuickLook onHome={goHome} />}
+                {tab === 'history' && <HistoryView onHome={goHome} openId={histOpen} />}
+                {tab === 'boats' && <BoatsHub />}
+                {tab === 'settings' && <SettingsHub />}
               </>
-            )}
-            {nav.tab === 'chat' && <ChatView />}
-            {nav.tab === 'scoring' && <RaceView />}
-            {nav.tab === 'boats' && <BoatsView />}
-            {nav.tab === 'settings' && <SettingsView />}
-            {nav.tab === 'guide' && <GuideView />}
-            </>
             )}
           </Suspense>
         )}
       </main>
-      <nav className="tabbar">
-        {TABS.map((t) => (
-          <button key={t.id} className={nav.tab === t.id ? 'on' : ''} aria-current={nav.tab === t.id ? 'page' : undefined} onClick={() => setNav({ tab: t.id })}>
-            <span className="tab-icon">
-              <Icon name={t.icon} />
-            </span>
-            <span className="tab-label">{t.label}</span>
-          </button>
-        ))}
-      </nav>
+      {!hasBack && (
+        <nav className={`tabbar tabs-${tabs.length}`} aria-label={inSession ? 'Οθόνες εξόδου' : 'Κύριες οθόνες'}>
+          {tabs.map((t) => (
+            <button key={t.id} type="button" className={tab === t.id ? 'on' : ''} aria-current={tab === t.id ? 'page' : undefined} onClick={() => pick(t.id)}>
+              <span className="tab-icon">
+                <Icon name={t.icon} />
+              </span>
+              <span className="tab-label">{t.label}</span>
+            </button>
+          ))}
+        </nav>
+      )}
       <Dialogs />
     </div>
   );
 }
 
 /** Thin strip under the top bar: shown only while offline, then «Συνδέθηκε ξανά ✓» for 3 seconds. */
-/** Race mode (P-013): screen kept on while recording; warns when the track has holes. */
-function RaceStrip() {
-  const race = useRace();
-  if (!race.recording) return null;
-  if (race.gap)
-    return (
-      <div className="net-strip race-strip" role="alert">
-        <span className="dot" aria-hidden="true" />
-        <span>
-          Κενό {race.gap.minutes}′ στο ίχνος: η οθόνη έκλεισε ή η εφαρμογή πήγε στο παρασκήνιο. Άφησε την εφαρμογή ανοιχτή στον αγώνα.
-        </span>
-        <button type="button" className="link" onClick={race.dismissGap}>
-          Εντάξει
-        </button>
-      </div>
-    );
-  if (race.waitingGps)
-    return (
-      <div className="net-strip race-strip" role="status">
-        <span className="dot" aria-hidden="true" />
-        <span>Αγώνας: η καταγραφή περιμένει θέση GPS (ή όργανα).</span>
-      </div>
-    );
-  if (race.stalledMin)
-    return (
-      <div className="net-strip race-strip" role="alert">
-        <span className="dot" aria-hidden="true" />
-        <span>Η καταγραφή σταμάτησε πριν από {race.stalledMin}′: δεν έρχεται θέση GPS.</span>
-      </div>
-    );
-  return (
-    <div className="net-strip ok race-strip quiet" role="status">
-      <span className="dot" aria-hidden="true" />
-      <span>Αγώνας: καταγραφή{race.wakeOn ? ' · η οθόνη μένει ανοιχτή' : ' · κράτα την οθόνη ανοιχτή'}</span>
-    </div>
-  );
-}
-
-function NetStrip() {
+function NetStrip({ where }: { where: 'home' | 'session' | 'other' }) {
   const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine));
   const [back, setBack] = useState(false);
   useEffect(() => {
@@ -236,7 +298,15 @@ function NetStrip() {
   return (
     <div className={`net-strip ${online ? 'ok' : ''}`} role="status">
       <span className="dot" aria-hidden="true" />
-      <span>{online ? 'Συνδέθηκε ξανά ✓' : 'Χωρίς ίντερνετ. Οι υπολογισμοί δουλεύουν· οι αλλαγές θα σωθούν μόλις επιστρέψει.'}</span>
+      <span>
+        {online
+          ? 'Συνδέθηκε ξανά ✓'
+          : where === 'session'
+            ? 'Χωρίς ίντερνετ. Η καταγραφή και το Live δουλεύουν κανονικά.'
+            : where === 'home'
+              ? 'Χωρίς ίντερνετ. Μπορείς να ξεκινήσεις έξοδο κανονικά.'
+              : 'Χωρίς ίντερνετ. Οι υπολογισμοί δουλεύουν· οι αλλαγές θα σωθούν μόλις επιστρέψει.'}
+      </span>
     </div>
   );
 }
@@ -265,6 +335,7 @@ export function App() {
           <RaceProvider>
             <AlertsProvider>
               <Shell />
+              <AppUpdater />
             </AlertsProvider>
           </RaceProvider>
         </KnowledgeProvider>

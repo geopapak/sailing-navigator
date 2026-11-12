@@ -33,6 +33,8 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
   const inst = useInstruments();
   const race = useRace();
   const lay = useLaylines();
+  // Φ1 (P-033): manoeuvre alerts only in a race; training and cruise have none yet.
+  const on = race.recording && race.kind === 'race';
   const engine = useRef(newEngine());
   const [banner, setBanner] = useState<AlertsState['banner']>();
   const [, setTick] = useState(0);
@@ -50,7 +52,7 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
   latest.current = { settings, nav, inst, lay, markInSec, layInSec };
 
   useEffect(() => {
-    if (!race.recording) {
+    if (!on) {
       engine.current = newEngine();
       setBanner(undefined);
       instSamples.current = [];
@@ -89,7 +91,7 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
       setTick((v) => v + 1);
     }, STEP_MS);
     return () => window.clearInterval(t);
-  }, [race.recording]);
+  }, [on]);
 
   // Hide the banner after a while ("now" sooner).
   useEffect(() => {
@@ -100,11 +102,11 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
 
   // Browsers play sound only after a tap: the first tap during a race unlocks it.
   useEffect(() => {
-    if (!race.recording || settings.alerts.sound === 'off' || audioOk) return;
-    const on = () => setAudioOk(unlockAudio() && audioReady());
-    document.addEventListener('pointerdown', on, { once: true });
-    return () => document.removeEventListener('pointerdown', on);
-  }, [race.recording, settings.alerts.sound, audioOk]);
+    if (!on || settings.alerts.sound === 'off' || audioOk) return;
+    const onTap = () => setAudioOk(unlockAudio() && audioReady());
+    document.addEventListener('pointerdown', onTap, { once: true });
+    return () => document.removeEventListener('pointerdown', onTap);
+  }, [on, settings.alerts.sound, audioOk]);
 
   const now = Date.now();
   const muteLeft = Math.max(0, Math.round((engine.current.muteUntil - now) / 1000));

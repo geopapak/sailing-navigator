@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useHoldUpdate } from './useHoldUpdate';
 import { useApp } from './AppContext';
 import { useNav } from './NavContext';
 import { useInstruments } from './InstrumentsContext';
@@ -89,6 +90,7 @@ export function KnowledgeView() {
 
 function NoteEditor({ note, onDone }: { note?: KnowledgeNote; onDone: () => void }) {
   const { activeBoat } = useApp();
+  useHoldUpdate(true); // unsaved note (P-043)
   const nav = useNav();
   const k = useKnowledge();
   const fix = nav.gps.fix;

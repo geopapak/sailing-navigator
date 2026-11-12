@@ -35,7 +35,7 @@ export function SettingsView() {
         <p>
           <button className="btn" onClick={() => {
               updateSettings({ onboarded: false });
-              openTab('live');
+              openTab('home');
             }}>
             Δείξε ξανά τα πρώτα βήματα
           </button>

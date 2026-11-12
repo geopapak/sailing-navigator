@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useHoldUpdate } from './useHoldUpdate';
 import { useApp } from './AppContext';
 import { useNav } from './NavContext';
 import { useRace } from './RaceContext';
@@ -119,6 +120,8 @@ export function CourseEditor({
   const [addMode, setAddMode] = useState(initial.marks.length === 0);
   const [keep, setKeep] = useState(keepDefault);
   const [fitKey] = useState(() => `race-course-${Date.now()}`);
+  // Unsaved course: a waiting app update must not reload now (P-043).
+  useHoldUpdate(true);
   const add = (lat: number, lon: number, label?: string) =>
     setMarks((ms) => [...ms, { id: markId(), name: label ?? (ms.length === 0 ? 'Εκκίνηση' : `Σημαδούρα ${ms.length}`), lat, lon }]);
 

@@ -48,6 +48,27 @@ const INITIAL: LiveState = {
   showPolar: false,
 };
 
+const LIVE_SAIL_EVENT = 'live-sail';
+
+/** Current head sail from outside Live (the session's ⚙ quick settings, P-033). */
+export function setLiveSail(sailId: string) {
+  try {
+    const raw = localStorage.getItem('live-state');
+    localStorage.setItem('live-state', JSON.stringify({ ...(raw ? JSON.parse(raw) : {}), sailId }));
+  } catch {
+    /* ignore */
+  }
+  window.dispatchEvent(new CustomEvent<string>(LIVE_SAIL_EVENT, { detail: sailId }));
+}
+
+export function getLiveSail(): string | undefined {
+  try {
+    return (JSON.parse(localStorage.getItem('live-state') ?? '{}') as Partial<LiveState>).sailId;
+  } catch {
+    return undefined;
+  }
+}
+
 const f1 = (v?: number) => (v === undefined || !Number.isFinite(v) ? '—' : v.toFixed(1));
 const f0 = (v?: number) => (v === undefined || !Number.isFinite(v) ? '—' : Math.round(v).toString());
 const pct = (v?: number) => (v === undefined ? '—' : `${Math.round(v * 100)}%`);
@@ -92,6 +113,11 @@ export function LiveView() {
   const simple = settings.liveMode !== 'full';
   const [s, setS] = useStoredState<LiveState>('live-state', INITIAL);
   const set = (patch: Partial<LiveState>) => setS((p) => ({ ...p, ...patch }));
+  useEffect(() => {
+    const on = (e: Event) => setS((p) => ({ ...p, sailId: (e as CustomEvent<string>).detail }));
+    window.addEventListener(LIVE_SAIL_EVENT, on);
+    return () => window.removeEventListener(LIVE_SAIL_EVENT, on);
+  }, [setS]);
   // Instruments fill TWS / TWA / BSP while they are live; a field the user edits is locked to manual.
   const inst = useInstruments();
   const instOn = settings.instruments?.enabled ?? false;

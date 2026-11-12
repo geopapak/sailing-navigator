@@ -29,6 +29,8 @@ export interface Settings {
   instruments: import('../instruments/types').InstrumentSettings;
   /** Manoeuvre alerts during a race (P-023). */
   alerts: AlertSettings;
+  /** Cruise track interval in seconds (P-033; the setting itself comes in Φ4). */
+  cruiseTrackSec: 15 | 30;
 }
 
 /** The project's own server; users can point the app elsewhere in Settings. */
@@ -49,4 +51,5 @@ export const DEFAULT_SETTINGS: Settings = {
   authToken: '',
   instruments: DEFAULT_INSTRUMENTS,
   alerts: DEFAULT_ALERTS,
+  cruiseTrackSec: 30,
 };

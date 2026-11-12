@@ -6,7 +6,6 @@ import { BoatEditor } from './BoatEditor';
 import type { BoatProfile } from '../boat/types';
 import { newBoatId, parseBoatJson } from '../boat/store';
 import { CertificateImport, ReviewFlags } from './CertificateImport';
-import { CrewCard } from './CrewViews';
 import type { Flag } from '../boat/certificate';
 
 function blankBoat(isOwn = false): BoatProfile {
@@ -224,7 +223,6 @@ export function BoatsView() {
       <button className="btn add-more" onClick={() => setMode('add')}>
         + Προσθήκη σκάφους
       </button>
-      <CrewCard boats={boats} />
     </div>
   );
 }

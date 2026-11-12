@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { deleteRace as dbDelete, listRaces, saveRace } from '../boat/store';
-import type { Race, RaceFix, TrackPoint } from '../race/types';
+import type { Race, RaceFix, SessionKind, TrackPoint } from '../race/types';
+import { kindOf, recordFrom, shouldWritePoint, stallMinutes, trackEveryMs } from '../race/session';
 import { estimateRace, type EstimateRow, type Wind } from '../race/estimate';
 import { getLiveSnapshot } from '../ai/snapshot';
 import { computeLive } from '../performance/targets';
@@ -38,10 +39,25 @@ interface RaceState {
   /** Recording has begun but no position has come in yet. */
   waitingGps: boolean;
   dismissGap: () => void;
+  /** The session ("έξοδος", P-033) that is running now, if any: the active race with status 'running'. */
+  session?: Race;
+  /** Kind of the running session. */
+  kind?: SessionKind;
+  /** Track interval of the running session (ms). */
+  everyMs: number;
+  /** The races of this account have been read from the device. */
+  loaded: boolean;
+  /** Session that has just ended: shown as «νέα» in the history. */
+  freshId?: string;
+  setFreshId: (id: string | undefined) => void;
+  /** Saving to the device failed (the session goes on in memory). */
+  saveError?: string;
+  retrySave: () => void;
 }
 
 const Ctx = createContext<RaceState | null>(null);
 
+/** The recording timer ticks every 5″; each kind writes a point every 5″, 15″ or 30″. */
 const TRACK_EVERY_MS = 5_000;
 const OWN_FIX_EVERY_MS = 30_000;
 const AISSTREAM_EVERY_MS = 2 * 60_000;
@@ -57,7 +73,9 @@ export function RaceProvider({ children }: { children: ReactNode }) {
   const nav = useNav();
   const inst = useInstruments();
   const [races, setRaces] = useState<Race[]>([]);
-  const [ui, setUi] = useStoredState<{ activeId?: string }>('race-ui', {});
+  const [ui, setUi] = useStoredState<{ activeId?: string; freshId?: string }>('race-ui', {});
+  const [loaded, setLoaded] = useState(false);
+  const [saveError, setSaveError] = useState<string>();
   const [ais, setAis] = useState<RaceState['ais']>({ status: 'off' });
   const [tick, setTick] = useState(0);
   const dirty = useRef(false);
@@ -66,8 +84,20 @@ export function RaceProvider({ children }: { children: ReactNode }) {
 
   // Each account sees only its own races on a shared phone (P-014).
   useEffect(() => {
-    listRaces(account?.id).then(setRaces);
+    setLoaded(false);
+    listRaces(account?.id)
+      .then(setRaces)
+      .finally(() => setLoaded(true));
   }, [account?.id]);
+
+  // A running session always opens again (after a reload or when the app was closed).
+  useEffect(() => {
+    if (!loaded) return;
+    const cur = races.find((r) => r.id === ui.activeId);
+    if (cur?.status === 'running') return;
+    const run = races.filter((r) => r.status === 'running').sort((a, b) => b.start - a.start)[0];
+    if (run) setUi((u) => ({ ...u, activeId: run.id }));
+  }, [loaded, races, ui.activeId, setUi]);
 
   const active = races.find((r) => r.id === ui.activeId);
   const activeRef = useRef(active);
@@ -75,8 +105,16 @@ export function RaceProvider({ children }: { children: ReactNode }) {
 
   const save = useCallback(async (r0: Race) => {
     const r = r0.owner || !account?.id ? r0 : { ...r0, owner: account.id };
-    await saveRace(r);
+    // Keep it in memory even when the device refuses to store it (the session goes on).
     setRaces((list) => [r, ...list.filter((x) => x.id !== r.id)].sort((a, b) => b.start - a.start));
+    try {
+      await saveRace(r);
+      setSaveError(undefined);
+    } catch (e) {
+      dirty.current = true;
+      setSaveError((e as Error).message || 'save failed');
+      throw e;
+    }
   }, [account?.id]);
 
   const update = useCallback((patch: Partial<Race> | ((r: Race) => Partial<Race>)) => {
@@ -89,20 +127,28 @@ export function RaceProvider({ children }: { children: ReactNode }) {
   const remove = useCallback(async (id: string) => {
     await dbDelete(id);
     setRaces((list) => list.filter((r) => r.id !== id));
-    if (ui.activeId === id) setUi({});
+    if (ui.activeId === id) setUi((u) => ({ freshId: u.freshId }));
   }, [setUi, ui.activeId]);
 
   const addFix = useCallback((f: RaceFix) => update((r) => ({ fixes: [...r.fixes, f] })), [update]);
 
   // Persist the active race now and then (and when leaving the page).
+  const flushRef = useRef<() => void>(() => undefined);
   useEffect(() => {
     const flush = () => {
       const r = activeRef.current;
       if (dirty.current && r) {
         dirty.current = false;
-        saveRace(r);
+        saveRace(r).then(
+          () => setSaveError(undefined),
+          (e: Error) => {
+            dirty.current = true;
+            setSaveError(e.message || 'save failed');
+          },
+        );
       }
     };
+    flushRef.current = flush;
     const t = window.setInterval(flush, SAVE_EVERY_MS);
     window.addEventListener('pagehide', flush);
     return () => {
@@ -113,7 +159,9 @@ export function RaceProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const running = active?.status === 'running';
-  const recording = running && Date.now() >= (active?.start ?? 0) - 10 * 60_000;
+  const kind = running && active ? kindOf(active) : undefined;
+  const everyMs = trackEveryMs(kind ?? 'race', settings.cruiseTrackSec);
+  const recording = running && !!active && Date.now() >= recordFrom(active);
 
   // Race mode (P-013): keep the screen on in every tab, and notice holes in the track.
   const wakeOn = useWakeLock(!!recording);
@@ -134,7 +182,7 @@ export function RaceProvider({ children }: { children: ReactNode }) {
     return () => document.removeEventListener('visibilitychange', onVis);
   }, [recording]);
   const waitingGps = !!recording && !!active && active.track.length === 0;
-  const stalled = recording && active && !waitingGps ? trackGap(active, Date.now(), 0.5) : 0;
+  const stalled = recording && active && !waitingGps ? trackGap(active, Date.now(), stallMinutes(everyMs)) : 0;
 
   // Wind for the estimate: instruments, else what the crew has in Live, else the forecast here.
   const live = getLiveSnapshot(5);
@@ -153,8 +201,8 @@ export function RaceProvider({ children }: { children: ReactNode }) {
   // Recording: our track every 5 s, our fix every 30 s, opponents seen by the boat's AIS.
   const lastOwnFix = useRef(0);
   // Latest readings, read by the timer (so it does not restart on every reading).
-  const latest = useRef({ fix: nav.gps.fix, inst, boat: activeBoat });
-  latest.current = { fix: nav.gps.fix, inst, boat: activeBoat };
+  const latest = useRef({ fix: nav.gps.fix, inst, boat: activeBoat, cruiseSec: settings.cruiseTrackSec });
+  latest.current = { fix: nav.gps.fix, inst, boat: activeBoat, cruiseSec: settings.cruiseTrackSec };
   useEffect(() => {
     if (!recording) return;
     const t = window.setInterval(() => {
@@ -162,10 +210,12 @@ export function RaceProvider({ children }: { children: ReactNode }) {
       const r = activeRef.current;
       if (!r || r.status !== 'running') return;
       const now = Date.now();
-      const { fix: f, inst, boat } = latest.current;
+      const { fix: f, inst, boat, cruiseSec } = latest.current;
       const snap = getLiveSnapshot(2)?.ctx.live;
       const add: Partial<Race> = {};
-      if (f && now >= r.start - 10 * 60_000) {
+      const k = kindOf(r);
+      const lastT = r.track.length ? r.track[r.track.length - 1].t : undefined;
+      if (f && now >= recordFrom(r) && shouldWritePoint(lastT, now, trackEveryMs(k, cruiseSec))) {
         const v = inst.live ? inst.values : {};
         // Targets from the polar with the instruments' numbers; else what Live last computed.
         const calc =
@@ -187,7 +237,8 @@ export function RaceProvider({ children }: { children: ReactNode }) {
           src: inst.live ? 'instruments' : 'phone',
         };
         add.track = [...r.track, p];
-        if (now - lastOwnFix.current >= OWN_FIX_EVERY_MS) {
+        // Fixes (for the leaderboard) only in a race; training and cruise keep just the track.
+        if (k === 'race' && now - lastOwnFix.current >= OWN_FIX_EVERY_MS) {
           const own = r.entries.find((e) => e.own);
           if (own) add.fixes = [...r.fixes, { entryId: own.id, t: now, lat: f.lat, lon: f.lon, source: 'own' }];
           lastOwnFix.current = now;
@@ -196,7 +247,7 @@ export function RaceProvider({ children }: { children: ReactNode }) {
       // Boat AIS: newer reports of entries with an MMSI.
       const fixes = add.fixes ?? r.fixes;
       const newer: RaceFix[] = [];
-      for (const e of r.entries) {
+      for (const e of k === 'race' ? r.entries : []) {
         if (!e.mmsi || e.own) continue;
         const a = inst.ais.find((x) => x.mmsi === e.mmsi);
         if (!a || a.lat === undefined || a.lon === undefined) continue;
@@ -212,7 +263,7 @@ export function RaceProvider({ children }: { children: ReactNode }) {
   // aisstream.io (over the internet) for entries with an MMSI, every 2 minutes.
   const mmsiKey = active?.entries.filter((e) => e.mmsi && !e.own).map((e) => e.mmsi).join(',') ?? '';
   useEffect(() => {
-    if (!running || !mmsiKey || !account || !settings.authToken) {
+    if (!running || kind !== 'race' || !mmsiKey || !account || !settings.authToken) {
       setAis({ status: 'off' });
       return;
     }
@@ -248,7 +299,7 @@ export function RaceProvider({ children }: { children: ReactNode }) {
       stop = true;
       window.clearInterval(t);
     };
-  }, [running, mmsiKey, account, settings.aiUrl, settings.authToken, update]);
+  }, [running, kind, mmsiKey, account, settings.aiUrl, settings.authToken, update]);
 
   // Refresh the estimate also when not recording (e.g. viewing a planned race).
   useEffect(() => {
@@ -270,7 +321,7 @@ export function RaceProvider({ children }: { children: ReactNode }) {
         races,
         active,
         activeId: ui.activeId,
-        setActiveId: (id) => setUi({ activeId: id }),
+        setActiveId: (id) => setUi((u) => ({ ...u, activeId: id })),
         save,
         update,
         remove,
@@ -284,6 +335,17 @@ export function RaceProvider({ children }: { children: ReactNode }) {
         gap,
         waitingGps,
         dismissGap: () => setGap(undefined),
+        session: running ? active : undefined,
+        kind,
+        everyMs,
+        loaded,
+        freshId: ui.freshId,
+        setFreshId: (id) => setUi((u) => ({ ...u, freshId: id })),
+        saveError,
+        retrySave: () => {
+          dirty.current = true;
+          flushRef.current();
+        },
       }}
     >
       {children}

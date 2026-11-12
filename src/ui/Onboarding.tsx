@@ -20,7 +20,7 @@ export function Onboarding() {
   const finish = (then?: () => void) => {
     updateSettings({ onboarded: true });
     if (then) then();
-    else openTab('live');
+    else openTab('home');
   };
   const next = () => (step < STEPS - 1 ? setStep(step + 1) : finish());
 
@@ -153,7 +153,8 @@ export function Onboarding() {
             </span>
           </button>
           <p className="small muted">
-            Στον αγώνα: άνοιξε το <b>Live</b> και γράψε άνεμο και ταχύτητα. Για βοήθεια πάτα <b>Οδηγός</b> πάνω δεξιά.
+            Στην αρχική διαλέγεις <b>Αγώνα</b>, <b>Προπόνηση</b> ή <b>Βόλτα</b>. Μέσα στην έξοδο έχεις <b>Live</b>, <b>Χάρτη</b> και{' '}
+            <b>Σύμβουλο</b>. Για βοήθεια: <b>Ρυθμίσεις → Οδηγός</b>.
           </p>
           <div className="onboard-nav">
             <div className="row">

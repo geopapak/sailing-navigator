@@ -17,7 +17,7 @@ export interface Course {
   updatedAt: number;
 }
 
-class NavDB extends Dexie {
+export class NavDB extends Dexie {
   boats!: Table<BoatProfile, string>;
   kv!: Table<KV, string>;
   courses!: Table<Course, string>;
@@ -25,11 +25,22 @@ class NavDB extends Dexie {
   races!: Table<Race, string>;
   /** Local-knowledge notes (synced with the account). */
   notes!: Table<KnowledgeNote, string>;
-  constructor() {
-    super('sailing-navigator');
+  constructor(name = 'sailing-navigator') {
+    super(name);
     this.version(1).stores({ boats: 'id, name', kv: 'key' });
     this.version(2).stores({ boats: 'id, name', kv: 'key', courses: 'id, name' });
     this.version(3).stores({ boats: 'id, name', kv: 'key', courses: 'id, name', races: 'id, start', notes: 'id, updatedAt' });
+    // Sessions (P-033): races get a kind; every race saved before is a race.
+    this.version(4)
+      .stores({ boats: 'id, name', kv: 'key', courses: 'id, name', races: 'id, start, kind', notes: 'id, updatedAt' })
+      .upgrade((tx) =>
+        tx
+          .table('races')
+          .toCollection()
+          .modify((r: Race) => {
+            if (!r.kind) r.kind = 'race';
+          }),
+      );
   }
 }
 

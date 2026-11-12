@@ -1,15 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useHoldUpdate } from './useHoldUpdate';
 import { RaceScreen } from './RaceScreen';
-import { RaceCrew, SharedRaces } from './CrewViews';
+import { RaceCrew } from './CrewViews';
 import { useApp } from './AppContext';
 import { useNav, localToMs } from './NavContext';
 import { useRace } from './RaceContext';
 import { askConfirm, offerUndo } from './Dialogs';
 import { useInstruments } from './InstrumentsContext';
-import { useStoredState } from './hooks';
-import { ScoringView } from './ScoringView';
-import { KnowledgeView } from './KnowledgeView';
-import { RaceAnalysisView } from './RaceAnalysisView';
 import { CertificateImport, toBase64 } from './CertificateImport';
 import { NumberStepper } from './NumberStepper';
 import { CourseEditor, CoursePicker } from './RaceCourse';
@@ -23,9 +20,6 @@ import type { Race, RaceEntry } from '../race/types';
 import { fmtGap, nextMarkOf, relativeFix } from '../race/estimate';
 import { formatDuration } from '../scoring/corrected';
 import type { ScoringMethod } from '../scoring/corrected';
-
-type Section = 'races' | 'knowledge' | 'calc';
-type Screen = { s: 'list' } | { s: 'setup'; id?: string } | { s: 'live' } | { s: 'opponent'; entryId?: string } | { s: 'analysis'; id: string };
 
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 
@@ -44,100 +38,15 @@ const toLocalInput = (ms: number) => {
 const optLabel = (id: string) => STANDARD_SCORING_OPTIONS.find((o) => o.id === id)?.label ?? id;
 const SOURCE_LABEL: Record<RaceEntry['source'], string> = { own: 'εμείς', boats: 'από τα σκάφη μου', orc: 'ORC', pdf: 'πιστοποιητικό PDF', none: 'χωρίς βαθμολογία' };
 
-export function RaceView() {
-  const [section, setSection] = useStoredState<{ s: Section }>('race-section', { s: 'races' });
-  return (
-    <div className="race">
-      <div className="seg race-seg" role="tablist">
-        {(
-          [
-            ['races', 'Αγώνες'],
-            ['knowledge', 'Τοπική γνώση'],
-            ['calc', 'Υπολογιστής χρόνου'],
-          ] as const
-        ).map(([id, label]) => (
-          <button key={id} role="tab" aria-selected={section.s === id} className={section.s === id ? 'on' : ''} onClick={() => setSection({ s: id })}>
-            {label}
-          </button>
-        ))}
-      </div>
-      {section.s === 'races' && <Races />}
-      {section.s === 'knowledge' && <KnowledgeView />}
-      {section.s === 'calc' && <ScoringView />}
-    </div>
-  );
-}
-
-function Races() {
-  const race = useRace();
-  const [screen, setScreen] = useState<Screen>(() => (race.active?.status === 'running' ? { s: 'live' } : { s: 'list' }));
-  const back = () => setScreen({ s: 'list' });
-  if (screen.s === 'setup') return <RaceSetup id={screen.id} onDone={(started) => setScreen(started ? { s: 'live' } : { s: 'list' })} onCancel={back} />;
-  if (screen.s === 'live' && race.active) return <RaceLive onBack={back} onOpponent={(entryId) => setScreen({ s: 'opponent', entryId })} onFinished={(id) => setScreen({ s: 'analysis', id })} />;
-  if (screen.s === 'opponent' && race.active) return <OpponentPosition entryId={screen.entryId} onDone={() => setScreen({ s: 'live' })} />;
-  if (screen.s === 'analysis') return <RaceAnalysisView id={screen.id} onBack={back} />;
-  return <RacesList onNew={() => setScreen({ s: 'setup' })} onOpen={(r) => {
-    if (r.status === 'finished') setScreen({ s: 'analysis', id: r.id });
-    else {
-      race.setActiveId(r.id);
-      setScreen(r.status === 'running' ? { s: 'live' } : { s: 'setup', id: r.id });
-    }
-  }} />;
-}
-
-function RacesList({ onNew, onOpen }: { onNew: () => void; onOpen: (r: Race) => void }) {
-  const { races } = useRace();
-  const running = races.filter((r) => r.status !== 'finished');
-  const done = races.filter((r) => r.status === 'finished');
-  const item = (r: Race) => (
-    <li key={r.id}>
-      <button className="row-btn" onClick={() => onOpen(r)}>
-        <span>
-          <strong>{r.name}</strong>
-          <span className="muted small">
-            {' '}
-            · {r.courseName ?? 'διαδρομή'} · {new Date(r.start).toLocaleDateString('el-GR')}
-          </span>
-        </span>
-        <span className={`badge ${r.status === 'running' ? 'ok' : ''}`}>{r.status === 'running' ? 'σε εξέλιξη' : r.status === 'planned' ? 'προγραμματισμένος' : `${r.track.length ? 'ανάλυση' : 'ολοκληρώθηκε'}`}</span>
-      </button>
-    </li>
-  );
-  return (
-    <>
-      <section className="card">
-        <div className="row between">
-          <h2>Αγώνες</h2>
-          <button className="btn primary" onClick={onNew}>
-            Νέος αγώνας
-          </button>
-        </div>
-        {running.length > 0 && <ul className="rows">{running.map(item)}</ul>}
-        <p className="muted small">
-          Κάθε αγώνας καταγράφεται αυτόματα από την «Έναρξη» μέχρι τον «Τερματισμό»: θέση, άνεμος, ταχύτητα, πανιά, αντίπαλοι. Με όργανα από τα όργανα του σκάφους· χωρίς
-          αυτά, από το GPS του κινητού και ό,τι γράφεις στο Live. Η καταγραφή μένει σε αυτή τη συσκευή.
-        </p>
-      </section>
-      <SharedRaces />
-      {done.length > 0 && (
-        <section className="card">
-          <h3>Ολοκληρωμένοι</h3>
-          <ul className="rows">{done.map(item)}</ul>
-        </section>
-      )}
-    </>
-  );
-}
-
-// ---- Setup ------------------------------------------------------------------
-
 type Lookup = Record<string, 'searching' | 'notfound' | 'error' | undefined>;
 
-function RaceSetup({ id, onDone, onCancel }: { id?: string; onDone: (started: boolean) => void; onCancel: () => void }) {
+export function RaceSetup({ id, onDone, onCancel }: { id?: string; onDone: (started: boolean) => void; onCancel: () => void }) {
   const { activeBoat, boats, settings, account, saveBoat, refreshAccount } = useApp();
   const nav = useNav();
   const race = useRace();
   const existing = id ? race.races.find((r) => r.id === id) : undefined;
+  // Race setup is unsaved input: a waiting app update waits for it (P-043).
+  useHoldUpdate(true);
   const [r, setR] = useState<Race>(
     () =>
       existing ?? {
@@ -150,6 +59,7 @@ function RaceSetup({ id, onDone, onCancel }: { id?: string; onDone: (started: bo
         scoringOptionId: nav.plan.scoringOptionId || 'coastal',
         method: 'ToT',
         entries: activeBoat ? [{ id: 'own', name: activeBoat.name, sailNo: activeBoat.sailNumber, own: true, source: 'own', boat: entryBoat(activeBoat) }] : [],
+        kind: 'race',
         status: 'planned',
         track: [],
         fixes: [],
@@ -307,9 +217,6 @@ function RaceSetup({ id, onDone, onCancel }: { id?: string; onDone: (started: bo
       <section className="card form-grid">
         <div className="row between">
           <h2>{existing ? 'Αγώνας' : 'Νέος αγώνας'}</h2>
-          <button className="btn small-btn" onClick={onCancel}>
-            Πίσω
-          </button>
         </div>
         <label>
           Όνομα
@@ -552,7 +459,18 @@ function useClock(ms = 1000) {
   return now;
 }
 
-function RaceLive({ onBack, onOpponent, onFinished }: { onBack: () => void; onOpponent: (entryId?: string) => void; onFinished: (id: string) => void }) {
+/** The race's Live: inside a session `onEnd` opens the session's «■ Τέλος» sheet instead of the old confirm. */
+export function RaceLive({
+  onBack,
+  onOpponent,
+  onFinished,
+  onEnd,
+}: {
+  onBack?: () => void;
+  onOpponent: (entryId?: string) => void;
+  onFinished?: (id: string) => void;
+  onEnd?: () => void;
+}) {
   const { active: r, rows, wind, ais, update, recording } = useRace();
   const now = useClock();
   if (!r) return null;
@@ -566,10 +484,11 @@ function RaceLive({ onBack, onOpponent, onFinished }: { onBack: () => void; onOp
   const legText = next < r.marks.length ? `σκέλος ${next}/${r.marks.length - 1} προς ${r.marks[next].name}` : 'προς τον τερματισμό';
 
   const finish = async () => {
+    if (onEnd) return onEnd();
     if (!(await askConfirm('Τερματίσαμε τώρα; Ο χρόνος σταματά σε αυτή τη στιγμή.', { ok: 'Ναι, τερματίσαμε' }))) return;
     const t = Date.now();
     update((x) => ({ status: 'finished', finish: t, results: { ...(x.results ?? {}), ...(ownEntry ? { [ownEntry.id]: (t - x.start) / 1000 } : {}) } }));
-    onFinished(r.id);
+    onFinished?.(r.id);
   };
 
   return (
@@ -583,9 +502,11 @@ function RaceLive({ onBack, onOpponent, onFinished }: { onBack: () => void; onOp
               {optLabel(r.scoringOptionId)} {r.method} · {legText}
             </p>
           </div>
-          <button className="btn small-btn" onClick={onBack}>
-            Αγώνες
-          </button>
+          {onBack && (
+            <button className="btn small-btn" onClick={onBack}>
+              Αγώνες
+            </button>
+          )}
         </div>
         <div className="race-hero">
           <div>
@@ -682,7 +603,7 @@ const SIDES: { id: Side; label: string }[] = [
   { id: 'behind-r', label: 'Πίσω δεξιά' },
 ];
 
-function OpponentPosition({ entryId, onDone }: { entryId?: string; onDone: () => void }) {
+export function OpponentPosition({ entryId, onDone }: { entryId?: string; onDone: () => void }) {
   const { active: r, rows, addFix, update } = useRace();
   const nav = useNav();
   const inst = useInstruments();

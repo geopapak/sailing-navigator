@@ -26,7 +26,7 @@ function download(name: string, text: string, type: string) {
 const fileName = (r: Race) =>
   `${r.name.replace(/[^\p{L}\p{N}]+/gu, '_').replace(/^_|_$/g, '') || 'race'}_${new Date(r.start).toISOString().slice(0, 10)}`;
 
-export function RaceAnalysisView({ id, onBack }: { id: string; onBack: () => void }) {
+export function RaceAnalysisView({ id, onBack, backLabel = 'Αγώνες' }: { id: string; onBack: () => void; backLabel?: string }) {
   const { settings, account } = useApp();
   const { races, save } = useRace();
   const nav = useNav();
@@ -62,7 +62,7 @@ export function RaceAnalysisView({ id, onBack }: { id: string; onBack: () => voi
             </p>
           </div>
           <button className="btn small-btn" onClick={onBack}>
-            Αγώνες
+            {backLabel}
           </button>
         </div>
         {race.track.length < 2 ? (

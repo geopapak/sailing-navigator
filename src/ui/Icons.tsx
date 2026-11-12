@@ -14,6 +14,13 @@ const P = {
   moon: 'M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z',
   expand: 'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5',
   shrink: 'M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5',
+  // Sessions (P-033), from design/session-home-2026-11.
+  home: 'M3 11l9-7 9 7M5 10v10h14V10',
+  history: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2',
+  race: 'M5 21V4M5 4h12l-3 4 3 4H5',
+  training: 'M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM12 13V9M9 2h6',
+  cruise: 'M12 3v13M12 4l7 11h-7M3 18h18l-2 3H5z',
+  eye: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
 } as const;
 
 export type IconName = keyof typeof P;

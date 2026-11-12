@@ -5,6 +5,8 @@ import type { Alert } from '../race/alerts';
  * sound after a tap, so the first tap during a race unlocks the audio.
  */
 let ac: AudioContext | undefined;
+/** Loudness of the beeps: «Χαμηλά» is about a third of «Δυνατά». */
+let gain = 1;
 
 export function audioReady(): boolean {
   return !!ac && ac.state === 'running';
@@ -23,8 +25,9 @@ export function unlockAudio(): boolean {
   }
 }
 
-function tone(f: number, at: number, dur: number, vol = 0.16) {
+function tone(f: number, at: number, dur: number, vol0 = 0.16) {
   if (!ac) return;
+  const vol = vol0 * gain;
   const o = ac.createOscillator();
   const g = ac.createGain();
   o.type = 'square';
@@ -66,6 +69,7 @@ export function speak(text: string): void {
     const u = new SpeechSynthesisUtterance(text);
     u.lang = 'el-GR';
     u.rate = 1.05;
+    u.volume = gain < 1 ? 0.5 : 1;
     const v = speechSynthesis.getVoices().find((x) => /^el/i.test(x.lang));
     if (v) u.voice = v;
     speechSynthesis.speak(u);
@@ -77,7 +81,8 @@ export function speak(text: string): void {
 /** iPhones cannot vibrate from a web app; Android can. */
 export const canVibrate = () => typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
 
-export function notify(a: Alert, how: { sound: 'beep' | 'voice' | 'off'; vibrate: boolean }): void {
+export function notify(a: Alert, how: { sound: 'beep' | 'voice' | 'off'; vibrate: boolean; volume?: 'low' | 'high' }): void {
+  gain = how.volume === 'low' ? 0.35 : 1;
   if (how.sound !== 'off') {
     const d = beep(a);
     if (how.sound === 'voice') window.setTimeout(() => speak(a.say), d * 1000 + 80);

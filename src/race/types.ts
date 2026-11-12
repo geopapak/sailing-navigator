@@ -50,9 +50,20 @@ export interface TrackPoint {
   src?: string;
 }
 
+/** What a session ("έξοδος") is: a race, a training sail or a cruise (P-033). */
+export type SessionKind = 'race' | 'training' | 'cruise';
+
 export interface Race {
   id: string;
   name: string;
+  /** Kind of session; missing means 'race' (races from before 0.12). */
+  kind?: SessionKind;
+  /** Every switch between training and cruise while the session runs. */
+  kindLog?: { kind: SessionKind; at: number }[];
+  /** When the crew answered «Όχι, συνεχίζω» to the "not moving for 2 hours" prompt. */
+  idleAskedAt?: number;
+  /** When the crew answered «Όχι, συνεχίζω» to the "running for 24 hours" prompt. */
+  staleAskedAt?: number;
   courseId?: string;
   courseName?: string;
   /** Snapshot of the marks (start … finish). */

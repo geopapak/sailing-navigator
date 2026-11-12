@@ -43,7 +43,8 @@ export default defineConfig({
     react(),
     csp,
     VitePWA({
-      registerType: 'autoUpdate',
+      // P-043: a new version waits and is applied by the app only when no session runs.
+      registerType: 'prompt',
       includeAssets: ['icon.svg'],
       manifest: {
         name: 'Navigator — ιστιοπλοΐα ORC',

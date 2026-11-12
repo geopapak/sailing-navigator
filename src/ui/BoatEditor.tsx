@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useHoldUpdate } from './useHoldUpdate';
 import type { BoatProfile, PolarTable, Sail, SailKind, SailRule } from '../boat/types';
 import { STANDARD_SCORING_OPTIONS } from '../boat/scoringOptions';
 import { validateBoat } from '../boat/validate';
@@ -31,6 +32,7 @@ const EMPTY_POLAR: PolarTable = {
 
 export function BoatEditor({ initial, isNew, onSave, onCancel }: Props) {
   const [b, setB] = useState<BoatProfile>(initial);
+  useHoldUpdate(true); // unsaved boat form (P-043)
   const [errors, setErrors] = useState<string[]>([]);
   const [polarJson, setPolarJson] = useState<string>();
   const set = (patch: Partial<BoatProfile>) => setB((p) => ({ ...p, ...patch }));

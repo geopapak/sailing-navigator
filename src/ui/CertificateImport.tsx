@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useHoldUpdate } from './useHoldUpdate';
 import { useApp } from './AppContext';
 import { DEFAULT_SERVER } from './settings';
 import { ApiError, accountApi } from '../sync/api';
@@ -25,6 +26,7 @@ export function CertificateImport({ isOwn, onCancel, onRead }: { isOwn: boolean;
   const { settings, account, refreshAccount } = useApp();
   const server = settings.aiUrl || DEFAULT_SERVER;
   const [file, setFile] = useState<File>();
+  useHoldUpdate(!!file); // a certificate being read (P-043)
   const [error, setError] = useState<string>();
   const [reading, setReading] = useState(false);
   const [step, setStep] = useState(0);

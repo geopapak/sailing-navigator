@@ -2218,3 +2218,292 @@ ol.how li {
 .race-crew textarea {
   width: 100%;
 }
+
+/* ---- 0.12 Πρώτα η έξοδος (P-033, design/session-home-2026-11) ---- */
+
+/* Tab bars: 4 outside a session, 3 inside. */
+.tabbar.tabs-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.tabbar.tabs-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.tabbar.tabs-4 .tab-label, .tabbar.tabs-3 .tab-label { font-size: min(0.88rem, 3.6vw); }
+@media (max-width: 340px) {
+  .tabbar.tabs-4 .tab-label { font-size: min(0.78em, 3.6vw); }
+}
+
+/* Top bar outside a session: «←», title, boat. */
+.topbar { min-height: 60px; }
+.top-gap { width: 4px; flex-shrink: 0; }
+.top-title { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 1.1rem; }
+.topbar .top-btn.back { font-size: 1.4rem; font-weight: 800; color: inherit; }
+.topbar .top-title + .boat-select { flex: 0 1 auto; max-width: 46%; border: 2px solid currentColor; border-radius: 999px; min-height: 44px; }
+
+/* Session bar: kind, running time, ⚙, «■ Τέλος». */
+.sbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  min-height: 72px;
+  padding: calc(env(safe-area-inset-top) + 6px) 8px 6px;
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+.modeb {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  background: none;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  color: inherit;
+  padding: 2px 8px;
+  line-height: 1.15;
+}
+.modeb:focus-visible, .modeb:hover { border-color: currentColor; }
+.modeb b { display: flex; align-items: center; gap: 6px; letter-spacing: 0.03em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.modeb .t { display: block; font-size: 1.45rem; font-weight: 900; font-variant-numeric: tabular-nums; }
+.modeb .s { display: block; font-size: 0.75rem; font-weight: 700; opacity: 0.9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sbar .rec { width: 12px; height: 12px; border-radius: 6px; background: var(--bad); box-shadow: 0 0 0 2px var(--accent-fg); flex-shrink: 0; animation: rec-pulse 1.6s infinite; }
+.sbar .rec.off { background: none; box-shadow: inset 0 0 0 2px currentColor; animation: none; }
+@keyframes rec-pulse { 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) { .sbar .rec { animation: none; } }
+.sb {
+  background: none;
+  border: 2px solid currentColor;
+  color: inherit;
+  min-width: 52px;
+  min-height: 52px;
+  border-radius: 12px;
+  font-weight: 900;
+  padding: 0 8px;
+  align-self: center;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.sb.end { min-width: 84px; white-space: nowrap; }
+/* Large text must not push the kind out of the bar: the bar keeps phone-sized text. */
+.modeb b { font-size: min(1rem, 17px); }
+.modeb .t { font-size: min(1.45rem, 26px); }
+.modeb .s { font-size: min(0.75rem, 13px); }
+.sb { font-size: min(1rem, 17px); }
+@media (max-width: 360px) {
+  .sb { min-width: 48px; }
+  .sb.end { min-width: 0; padding: 0 6px; }
+  .sbar { gap: 4px; padding-left: 4px; padding-right: 6px; }
+  .modeb { padding: 2px 4px; }
+  .modeb b { letter-spacing: 0; gap: 4px; }
+}
+:root[data-theme='night'] .sbar { background: #000; color: var(--fg); border-bottom: 2px solid var(--line); }
+:root[data-theme='night'] .sbar .rec { background: var(--fg); box-shadow: none; }
+:root[data-theme='night'] .sbar .rec.off { background: none; box-shadow: inset 0 0 0 2px var(--fg); }
+.in-session .sticky-actions { bottom: 76px; }
+.net-strip.bad { background: color-mix(in srgb, var(--bad) 14%, var(--bg)); border-color: var(--bad); }
+.net-strip.bad .dot { background: var(--bad); }
+.net-strip > span:nth-child(2) { flex: 1; min-width: 0; }
+
+/* Sheets of the session (kind, ⚙, end, forgotten session). */
+.session-sheet { max-height: 86vh; overflow: auto; }
+.session-sheet h3 { font-size: 1.15rem; }
+.session-sheet .btn.wide + .btn.wide { margin-top: 8px; }
+.session-sheet .big-btn { margin-bottom: 0; }
+.session-sheet .opt { flex-direction: column; align-items: flex-start; }
+.session-sheet .opt .small { display: block; }
+.btn.dangerfill { background: var(--bad); color: var(--bg); border-color: var(--bad); }
+:root[data-theme='night'] .btn.dangerfill { background: #000; color: var(--fg); border-color: var(--fg); box-shadow: inset 0 0 0 2px var(--fg); }
+.seg.wrap { flex-wrap: wrap; gap: 6px; border: 0; border-radius: 0; overflow: visible; }
+.seg.wrap button { flex: 1 1 28%; min-width: 72px; border: 2px solid var(--line); border-radius: 10px; }
+.seg.wrap button + button { border-left: 2px solid var(--line); }
+.toggle {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  min-height: 56px;
+  margin-bottom: 6px;
+  padding: 6px 12px;
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg);
+  color: var(--fg);
+  text-align: left;
+  font-weight: 800;
+}
+.toggle .tx { flex: 1; min-width: 0; }
+.toggle .tx .small { display: block; font-weight: 600; }
+.toggle .knob { width: 48px; height: 28px; border-radius: 14px; border: 2px solid var(--line); position: relative; flex-shrink: 0; }
+.toggle .knob::after { content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 9px; background: var(--line); transition: left 0.15s; }
+.toggle.on .knob { border-color: var(--accent); }
+.toggle.on .knob::after { left: 23px; background: var(--accent); }
+:root[data-theme='night'] .toggle.on .knob { border-color: var(--fg); }
+:root[data-theme='night'] .toggle.on .knob::after { background: var(--fg); }
+
+/* Home: three big choices. */
+.home .hello { font-size: 1.35rem; font-weight: 900; margin: 4px 2px 10px; }
+.mode-card {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  min-height: 96px;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border: 3px solid var(--line);
+  border-radius: 16px;
+  background: var(--bg);
+  color: var(--fg);
+  text-align: left;
+}
+.mode-card .ic { width: 56px; height: 56px; border-radius: 14px; background: var(--accent); color: var(--accent-fg); display: flex; align-items: center; justify-content: center; }
+.mode-card b { display: block; font-size: 1.3rem; }
+.mode-card .d { display: block; font-size: 0.85rem; font-weight: 600; color: var(--muted); overflow-wrap: anywhere; }
+.mode-card .go { font-size: 1.6rem; font-weight: 900; }
+.mode-card.need { border-style: dashed; }
+:root[data-theme='night'] .mode-card .ic { background: #000; color: var(--fg); border: 2px solid var(--fg); }
+.quick-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 56px;
+  margin-bottom: 12px;
+  padding: 6px 12px;
+  border: 2px dashed var(--line);
+  border-radius: 12px;
+  background: none;
+  color: var(--fg);
+  font-weight: 800;
+  text-align: left;
+}
+.quick-btn .d { display: block; font-weight: 600; font-size: 0.8rem; color: var(--muted); }
+.home .sec { display: flex; justify-content: space-between; align-items: center; margin: 14px 2px 6px; min-height: 44px; }
+.home .sec h3 { margin: 0; }
+.card.planned { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+.card.empty { text-align: center; padding: 22px 14px; }
+.card.empty p { margin: 0 0 6px; }
+.card.empty svg { display: block; margin: 0 auto 8px; }
+
+/* History cards. */
+.hist-card {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  min-height: 72px;
+  margin-bottom: 8px;
+  padding: 10px;
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg);
+  color: var(--fg);
+  text-align: left;
+}
+.hist-card .ic, .hist-ic { width: 44px; height: 44px; border-radius: 12px; border: 2px solid var(--line); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.hist-card .body { min-width: 0; }
+.hist-card b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hist-card .s { display: block; font-size: 0.8rem; font-weight: 600; color: var(--muted); }
+.hist-card .m { display: block; font-size: 0.85rem; font-weight: 800; }
+.hist-card.fresh { border-width: 3px; border-color: var(--good); }
+.pill-new { display: inline-block; font-size: 0.72rem; font-weight: 800; padding: 1px 7px; border-radius: 6px; border: 1.5px solid currentColor; margin-left: 6px; vertical-align: 2px; color: var(--good); }
+.seg.filters button { flex: 1 1 auto; font-size: min(0.85rem, 3.5vw); min-width: 0; padding: 0 6px; }
+.back-btn { margin-bottom: 10px; }
+
+/* Summary. */
+.session-summary .row { display: flex; gap: 10px; align-items: center; }
+.stats { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px; margin: 10px 0; }
+.stats div { background: var(--bg); border-radius: 10px; padding: 6px 10px; min-width: 0; }
+.stats b { display: block; font-size: 1.35rem; font-variant-numeric: tabular-nums; }
+.stats span { display: block; }
+.msg { font-size: 0.9rem; font-weight: 700; padding: 8px 10px; border-radius: 8px; margin: 0 0 10px; border-left: 6px solid var(--good); background: var(--card); }
+.msg.warn { border-left-color: var(--fair); }
+.msg.bad { border-left-color: var(--bad); }
+.undo-row { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+.undo-row .btn { flex-shrink: 0; }
+
+/* Hubs (Σκάφη, Ρυθμίσεις). */
+.hub-links { display: grid; gap: 8px; }
+.hub-links .btn { display: flex; justify-content: space-between; align-items: center; min-height: 52px; text-align: left; }
+
+/* Basic Live (no boat profile). */
+.bl-tile { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; min-height: 84px; padding: 6px 4px; border-bottom: 1px solid var(--line); }
+.bl-tile b { display: block; }
+.bl-tile .small { display: block; }
+.bl-tile .val { font-size: 2.6rem; font-weight: 900; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bl-tile .val small { font-size: 0.4em; }
+.bl-mini { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
+.bl-mini div { background: var(--bg); border-radius: 10px; padding: 6px 8px; min-width: 0; }
+.bl-mini b { display: block; font-size: 1.3rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bl-mini span { display: block; }
+@media (max-width: 340px) { .bl-tile .val { font-size: 2.2rem; } }
+
+/* The map inside «Σκάφη → Διαδρομές μου» fills the width like the old map tab. */
+.app:has(.content > .plan) .content { max-width: none; }
+.app:has(.content > .big-map) .content { padding: 0; }
+.session-setup select, .session-setup + select { width: 100%; }
+.session-setup select { min-height: 48px; margin-top: 6px; }
+
+/* P-043: app update banner (top) and the quiet note during a session (above the tabs). */
+.app-update {
+  position: fixed;
+  left: 8px;
+  right: 8px;
+  z-index: 60;
+  max-width: 560px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 12px;
+  font-weight: 800;
+  pointer-events: none;
+}
+.app-update.applying {
+  top: calc(env(safe-area-inset-top) + 8px);
+  min-height: 56px;
+  padding: 10px 14px;
+  background: var(--accent);
+  color: var(--accent-fg);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+.app-update .spin {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 3px solid currentColor;
+  border-right-color: transparent;
+  flex-shrink: 0;
+  animation: app-update-spin 0.9s linear infinite;
+}
+@keyframes app-update-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .app-update .spin { animation: none; } }
+:root[data-theme='night'] .app-update.applying { background: #000; color: var(--fg); border: 2px solid var(--fg); }
+
+/* P-043: one line in the session strip while a new version waits. */
+.update-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+  padding: 2px 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--muted);
+  background: var(--card);
+  border-bottom: 1px solid var(--line);
+}
+.update-badge {
+  flex-shrink: 0;
+  font-weight: 900;
+  color: var(--fg);
+}
+.update-text {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

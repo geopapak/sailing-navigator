@@ -15,6 +15,10 @@ export interface AlertSettings {
   /** Seconds before the layline: 2′, 1′ and "now". */
   leads: Record<Lead, boolean>;
   sound: 'beep' | 'voice' | 'off';
+  /** Beep loudness (P-033 quick settings): «Χαμηλά» / «Δυνατά». «Σίγαση» is `sound: 'off'`. */
+  volume: 'low' | 'high';
+  /** What «Σίγαση» silenced, so unmuting brings it back (e.g. the voice). */
+  soundBeforeMute?: 'beep' | 'voice';
   vibrate: boolean;
   /** Least seconds between two alerts ("now" and marks always pass). */
   gapSec: 20 | 30 | 60;
@@ -26,6 +30,7 @@ export const DEFAULT_ALERTS: AlertSettings = {
   on: { lay: true, shift: true, mark: true },
   leads: { 120: true, 60: true, 6: true },
   sound: 'beep',
+  volume: 'high',
   vibrate: true,
   gapSec: 30,
   words: 'gr',
