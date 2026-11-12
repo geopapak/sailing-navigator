@@ -45,7 +45,7 @@ AI_GLOBAL_MONTHLY_LIMIT = "100"
 binding = "DB"
 database_name = "sailing-navigator-staging"
 # Placeholder: paste the id printed by `npx wrangler d1 create sailing-navigator-staging`.
-database_id = "REPLACE_WITH_STAGING_DATABASE_ID"
+database_id = "88faf2a5-18fa-43a2-abbd-e4ba7cadbe13"
 migrations_dir = "migrations"
 
 [env.staging.observability]
