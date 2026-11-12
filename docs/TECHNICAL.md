@@ -214,11 +214,12 @@ scripts/         εικονίδια, CHANGELOG, ακτογραμμή
 | `AI_DISABLED` | var | όχι | `1` = διακόπτης: καμία πληρωμένη κλήση AI |
 | `AI_GLOBAL_MONTHLY_LIMIT` | var | όχι | μέγιστες πληρωμένες κλήσεις AI τον μήνα για όλο τον server (προεπιλογή 1000) |
 | `ALLOWED_ORIGINS` | var | ναι | origins της εφαρμογής (CORS) |
+| `ENVIRONMENT` | var | όχι | `staging` στο test περιβάλλον· αλλιώς `production`. Μόνο ετικέτα στο `/health` και στα logs, δεν αλλάζει τη λειτουργία |
 | `DB` | binding D1 | ναι | η βάση |
 
 Στην παραγωγή μπαίνουν με `npx wrangler secret put <ΟΝΟΜΑ>`. Τοπικά μπαίνουν στο αρχείο `.dev.vars` (δες `.dev.vars.example`).
 
-Στην εφαρμογή: `VITE_SERVER_URL` (αρχείο `.env.local`, δες `.env.example`) — ποιον server χρησιμοποιεί. Κενό = παραγωγή.
+Στην εφαρμογή: `VITE_SERVER_URL` (αρχείο `.env.local`, δες `.env.example`) — ποιον server χρησιμοποιεί. Κενό = παραγωγή. Στο build του test περιβάλλοντος τα `VITE_SERVER_URL` και `VITE_APP_ENV=staging` έρχονται από το `.env.staging` (§11).
 
 ## 7. AI (Claude)
 
@@ -259,3 +260,86 @@ scripts/         εικονίδια, CHANGELOG, ακτογραμμή
 - **Εκδόσεις:** κάθε deploy ανεβάζει την έκδοση στο `package.json` και γράφει εγγραφή στο `src/releases.json`, και μετά τρέχει `npm run changelog`. Τα tests αποτυγχάνουν αν λείπει κάτι από αυτά.
 - **Deploy εφαρμογής:** αυτόματο με push στο `main` (GitHub Actions → Pages). Αλλαγές μόνο σε `docs/` και `*.md` δεν κάνουν deploy.
 - **Deploy server:** `npx wrangler d1 migrations apply sailing-navigator --remote` (αν υπάρχει νέο migration) → `npx wrangler deploy`. Πρώτα ο server και η βάση, μετά η εφαρμογή.
+
+## 11. Περιβάλλον δοκιμών (staging)
+
+Δύο χωριστά περιβάλλοντα (P-044). Το test δεν αγγίζει ποτέ τη βάση, τα κλειδιά ή τους χρήστες του production.
+
+| | Production | Test (staging) |
+| --- | --- | --- |
+| Εφαρμογή | GitHub Pages: https://geopapak.github.io/sailing-navigator/ | Cloudflare Pages: `https://sailing-navigator-staging.pages.dev` |
+| Build | `npm run build` (στο CI, `BASE_PATH=/sailing-navigator/`) | `npm run build:staging` (base `/`, ρυθμίσεις από `.env.staging`) |
+| Worker | `sailing-navigator-ai` | `sailing-navigator-ai-staging` (`[env.staging]` στο `wrangler.toml`) |
+| Βάση D1 | `sailing-navigator` | `sailing-navigator-staging` |
+| Secrets | δικά του | δικά του (`--env staging`), **ποτέ** τα ίδια με του production |
+| Σήμανση | — | σήμα «TEST» στην κεφαλίδα, όνομα «Sailing Navigator TEST», `noindex`, `/health` → `"environment": "staging"` |
+
+Όλες τις εντολές με `--remote`, `deploy`, `secret put` και `pages` τις τρέχει **ο ιδιοκτήτης** (χρειάζεται `npx wrangler login`). Τα φρένα κόστους AI (P-016) ισχύουν και στο test, με χαμηλότερο μηνιαίο όριο (`AI_GLOBAL_MONTHLY_LIMIT = "100"` στο `[env.staging.vars]`).
+
+**Κανόνας:** ο server και οι μεταναστεύσεις D1 μένουν συμβατοί με την προηγούμενη έκδοση της εφαρμογής. Τα κινητά δεν ενημερώνονται όλα μαζί (P-043), άρα για κάποιο διάστημα η παλιά εφαρμογή μιλά με τον νέο server: νέα πεδία και πίνακες προστίθενται, δεν σβήνονται ούτε μετονομάζονται στην ίδια έκδοση.
+
+### 11.1 Πρώτο στήσιμο (μία φορά)
+
+1. Δημιουργία της βάσης test:
+   ```
+   npx wrangler d1 create sailing-navigator-staging
+   ```
+   Αντιγράφεις το `database_id` που τυπώνει και το βάζεις στο `wrangler.toml`, στο `[[env.staging.d1_databases]]`, στη θέση του `REPLACE_WITH_STAGING_DATABASE_ID`.
+2. Πίνακες στη βάση test:
+   ```
+   npx wrangler d1 migrations apply sailing-navigator-staging --env staging --remote
+   ```
+3. Secrets του test (σε κάθε εντολή γράφεις την τιμή όταν τη ζητήσει· αν ρωτήσει αν θα δημιουργηθεί ο Worker, απαντάς ναι):
+   ```
+   npx wrangler secret put ANTHROPIC_API_KEY --env staging
+   npx wrangler secret put ACCESS_CODE --env staging
+   npx wrangler secret put ADMIN_EMAIL --env staging
+   npx wrangler secret put CONTROLLER_NAME --env staging
+   npx wrangler secret put CONTROLLER_EMAIL --env staging
+   ```
+   - `ANTHROPIC_API_KEY`: **χωριστό κλειδί** μόνο για το test, από χωριστό workspace στο Anthropic Console με χαμηλό μηνιαίο όριο δαπάνης (π.χ. 3 €).
+   - `ACCESS_CODE`: διαφορετικός από του production.
+   - Προαιρετικά, μόνο αν θες να τα δοκιμάσεις: `WINDY_KEY`, `ORC_API_KEY`, `AISSTREAM_KEY` (ίδια εντολή με `--env staging`).
+4. Deploy του Worker test:
+   ```
+   npx wrangler deploy --env staging
+   ```
+   Κρατάς τη διεύθυνση που τυπώνει (`https://sailing-navigator-ai-staging.<subdomain>.workers.dev`). Αν είναι διαφορετική από το `VITE_SERVER_URL` του `.env.staging`, διορθώνεις το `.env.staging`.
+5. Δημιουργία του Pages project:
+   ```
+   npx wrangler pages project create sailing-navigator-staging --production-branch main
+   ```
+   Αν το όνομα είναι πιασμένο και πάρεις άλλο, βάζεις τη νέα διεύθυνση `https://<όνομα>.pages.dev` στο `ALLOWED_ORIGINS` του `[env.staging.vars]` και ξανατρέχεις το βήμα 4.
+6. Build της εφαρμογής test:
+   ```
+   npm run build:staging
+   ```
+7. Ανέβασμα της εφαρμογής test:
+   ```
+   npx wrangler pages deploy dist --project-name sailing-navigator-staging --branch main
+   ```
+   Το `--branch main` χρειάζεται: χωρίς αυτό, από άλλο branch γίνεται «preview» με άλλη διεύθυνση, που ο server δεν δέχεται (CORS).
+8. Έλεγχος: ανοίγεις `https://sailing-navigator-staging.pages.dev` στο κινητό· πρέπει να φαίνεται το «TEST» στην κεφαλίδα. Το `https://sailing-navigator-ai-staging.<subdomain>.workers.dev/health` πρέπει να δείχνει `"environment":"staging"`. Κάνεις εγγραφή με το `ADMIN_EMAIL` του test για να γίνεις διαχειριστής εκεί.
+
+### 11.2 Deploy στο test
+
+Όποτε θες, από οποιοδήποτε branch:
+
+1. `npm test` και `npm run typecheck`
+2. Μόνο αν υπάρχει νέο migration: `npx wrangler d1 migrations apply sailing-navigator-staging --env staging --remote`
+3. `npx wrangler deploy --env staging`
+4. `npm run build:staging`
+5. `npx wrangler pages deploy dist --project-name sailing-navigator-staging --branch main`
+6. Στο κινητό: άνοιγμα της εφαρμογής test, «Ενημέρωση τώρα» αν τη ζητήσει, δοκιμή.
+
+### 11.3 Deploy στο production
+
+Μόνο ό,τι δοκιμάστηκε στο test:
+
+1. Έκδοση στο `package.json`, εγγραφή στο `src/releases.json`, `npm run changelog`, `npm test`.
+2. Μόνο αν υπάρχει νέο migration: `npx wrangler d1 migrations apply sailing-navigator --remote`
+3. `npx wrangler deploy`
+4. Push στο `main`: το GitHub Action χτίζει την εφαρμογή (`npm run build`) και την ανεβάζει στο GitHub Pages.
+5. Έλεγχος: `https://sailing-navigator-ai.geopapak.workers.dev/health` → `"environment":"production"`.
+
+Πρώτα η βάση, μετά ο server, τελευταία η εφαρμογή. Το `npm run build:staging` γράφει κι αυτό στο `dist/`: το production δεν επηρεάζεται, γιατί το χτίζει το CI από την αρχή.

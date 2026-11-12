@@ -3,6 +3,7 @@ import { useApp } from './AppContext';
 import { DEFAULT_SERVER } from './settings';
 import { ApiError, accountApi } from '../sync/api';
 import { PrivacyText, TERMS_VERSION, TermsText, useServerConfig } from './legal';
+import { TestBadge } from './TestBadge';
 
 const errText = (e: unknown) => (e instanceof ApiError || e instanceof Error ? e.message : 'Αποτυχία. Δοκίμασε ξανά.');
 
@@ -12,7 +13,9 @@ function Logo() {
       <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M12 3v15M12 3l7 13H12M12 6 6 16h6M4 19h16l-2 2H6z" />
       </svg>
-      <h1>Sailing Navigator</h1>
+      <h1>
+        Sailing Navigator <TestBadge />
+      </h1>
       <p className="muted">Ψηφιακός τακτικός για αγώνες ORC</p>
     </div>
   );

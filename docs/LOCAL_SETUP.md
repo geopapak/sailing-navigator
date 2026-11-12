@@ -156,6 +156,7 @@ npm run dev
 | Μόνο τα tests του server | `npx vitest run server` |
 | Έλεγχος τύπων | `npm run typecheck` |
 | Build παραγωγής (στο `dist/`) | `npm run build` και μετά `npm run preview` |
+| Build της εφαρμογής test (στο `dist/`) | `npm run build:staging` — δες [TECHNICAL.md § Περιβάλλον δοκιμών](TECHNICAL.md#11-περιβάλλον-δοκιμών-staging) |
 | Δες τους τοπικούς χρήστες | `npx wrangler d1 execute sailing-navigator --local --command "SELECT email, is_admin, ai_allowed, terms_version FROM users"` |
 | Δες τα συγχρονισμένα σκάφη | `npx wrangler d1 execute sailing-navigator --local --command "SELECT user_id, kind, id, deleted FROM items"` |
 | Κάνε κάποιον admin χειροκίνητα | `npx wrangler d1 execute sailing-navigator --local --command "UPDATE users SET is_admin=1, ai_allowed=1 WHERE email='x@y.gr'"` |

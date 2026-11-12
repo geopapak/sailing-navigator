@@ -8,7 +8,8 @@
  * a Windy proxy. AI routes need an approved account or the owner's access code.
  *
  * Secrets (wrangler secret put …): ANTHROPIC_API_KEY, ACCESS_CODE, ADMIN_EMAIL, WINDY_KEY (optional)
- * Vars (wrangler.toml): ALLOWED_ORIGINS — comma-separated list of app origins.
+ * Vars (wrangler.toml): ALLOWED_ORIGINS — comma-separated list of app origins;
+ *   ENVIRONMENT — "staging" in [env.staging], unset (= production) otherwise. Label only.
  * Bindings: DB (D1, migrations/).
  */
 import Anthropic from '@anthropic-ai/sdk';
@@ -60,6 +61,8 @@ export interface Env extends AccountEnv, BrakeEnv {
   AISSTREAM_KEY?: string;
   ACCESS_CODE: string;
   ALLOWED_ORIGINS?: string;
+  /** "staging" for the test Worker (P-044). Only shown in /health and logs; never changes behaviour. */
+  ENVIRONMENT?: string;
   WINDY_KEY?: string;
   /** "0" turns off web search for the chat advisor. */
   WEB_SEARCH?: string;
@@ -67,6 +70,9 @@ export interface Env extends AccountEnv, BrakeEnv {
 
 const MODEL = 'claude-opus-5-5';
 const MAX_BODY = 48 * 1024;
+
+/** Environment label for /health and logs: "staging" or "production" (the default). */
+export const environmentOf = (env: Env): 'staging' | 'production' => (env.ENVIRONMENT === 'staging' ? 'staging' : 'production');
 
 const LOCAL = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
 
@@ -328,7 +334,7 @@ export default {
     const t0 = Date.now();
     const res = await handle(req, env);
     const path = new URL(req.url).pathname;
-    if (req.method !== 'OPTIONS') log('request', { method: req.method, path: path.replace(/[0-9a-f]{24}/, ':id'), status: res.status, ms: Date.now() - t0 });
+    if (req.method !== 'OPTIONS') log('request', { env: environmentOf(env), method: req.method, path: path.replace(/[0-9a-f]{24}/, ':id'), status: res.status, ms: Date.now() - t0 });
     return res;
   },
 };
@@ -364,6 +370,7 @@ async function handle(req: Request, env: Env): Promise<Response> {
         return json(
           {
             ok: true,
+            environment: environmentOf(env),
             codeOk,
             configured: Boolean(env.ANTHROPIC_API_KEY),
             windy: Boolean(env.WINDY_KEY),

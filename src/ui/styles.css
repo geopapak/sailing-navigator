@@ -2507,3 +2507,29 @@ ol.how li {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* P-044: "TEST" badge, staging build only. Amber on day/dark, red-only on night (night vision). */
+.test-badge {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: #f59e0b;
+  color: #000;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1.4;
+}
+:root[data-theme='night'] .test-badge {
+  background: #000;
+  color: var(--fg);
+  border: 1px solid var(--fg);
+}
+.sbar .test-badge {
+  position: absolute;
+  top: env(safe-area-inset-top);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.6rem;
+  pointer-events: none;
+}

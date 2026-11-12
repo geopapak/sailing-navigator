@@ -22,3 +22,32 @@ migrations_dir = "migrations"
 [observability]
 enabled = true
 head_sampling_rate = 1
+
+# ---------------------------------------------------------------------------
+# Staging (test) environment — P-044. Its own Worker, its own D1, its own secrets.
+# Deploy:   npx wrangler deploy --env staging
+# Secrets:  npx wrangler secret put <NAME> --env staging   (never the production values)
+# Wrangler does not inherit vars or bindings into an env: everything the Worker
+# needs is repeated below. Setup steps: docs/TECHNICAL.md § Περιβάλλον δοκιμών (staging).
+# ---------------------------------------------------------------------------
+[env.staging]
+name = "sailing-navigator-ai-staging"
+
+[env.staging.vars]
+ENVIRONMENT = "staging"
+# Origin of the Cloudflare Pages test app. If the Pages project gets another name,
+# change it here (comma-separated list allowed).
+ALLOWED_ORIGINS = "https://sailing-navigator-staging.pages.dev"
+# Low server-wide cap for paid AI calls in staging (P-016 brakes stay on).
+AI_GLOBAL_MONTHLY_LIMIT = "100"
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "sailing-navigator-staging"
+# Placeholder: paste the id printed by `npx wrangler d1 create sailing-navigator-staging`.
+database_id = "REPLACE_WITH_STAGING_DATABASE_ID"
+migrations_dir = "migrations"
+
+[env.staging.observability]
+enabled = true
+head_sampling_rate = 1

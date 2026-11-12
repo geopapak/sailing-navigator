@@ -1,11 +1,12 @@
 {
   "name": "sailing-navigator",
   "private": true,
-  "version": "0.12.0",
+  "version": "0.12.1",
   "type": "module",
   "scripts": {
     "dev": "vite --host",
     "build": "tsc --noEmit && vite build",
+    "build:staging": "tsc --noEmit && vite build --mode staging",
     "preview": "vite preview --host",
     "test": "vitest run",
     "test:watch": "vitest",

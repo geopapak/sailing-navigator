@@ -43,9 +43,29 @@ describe('advisor worker', () => {
     expect(bad.headers.get('Access-Control-Allow-Origin')).toBeNull();
   });
 
+  it('allows the staging origin only when it is configured (P-044)', async () => {
+    const STAGING = 'https://sailing-navigator-staging.pages.dev';
+    const preflight = (e: Env, origin: string) =>
+      worker.fetch(new Request('https://w/advice', { method: 'OPTIONS', headers: { Origin: origin } }), e);
+    // Production config: the staging app is not allowed.
+    expect((await preflight(env, STAGING)).headers.get('Access-Control-Allow-Origin')).toBeNull();
+    // Staging config: only the staging app, not production or a Pages preview URL.
+    const staging: Env = { ...env, ALLOWED_ORIGINS: STAGING, ENVIRONMENT: 'staging' };
+    expect((await preflight(staging, STAGING)).headers.get('Access-Control-Allow-Origin')).toBe(STAGING);
+    expect((await preflight(staging, ORIGIN)).headers.get('Access-Control-Allow-Origin')).toBeNull();
+    expect((await preflight(staging, 'https://abc123.sailing-navigator-staging.pages.dev')).headers.get('Access-Control-Allow-Origin')).toBeNull();
+  });
+
+  it('labels the environment in /health without changing anything else', async () => {
+    const r = await worker.fetch(req('/health', { method: 'GET' }, 'wrong'), { ...env, ENVIRONMENT: 'staging' });
+    expect(await r.json()).toMatchObject({ ok: true, environment: 'staging', codeOk: false });
+    const odd = await worker.fetch(req('/health', { method: 'GET' }, 'wrong'), { ...env, ENVIRONMENT: 'anything' });
+    expect(await odd.json()).toMatchObject({ environment: 'production' });
+  });
+
   it('reports health and whether the access code matches', async () => {
     const r = await worker.fetch(req('/health', { method: 'GET' }, 'wrong'), env);
-    expect(await r.json()).toEqual({ ok: true, codeOk: false, configured: true, windy: false, orc: false, aisstream: false, accounts: false });
+    expect(await r.json()).toEqual({ ok: true, environment: 'production', codeOk: false, configured: true, windy: false, orc: false, aisstream: false, accounts: false });
   });
 
   it('rejects a wrong access code without calling the API', async () => {

@@ -11,6 +11,7 @@ import { KIND_INFO, finishAt, finishNow, hasOwnBoat, kindOf, recordFrom, switchK
 import { forgottenPrompt, keepGoing, type ForgottenPrompt } from '../race/idle';
 import type { Race, SessionKind } from '../race/types';
 import type { Theme } from './settings';
+import { TestBadge } from './TestBadge';
 
 /**
  * Inside a session (P-033): the bar on top with kind, running time, ⚙ quick
@@ -108,6 +109,7 @@ export function SessionBar({ onEnded }: { onEnded: (e: Ended) => void }) {
   return (
     <>
       <div className="sbar">
+        <TestBadge />
         <button
           type="button"
           className="modeb"

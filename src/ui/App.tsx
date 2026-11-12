@@ -20,6 +20,7 @@ import { BoatsHub, SettingsHub } from './HubViews';
 import { SessionBar, requestSessionEnd, type Ended } from './SessionBar';
 import type { SessionKind } from '../race/types';
 import { AppUpdater } from './AppUpdater';
+import { TestBadge } from './TestBadge';
 
 // The map (MapLibre) is large: load it only when the tab is opened.
 const PlanView = lazy(() => import('./PlanView').then((m) => ({ default: m.PlanView })));
@@ -150,6 +151,7 @@ function Shell() {
             <span className="top-gap" />
           )}
           <b className="top-title">{title}</b>
+          <TestBadge />
           {tab === 'home' && !screen && (
             <select
               className="boat-select"
