@@ -11,6 +11,7 @@ import { showAlert } from './Dialogs';
 import { startNewBoat } from './WelcomeCard';
 import { entryBoat } from './RaceView';
 import { SessionCard } from './HistoryView';
+import { UpdateCard } from './AppUpdater';
 import { dayStr, hhmm } from './SessionBar';
 import { selectableSails } from '../performance/sails';
 import { gridField } from '../weather/field';
@@ -50,6 +51,7 @@ export function HomeView({
 
   return (
     <div className="home">
+      <UpdateCard />
       {noBoat && (
         <section className="card">
           <h3>Καλώς ήρθες</h3>

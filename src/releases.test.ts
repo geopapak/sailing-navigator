@@ -15,6 +15,10 @@ describe('release notes', () => {
     for (const r of releases) expect(r.date).toMatch(/^\d{4}-\d\d-\d\d$/);
   });
 
+  it('marks critical versions only with a boolean (P-044b)', () => {
+    for (const r of releases) expect(r.critical === undefined || typeof r.critical === 'boolean').toBe(true);
+  });
+
   it('keeps CHANGELOG.md in sync with releases.json', () => {
     // Line endings may be CRLF in a Windows checkout; compare the text only.
     const lf = (t: string) => t.split('\r\n').join('\n');

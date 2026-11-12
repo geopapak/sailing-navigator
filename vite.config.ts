@@ -2,6 +2,7 @@
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import { readFileSync } from 'node:fs';
 
 // BASE_PATH is set by the GitHub Pages workflow (e.g. "/project-sailing/").
 // The staging build (`--mode staging`, Cloudflare Pages) is always served at the root.
@@ -50,6 +51,26 @@ const stagingMarks = (): Plugin => ({
   },
 });
 
+/**
+ * P-044b: `version.json` next to the app, so a phone with a waiting update can
+ * ask (no-store, same origin) whether the new version is critical. Not precached
+ * (the Workbox globPatterns skip .json). Built from src/releases.json.
+ */
+const versionInfo = (): Plugin => ({
+  name: 'version-info',
+  apply: 'build',
+  generateBundle() {
+    const releases = JSON.parse(readFileSync(new URL('./src/releases.json', import.meta.url), 'utf8')) as { version: string; critical?: boolean }[];
+    const version = process.env.npm_package_version ?? releases[0]?.version ?? 'dev';
+    const info = {
+      version,
+      critical: releases.find((r) => r.version === version)?.critical === true,
+      criticalVersions: releases.filter((r) => r.critical === true).map((r) => r.version),
+    };
+    this.emitFile({ type: 'asset', fileName: 'version.json', source: `${JSON.stringify(info)}\n` });
+  },
+});
+
 export default defineConfig(({ mode }) => {
   const staging = mode === 'staging';
   return {
@@ -61,6 +82,7 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       csp,
+      versionInfo(),
       staging && stagingMarks(),
       VitePWA({
         // P-043: a new version waits and is applied by the app only when no session runs.

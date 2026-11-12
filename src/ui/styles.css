@@ -2508,6 +2508,30 @@ ol.how li {
   text-overflow: ellipsis;
 }
 
+/* P-044b: a new version waits for 02:00 — small dismissible card on Home. */
+.update-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 4px 8px;
+  padding: 8px 4px 10px 12px;
+  border: 1px solid var(--line);
+}
+.update-card .update-badge { padding-top: 10px; }
+.update-card p { margin: 0; padding-top: 8px; overflow-wrap: anywhere; }
+.update-card .update-x {
+  min-width: 44px;
+  min-height: 44px;
+  margin-top: -4px;
+  background: none;
+  border: 0;
+  color: var(--muted);
+  font: inherit;
+  font-size: 1rem;
+  cursor: pointer;
+}
+.update-card .update-now { grid-column: 2 / 4; justify-self: start; min-height: 44px; }
+
 /* P-044: "TEST" badge, staging build only. Amber on day/dark, red-only on night (night vision). */
 .test-badge {
   flex-shrink: 0;

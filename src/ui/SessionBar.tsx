@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
-import { getUpdateState, subscribeUpdate } from '../pwa/update';
+import { useEffect, useMemo, useState } from 'react';
+import { UPDATE_TEXT } from '../pwa/updateText';
+import { useUpdatePhase } from './AppUpdater';
 import { useApp } from './AppContext';
 import { useRace } from './RaceContext';
 import { useInstruments } from './InstrumentsContext';
@@ -176,11 +177,11 @@ export function SessionBar({ onEnded }: { onEnded: (e: Ended) => void }) {
   );
 }
 
-/** P-043: a new version waits for the end of the session; one compact line, in the flow (covers nothing). */
+/** P-043/P-044b: a new version waits (02:00 or the end of the session); one compact line, in the flow (covers nothing). */
 function UpdateLine() {
-  const u = useSyncExternalStore(subscribeUpdate, getUpdateState);
-  if (!u.ready) return null;
-  const text = 'Νέα έκδοση — θα ενημερωθεί όταν τελειώσει η έξοδος';
+  const { phase } = useUpdatePhase();
+  if (phase !== 'waiting' && phase !== 'deferred') return null;
+  const text = phase === 'waiting' ? UPDATE_TEXT.sessionWaiting : UPDATE_TEXT.sessionAfter;
   return (
     <div className="update-line" role="status" title={text}>
       <span className="update-badge" aria-hidden="true">

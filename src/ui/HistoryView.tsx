@@ -232,7 +232,7 @@ export function EndedScreen({ ended, onUndone, onHistory }: { ended: Ended; onUn
     return () => window.clearInterval(t);
   }, [left]);
   // A waiting app update (P-043) is applied only after the 10″ undo.
-  useHoldUpdate(left > 0);
+  useHoldUpdate(left > 0, 'undo');
   const r = race.races.find((x) => x.id === ended.id);
   const undo = async () => {
     race.setActiveId(ended.id);

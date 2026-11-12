@@ -7,6 +7,8 @@ export interface Release {
   title: string;
   app: string[];
   server: string[];
+  /** P-044b: phones apply this version as soon as they are free, not at 02:00. */
+  critical?: boolean;
 }
 
 export const releases = RELEASES as Release[];
