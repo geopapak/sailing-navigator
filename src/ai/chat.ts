@@ -15,6 +15,8 @@ export interface ChatMessage {
 /** Everything the app knows right now, sent with the latest question. */
 export interface ChatContext {
   now: string;
+  /** The running session (P-034): its kind, so answers fit a race, a training or a cruise. */
+  session?: { kind: 'race' | 'training' | 'cruise'; label: string };
   /** The active boat, complete (polar, sails, ratings) — the server's tools compute with it. */
   boat?: BoatProfile;
   /** Other boats in the app (opponents): name and ratings only. */

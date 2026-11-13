@@ -58,6 +58,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           ...s,
           instruments: { ...DEFAULT_SETTINGS.instruments, ...(s.instruments ?? {}) },
           alerts: { ...DEFAULT_SETTINGS.alerts, ...(s.alerts ?? {}) },
+          training: { ...DEFAULT_SETTINGS.training, ...(s.training ?? {}) },
+          cruiseAlerts: { ...DEFAULT_SETTINGS.cruiseAlerts, ...(s.cruiseAlerts ?? {}) },
         });
         await reload();
       } catch (e) {

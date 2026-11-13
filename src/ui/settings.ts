@@ -1,5 +1,13 @@
 import { DEFAULT_INSTRUMENTS } from '../instruments/types';
-import { DEFAULT_ALERTS, type AlertSettings } from '../race/alerts';
+import {
+  DEFAULT_ALERTS,
+  DEFAULT_CRUISE_ALERTS,
+  DEFAULT_TRAINING_ALERTS,
+  type AlertSettings,
+  type CruiseAlerts,
+  type RaceShiftDeg,
+  type TrainingAlerts,
+} from '../race/alerts';
 
 export type Theme = 'day' | 'dark' | 'night';
 export type TextSize = 'n' | 'l' | 'xl';
@@ -27,8 +35,14 @@ export interface Settings {
   account?: import('../sync/api').PublicUser;
   /** Boat instruments (Signal K / NMEA 0183 gateway, or the simulator). */
   instruments: import('../instruments/types').InstrumentSettings;
-  /** Manoeuvre alerts during a race (P-023). */
+  /** Manoeuvre alerts during a race (P-023); sound, volume and words for every kind. */
   alerts: AlertSettings;
+  /** Race wind shift threshold, degrees (P-034). */
+  raceShiftDeg: RaceShiftDeg;
+  /** Training alerts (P-034). */
+  training: TrainingAlerts;
+  /** Cruise safety alerts (P-034; used from Φ4). */
+  cruiseAlerts: CruiseAlerts;
   /** Cruise track interval in seconds (P-033; the setting itself comes in Φ4). */
   cruiseTrackSec: 15 | 30;
 }
@@ -51,5 +65,8 @@ export const DEFAULT_SETTINGS: Settings = {
   authToken: '',
   instruments: DEFAULT_INSTRUMENTS,
   alerts: DEFAULT_ALERTS,
+  raceShiftDeg: 7,
+  training: DEFAULT_TRAINING_ALERTS,
+  cruiseAlerts: DEFAULT_CRUISE_ALERTS,
   cruiseTrackSec: 30,
 };

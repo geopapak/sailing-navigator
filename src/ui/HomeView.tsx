@@ -7,6 +7,7 @@ import { useInstruments } from './InstrumentsContext';
 import { Icon } from './Icons';
 import { LiveView, getLiveSail, setLiveSail } from './LiveView';
 import { ChatView } from './ChatView';
+import { CruiseLive, TrainingLive } from './SessionLiveViews';
 import { showAlert } from './Dialogs';
 import { startNewBoat } from './WelcomeCard';
 import { entryBoat } from './RaceView';
@@ -188,16 +189,9 @@ function BasicLive() {
 
 /** Live inside a training or cruise session (Φ1: today's Live; without a polar, the basic numbers). */
 export function SessionLive() {
-  const { activeBoat } = useApp();
   const race = useRace();
-  // A cruise without a boat shows the basic numbers only.
-  const withBoat = !!race.session?.entries.some((e) => e.own);
-  return withBoat && activeBoat?.polar ? <LiveView /> : (
-    <>
-      {withBoat && activeBoat && <p className="card small">Το σκάφος «{activeBoat.name}» δεν έχει polars, άρα ούτε στόχους. Πρόσθεσε polars από Σκάφη → Επεξεργασία.</p>}
-      <BasicLive />
-    </>
-  );
+  // P-034: the Live of each kind (the race has its own, RaceLive).
+  return race.kind === 'training' ? <TrainingLive /> : <CruiseLive />;
 }
 
 /** «Γρήγορη ματιά»: Live without recording, the advisor one tap away (AC 5). */

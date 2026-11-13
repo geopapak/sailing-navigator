@@ -98,6 +98,8 @@ interface Props {
   boatPos?: LatLon & { cog?: number };
   /** Laylines to the next mark (P-019). */
   laylines?: LaylineResult;
+  /** The running session's track (P-034). */
+  track?: LatLon[];
   simPos?: LatLon;
   fitKey?: string;
   /** Extra controls drawn over the map (buttons, legend). */
@@ -207,7 +209,7 @@ export function MapView(p: Props) {
           });
           map.addLayer({ id: 'seamarks', type: 'raster', source: 'seamarks', minzoom: 9 });
         }
-        for (const id of ['course', 'iso', 'planned', 'live', 'lay', 'boat', 'sim', 'wind']) map.addSource(id, { type: 'geojson', data: EMPTY });
+        for (const id of ['course', 'iso', 'planned', 'live', 'lay', 'track', 'boat', 'sim', 'wind']) map.addSource(id, { type: 'geojson', data: EMPTY });
         if (!map.hasImage('nav-wind-arrow')) map.addImage('nav-wind-arrow', arrowImage(), { sdf: true });
         map.addLayer({
           id: 'wind',
@@ -234,6 +236,7 @@ export function MapView(p: Props) {
         map.addLayer({ id: 'live', type: 'line', source: 'live', layout: { 'line-cap': 'round' }, paint: { 'line-color': '#e11d48', 'line-width': 4, 'line-dasharray': [1.5, 1] } });
         // Laylines: starboard green, port red (as the navigation lights), dashed, as an indication.
         map.addLayer({ id: 'lay', type: 'line', source: 'lay', paint: { 'line-color': ['get', 'color'], 'line-width': 2, 'line-dasharray': [3, 2], 'line-opacity': 0.9 } });
+        map.addLayer({ id: 'track', type: 'line', source: 'track', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#0b6bcb', 'line-width': 3, 'line-opacity': 0.85 } });
         map.addLayer({ id: 'sim', type: 'circle', source: 'sim', paint: { 'circle-radius': 7, 'circle-color': '#f59e0b', 'circle-stroke-color': '#000', 'circle-stroke-width': 2 } });
         map.addLayer({ id: 'boat', type: 'circle', source: 'boat', paint: { 'circle-radius': 8, 'circle-color': '#e11d48', 'circle-stroke-color': '#fff', 'circle-stroke-width': 3 } });
         setReady(true);
@@ -358,6 +361,15 @@ export function MapView(p: Props) {
           },
     );
   }, [ready, p.laylines]);
+
+  // Session track: blue, red at night (night is black and red only).
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+    const pts = p.track ?? [];
+    set('track', pts.length > 1 ? { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates: pts.map((q) => [q.lon, q.lat]) }, properties: {} }] } : EMPTY);
+    if (map.getLayer('track')) map.setPaintProperty('track', 'line-color', theme === 'night' ? '#ff3b30' : '#0b6bcb');
+  }, [ready, p.track, theme]);
 
   useEffect(() => {
     if (!ready) return;

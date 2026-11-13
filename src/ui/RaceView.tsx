@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useHoldUpdate } from './useHoldUpdate';
 import { RaceScreen } from './RaceScreen';
+import { PolarTrimPanel } from './PolarTrimPanel';
 import { RaceCrew } from './CrewViews';
 import { useApp } from './AppContext';
 import { useNav, localToMs } from './NavContext';
@@ -493,7 +494,12 @@ export function RaceLive({
 
   return (
     <div className="race-live">
-      {recording && <RaceScreen />}
+      {recording && (
+        <>
+          <RaceScreen />
+          <PolarTrimPanel />
+        </>
+      )}
       <section className="card">
         <div className="row between">
           <div>

@@ -13,6 +13,7 @@ import { forgottenPrompt, keepGoing, type ForgottenPrompt } from '../race/idle';
 import type { Race, SessionKind } from '../race/types';
 import type { Theme } from './settings';
 import { TestBadge } from './TestBadge';
+import { KindAlertToggles } from './AlertsCard';
 
 /**
  * Inside a session (P-033): the bar on top with kind, running time, ⚙ quick
@@ -22,6 +23,9 @@ import { TestBadge } from './TestBadge';
 const END_EVENT = 'session-end';
 /** Opens the «■ Τέλος» sheet from anywhere (e.g. the race's «Τερματισμός» button). */
 export const requestSessionEnd = () => window.dispatchEvent(new Event(END_EVENT));
+const KIND_EVENT = 'session-kind';
+/** Opens the kind sheet from the Live (« ⇄ Γίνε Βόλτα / Προπόνηση», P-034). */
+export const requestKindSheet = () => window.dispatchEvent(new Event(KIND_EVENT));
 
 export const hms = (ms: number) => {
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -70,8 +74,13 @@ export function SessionBar({ onEnded }: { onEnded: (e: Ended) => void }) {
 
   useEffect(() => {
     const on = () => setSheet('end');
+    const onKind = () => setSheet('kind');
     window.addEventListener(END_EVENT, on);
-    return () => window.removeEventListener(END_EVENT, on);
+    window.addEventListener(KIND_EVENT, onKind);
+    return () => {
+      window.removeEventListener(END_EVENT, on);
+      window.removeEventListener(KIND_EVENT, onKind);
+    };
   }, []);
   useEffect(() => {
     if (!flash) return;
@@ -331,18 +340,6 @@ function KindSheet({ r, onClose, onSwitched }: { r: Race; onClose: () => void; o
   );
 }
 
-export function Toggle({ on, label, sub, onChange }: { on: boolean; label: string; sub?: string; onChange: (v: boolean) => void }) {
-  return (
-    <button type="button" role="switch" aria-checked={on} className={`toggle ${on ? 'on' : ''}`} onClick={() => onChange(!on)}>
-      <span className="tx">
-        {label}
-        {sub && <span className="small muted">{sub}</span>}
-      </span>
-      <span className="knob" aria-hidden="true" />
-    </button>
-  );
-}
-
 /** ⚙ inside a session (AC 17): the current kind's alerts, volume, theme and head sail. */
 function QuickSettings({ kind, onClose }: { kind: SessionKind; onClose: () => void }) {
   const { settings, updateSettings, activeBoat } = useApp();
@@ -356,15 +353,7 @@ function QuickSettings({ kind, onClose }: { kind: SessionKind; onClose: () => vo
       <h3>Γρήγορες ρυθμίσεις</h3>
       <p className="small muted">Μένεις στην έξοδο. Η καταγραφή συνεχίζει.</p>
       <div className="settings-sub">Ειδοποιήσεις · {KIND_INFO[kind].name}</div>
-      {kind === 'race' ? (
-        <>
-          <Toggle on={a.on.lay} label="Layline" onChange={(v) => setA({ on: { ...a.on, lay: v } })} />
-          <Toggle on={a.on.shift} label="Στροφή ανέμου (από 7°)" onChange={(v) => setA({ on: { ...a.on, shift: v } })} />
-          <Toggle on={a.on.mark} label="Σημαδούρα" onChange={(v) => setA({ on: { ...a.on, mark: v } })} />
-        </>
-      ) : (
-        <p className="small muted">Δεν υπάρχουν ακόμα ειδοποιήσεις για {kind === 'training' ? 'την προπόνηση' : 'τη βόλτα'}.</p>
-      )}
+      <KindAlertToggles kind={kind} quick />
       <div className="settings-sub">Ένταση</div>
       <div className="seg" role="group" aria-label="Ένταση">
         {(

@@ -87,7 +87,8 @@ export function notify(a: Alert, how: { sound: 'beep' | 'voice' | 'off'; vibrate
     const d = beep(a);
     if (how.sound === 'voice') window.setTimeout(() => speak(a.say), d * 1000 + 80);
   }
-  if (how.vibrate && canVibrate()) {
+  // Browsers block vibration before the first tap (and log an error): skip it until then.
+  if (how.vibrate && canVibrate() && navigator.userActivation?.hasBeenActive !== false) {
     try {
       navigator.vibrate(a.kind === 'now' ? [250, 100, 250, 100, 250] : [200, 120, 200]);
     } catch {

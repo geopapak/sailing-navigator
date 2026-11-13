@@ -6,6 +6,7 @@ import { laylines, type LaylineResult } from '../nav/laylines';
 import { optimums } from '../performance/polar';
 import { gridField } from '../weather/field';
 import { meanWind } from '../weather/windAverage';
+import { useSessionMarks } from './useSession';
 
 export interface LaylineView {
   result: LaylineResult;
@@ -15,13 +16,14 @@ export interface LaylineView {
   twd: number;
 }
 
-/** Laylines to the next mark (P-019): measured mean wind (P-018), else the instruments now, else the forecast. */
+/** Laylines to the next mark (P-019; the session's mark, P-034): measured mean wind (P-018), else the instruments now, else the forecast. */
 export function useLaylines(): LaylineView | undefined {
   const { activeBoat: boat } = useApp();
   const nav = useNav();
   const inst = useInstruments();
   const fix = nav.gps.fix;
-  const mark = nav.course?.marks[nav.nextMark];
+  // P-034: the running session's marks; the Χάρτης course only outside a session.
+  const { mark } = useSessionMarks();
   const field = useMemo(() => (nav.forecast ? gridField(nav.forecast) : undefined), [nav.forecast]);
   if (!boat?.polar || !fix || !mark) return undefined;
   const m = meanWind();

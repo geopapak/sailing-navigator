@@ -21,6 +21,9 @@ import { buildPlanContext, localIso } from '../ai/context';
 import { openTab } from './openTab';
 import type { BoatProfile } from '../boat/types';
 import { useLaylines } from './useLaylines';
+import { useSessionMarks } from './useSession';
+import { useRace } from './RaceContext';
+import { MAP_TEXT } from './sessionText';
 
 const fmtTime = (ms: number) =>
   new Date(ms).toLocaleString('el-GR', { weekday: 'short', hour: '2-digit', minute: '2-digit' });
@@ -34,6 +37,14 @@ export function PlanView() {
   const { activeBoat: boat } = useApp();
   const nav = useNav();
   const lay = useLaylines();
+  // P-034: inside a session the map shows the session's own marks (read only), not the saved course.
+  const sm = useSessionMarks();
+  const inSession = sm.from === 'session';
+  const race = useRace();
+  const track = inSession ? race.session?.track : undefined;
+  const lastPoint = track?.length ? track[track.length - 1] : undefined;
+  // Without GPS the map keeps the last known position of the session.
+  const noFix = inSession && !nav.gps.fix;
   const { course, plan, setPlan, forecast } = nav;
   const [addMode, setAddMode] = useState(false);
   const [simT, setSimT] = useState<number>();
@@ -79,12 +90,17 @@ export function PlanView() {
 
   return (
     <div className={`plan ${ui.bigMap ? 'big-map' : ''}`}>
+      {noFix && (
+        <p className="msg warn" role="status">
+          {MAP_TEXT.noFix}
+        </p>
+      )}
       <div className="plan-map">
         <MapView
           boat={boat}
-          marks={marks}
-          editable
-          addMode={addMode}
+          marks={inSession ? sm.marks : marks}
+          editable={!inSession}
+          addMode={addMode && !inSession}
           onAdd={(p) => {
             if (!course) return;
             const n = marks.length;
@@ -98,7 +114,8 @@ export function PlanView() {
           chart={plan.mapChart}
           showDepth={plan.showDepth}
           wind={windArrows}
-          boatPos={nav.gps.fix}
+          boatPos={nav.gps.fix ?? (inSession ? lastPoint : undefined)}
+          track={track}
           laylines={lay?.result}
           simPos={route ? sim : undefined}
           fitKey={fitKey}
@@ -148,6 +165,27 @@ export function PlanView() {
       </div>
 
       <div className="plan-panel">
+        {inSession ? (
+          <section className="card">
+            <h3>{MAP_TEXT.sessionCourse}</h3>
+            {sm.marks.length ? (
+              <ol className="marks">
+                {sm.marks.map((m, i) => (
+                  <li key={m.id}>
+                    <span className="mark-idx">{i === 0 ? 'Ε' : i}</span>
+                    <span>{m.name}</span>
+                    <span className="muted small coords">
+                      {formatDM(m.lat, true)} {formatDM(m.lon, false)}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="muted small">{MAP_TEXT.noMarks}</p>
+            )}
+            <p className="muted small">{race.kind === 'race' ? MAP_TEXT.readOnlyRace : MAP_TEXT.readOnlyOther}</p>
+          </section>
+        ) : (
         <section className="card">
           <h3>Διαδρομή</h3>
           <div className="row">
@@ -245,6 +283,7 @@ export function PlanView() {
           )}
           {!course && <p className="muted small">Φτιάξε μια διαδρομή και άγγιξε τον χάρτη για να βάλεις εκκίνηση, σημαδούρες και τερματισμό με τη σειρά.</p>}
         </section>
+        )}
 
         <section className="card form-grid">
           <h3>Άνεμος & εκκίνηση</h3>

@@ -1,5 +1,7 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
-import { MUTE_MS, isMuted, newEngine, step, type Alert, type Situation } from '../race/alerts';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { MUTE_MS, isMuted, newEngine, profileFor, soundFor, step, type Alert, type AlertProfile, type Situation } from '../race/alerts';
+import { meanPct, pushPct, type PctSample } from '../race/liveNumbers';
+import { stallMinutes } from '../race/session';
 import { distanceNm } from '../nav/geo';
 import { meanWind, pushWind, type WindReading } from '../weather/windAverage';
 import { useApp } from './AppContext';
@@ -7,9 +9,10 @@ import { useNav } from './NavContext';
 import { useInstruments } from './InstrumentsContext';
 import { useRace } from './RaceContext';
 import { useLaylines, type LaylineView } from './useLaylines';
+import { useLiveNumbers, useSessionMarks } from './useSession';
 import { audioReady, notify, unlockAudio } from './sound';
 
-/** Manoeuvre alerts while a race records (P-023): one engine for the whole app. */
+/** Manoeuvre alerts while a session records (P-023; per kind, P-034): one engine for the whole app. */
 interface AlertsState {
   banner?: Alert & { muted: boolean };
   dismiss: () => void;
@@ -21,6 +24,10 @@ interface AlertsState {
   lay?: LaylineView;
   markInSec?: number;
   layInSec?: number;
+  /** Alerts of the running session's kind. */
+  profile?: AlertProfile;
+  /** 15″ rolling mean of the speed as % of target (P-034), while a session records. */
+  pct15?: number;
 }
 
 const Ctx = createContext<AlertsState | null>(null);
@@ -33,34 +40,46 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
   const inst = useInstruments();
   const race = useRace();
   const lay = useLaylines();
-  // Φ1 (P-033): manoeuvre alerts only in a race; training and cruise have none yet.
-  const on = race.recording && race.kind === 'race';
+  const marks = useSessionMarks();
+  const numbers = useLiveNumbers();
+  const kind = race.recording ? race.kind : undefined;
+  const profile = useMemo(() => (kind ? profileFor(kind, settings) : undefined), [kind, settings]);
+  // The engine runs while a session records (it also feeds the 15″ % mean); a cruise has no alerts yet.
+  const on = !!kind;
   const engine = useRef(newEngine());
   const [banner, setBanner] = useState<AlertsState['banner']>();
   const [, setTick] = useState(0);
   const [audioOk, setAudioOk] = useState(audioReady());
   const instSamples = useRef<WindReading[]>([]);
+  const pctSamples = useRef<PctSample[]>([]);
+  const [pct15, setPct15] = useState<number>();
 
   const fix = nav.gps.fix;
-  const mark = nav.course?.marks[nav.nextMark];
+  const mark = marks.mark;
   const markInSec =
     fix && mark && (fix.sog ?? 0) > 1 ? (distanceNm(fix, mark) / fix.sog!) * 3600 : undefined;
   const layInSec =
     lay && lay.result.leg !== 'reach' && lay.result.toLayMin !== undefined ? lay.result.toLayMin * 60 : undefined;
+  // Lost: the track has stalled, or no position has come for as long since recording began here.
+  const waitingFor = race.waitingGps ? stallMinutes(race.everyMs) * 60_000 : undefined;
+  const stalled = !!race.stalledMin;
 
-  const latest = useRef({ settings, nav, inst, lay, markInSec, layInSec });
-  latest.current = { settings, nav, inst, lay, markInSec, layInSec };
+  const latest = useRef({ settings, inst, lay, markInSec, layInSec, marks, profile, numbers, stalled, waitingFor });
+  latest.current = { settings, inst, lay, markInSec, layInSec, marks, profile, numbers, stalled, waitingFor };
 
   useEffect(() => {
-    if (!on) {
-      engine.current = newEngine();
-      setBanner(undefined);
-      instSamples.current = [];
-      return;
-    }
+    // A new kind (training ↔ cruise) starts the engine afresh and hides the alert (AC 17).
+    engine.current = newEngine();
+    setBanner(undefined);
+    instSamples.current = [];
+    pctSamples.current = [];
+    setPct15(undefined);
+    if (!on) return;
+    const since = Date.now();
     const t = window.setInterval(() => {
-      const { settings: s, nav: n, inst: i, lay: l, markInSec: m, layInSec: li } = latest.current;
+      const { settings: s, inst: i, lay: l, markInSec: m, layInSec: li, marks: mk, profile: p, numbers: nb, stalled: st, waitingFor: wf } = latest.current;
       const now = Date.now();
+      const lost = st || (wf !== undefined && now - since > wf);
       let instTwd: number | undefined;
       if (i.live && i.values.twd !== undefined && i.values.tws !== undefined) {
         const r: WindReading = { t: now, tws: i.values.tws, twd: i.values.twd, from: 'instruments' };
@@ -70,28 +89,36 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
         // Need most of the window before judging a shift.
         if (instSamples.current.length >= 6) instTwd = meanWind(now, SHIFT_WINDOW_MS, instSamples.current)?.twd;
       } else instSamples.current = [];
-      const marks = n.course?.marks ?? [];
-      const x: Situation = {
-        now,
-        markIndex: n.nextMark,
-        markName: marks[n.nextMark]?.name ?? 'σημαδούρα',
-        isFinish: marks.length > 1 && n.nextMark === marks.length - 1,
-        leg: l?.result.leg,
-        board: l?.result.board,
-        layInSec: li,
-        markInSec: m,
-        instTwd,
-      };
-      const a = step(engine.current, s.alerts, x);
-      if (a) {
-        const muted = isMuted(engine.current, now);
-        setBanner({ ...a, muted });
-        if (!muted) notify(a, s.alerts);
+      const pt = nb.result?.pctTarget;
+      pctSamples.current = pushPct(pctSamples.current, now, pt === undefined ? undefined : pt * 100);
+      const pm = meanPct(pctSamples.current, now);
+      setPct15(pm);
+      if (p && p.types.length) {
+        const x: Situation = {
+          now,
+          markIndex: mk.index,
+          markName: mk.mark?.name ?? 'σημαδούρα',
+          isFinish: mk.isFinish,
+          leg: l?.result.leg,
+          board: l?.result.board,
+          layInSec: li,
+          markInSec: m,
+          instTwd,
+          gpsLost: lost,
+          pct15: pm,
+          instruments: nb.withInst,
+        };
+        const a = step(engine.current, s.alerts, x, p);
+        if (a) {
+          const muted = isMuted(engine.current, now);
+          setBanner({ ...a, muted });
+          if (!muted) notify(a, { ...s.alerts, sound: soundFor(p, s.alerts.sound) });
+        }
       }
       setTick((v) => v + 1);
     }, STEP_MS);
     return () => window.clearInterval(t);
-  }, [on]);
+  }, [on, kind]);
 
   // Hide the banner after a while ("now" sooner).
   useEffect(() => {
@@ -102,11 +129,11 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
 
   // Browsers play sound only after a tap: the first tap during a race unlocks it.
   useEffect(() => {
-    if (!on || settings.alerts.sound === 'off' || audioOk) return;
+    if (!on || !profile?.types.length || settings.alerts.sound === 'off' || audioOk) return;
     const onTap = () => setAudioOk(unlockAudio() && audioReady());
     document.addEventListener('pointerdown', onTap, { once: true });
     return () => document.removeEventListener('pointerdown', onTap);
-  }, [on, settings.alerts.sound, audioOk]);
+  }, [on, profile?.types.length, settings.alerts.sound, audioOk]);
 
   const now = Date.now();
   const muteLeft = Math.max(0, Math.round((engine.current.muteUntil - now) / 1000));
@@ -122,7 +149,7 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
 
   return (
     <Ctx.Provider
-      value={{ banner, dismiss: () => setBanner(undefined), muteLeft, toggleMute, audioOk, enableAudio, lay, markInSec, layInSec }}
+      value={{ banner, dismiss: () => setBanner(undefined), muteLeft, toggleMute, audioOk, enableAudio, lay, markInSec, layInSec, profile, pct15 }}
     >
       {children}
     </Ctx.Provider>
@@ -152,7 +179,7 @@ export function AlertBanner() {
       <span className="sub">{b.sub}</span>
       <span className="meta">
         {new Date(b.at).toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-        {how && ` · ${how}`} · πάτα για κλείσιμο
+        {how && ` · ${how}`} · πάτα για απόκρυψη
       </span>
     </button>
   );

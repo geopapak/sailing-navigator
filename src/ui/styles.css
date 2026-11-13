@@ -1454,6 +1454,8 @@ table.leader th { text-align: left; font-size: 0.8rem; color: var(--muted); font
 table.leader td { padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: top; cursor: pointer; }
 table.leader tr.own td { font-weight: 700; background: var(--bg); cursor: default; }
 table.leader .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+table.leader th.num { white-space: normal; }
+table.leader td:nth-child(2) { overflow-wrap: anywhere; }
 .rec { display: flex; align-items: center; gap: 8px; justify-content: center; }
 .rec-dot { width: 10px; height: 10px; border-radius: 5px; background: var(--now); animation: rec 1.4s infinite; }
 @keyframes rec { 50% { opacity: 0.3; } }
@@ -2556,4 +2558,66 @@ ol.how li {
   transform: translateX(-50%);
   font-size: 0.6rem;
   pointer-events: none;
+}
+
+/* In-session Live per kind (P-034). */
+.session-live > * + * { margin-top: 10px; }
+.race-screen .alert-band.idle {
+  cursor: default;
+  margin: -4px 0 8px;
+  border-radius: 8px;
+  border-bottom-color: var(--line);
+  background: var(--bg);
+}
+.race-screen .alert-band.idle .sub { font-weight: 800; }
+.rs-tile .val small { font-size: 0.4em; font-weight: 800; }
+.rs-tile.hero .val { font-size: clamp(3rem, 18vw, 4.8rem); }
+.rs-tile .ab .ind,
+.ind {
+  display: inline-block;
+  padding: 0 6px;
+  border: 1px solid var(--fair);
+  border-radius: 6px;
+  color: var(--fg);
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.exp-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 48px;
+  margin-top: 10px;
+  padding: 8px 14px;
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--fg);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+.exp-body { margin-top: 6px; }
+.exp-body .bl-mini { margin: 6px 0; }
+.swap-btn { margin-top: 10px; }
+.seg.degs { margin: 4px 0 8px; }
+.seg.degs button { min-height: 44px; }
+/* Night: "now" red with black text; "warn"/"info" black with a red outline. */
+:root[data-theme='night'] .alert-band.now { background: var(--fg); color: #000; border-bottom-color: var(--fg); }
+:root[data-theme='night'] .alert-band.now .meta { color: #000; }
+:root[data-theme='night'] .alert-band.warn,
+:root[data-theme='night'] .alert-band.info { background: var(--bg); border: 2px solid var(--fg); }
+@media (max-width: 340px) {
+  .rs-tile .val { font-size: 2.3em; }
+  .rs-tile.hero .val { font-size: 3em; }
+}
+/* Training mini row: wraps to two columns with big text; the leg word never gets cut (QA Φ2). */
+.bl-mini.train { grid-template-columns: repeat(auto-fit, minmax(5.5rem, 1fr)); }
+.bl-mini.train b.leg { white-space: normal; overflow-wrap: anywhere; font-size: 1.1rem; line-height: 1.15; }
+.rs-tile .val.wait { color: var(--muted); font-weight: 700; }
+.toggle:disabled { opacity: 0.55; cursor: not-allowed; }
+@media (max-width: 400px) {
+  :root[data-size='xl'] .bl-mini.train > div:last-child { grid-column: 1 / -1; }
 }

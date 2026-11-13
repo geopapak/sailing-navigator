@@ -12,6 +12,9 @@ import { modelsContext, type ChatContext, type ChatMessage, type ChatSource } fr
 import { buildPlanContext, localIso } from '../ai/context';
 import { getLiveSnapshot } from '../ai/snapshot';
 import { modelLabel } from '../weather/models';
+import { useRace } from './RaceContext';
+import { KIND_INFO } from '../race/session';
+import { CHAT_TEXT } from './sessionText';
 
 interface Entry extends ChatMessage {
   at: number;
@@ -78,6 +81,24 @@ function RichText({ text }: { text: string }) {
 export function ChatView() {
   const { settings, activeBoat, boats, account } = useApp();
   const nav = useNav();
+  const race = useRace();
+  // Inside a session the advisor knows its kind (P-034): intro, ready questions and context.
+  const kind = race.session ? race.kind : undefined;
+  const [online, setOnline] = useState(() => typeof navigator === 'undefined' || navigator.onLine !== false);
+  const [offlineNote, setOfflineNote] = useState<string>();
+  useEffect(() => {
+    const on = () => {
+      setOnline(true);
+      setOfflineNote(undefined);
+    };
+    const off = () => setOnline(false);
+    window.addEventListener('online', on);
+    window.addEventListener('offline', off);
+    return () => {
+      window.removeEventListener('online', on);
+      window.removeEventListener('offline', off);
+    };
+  }, []);
   const [log, setLog] = useStoredState<{ entries: Entry[] }>('advisor-chat', { entries: [] });
   const [draft, setDraft] = useState('');
   // A half-written question keeps a waiting app update from reloading (P-043).
@@ -104,6 +125,7 @@ export function ChatView() {
 
   const buildContext = (): ChatContext => {
     const ctx: ChatContext = { now: localIso(Date.now()) };
+    if (kind) ctx.session = { kind, label: KIND_INFO[kind].name };
     if (activeBoat) {
       ctx.boat = activeBoat;
       ctx.others = boats
@@ -156,7 +178,8 @@ export function ChatView() {
       // Drop the unanswered question so the conversation stays question/answer pairs.
       setLog({ entries: log.entries });
       setDraft(q);
-      setError(e instanceof AdvisorError ? e.message : 'Απρόσμενο σφάλμα.');
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) setOnline(false);
+      else setError(e instanceof AdvisorError ? e.message : 'Απρόσμενο σφάλμα.');
     } finally {
       setBusy(false);
     }
@@ -179,8 +202,25 @@ export function ChatView() {
           )}
         </div>
         <p className="muted small">
-          Ρώτα ό,τι θες: κανόνες, τακτική, πανιά, καιρό, ORC. Τα νούμερα τα υπολογίζει η εφαρμογή· ο σύμβουλος τα εξηγεί.
+          {kind ? CHAT_TEXT.intro(kind) : 'Ρώτα ό,τι θες: κανόνες, τακτική, πανιά, καιρό, ORC. Τα νούμερα τα υπολογίζει η εφαρμογή· ο σύμβουλος τα εξηγεί.'}
         </p>
+        {!online && (
+          <p className="msg bad" role="status">
+            {CHAT_TEXT.offline}{' '}
+            <button
+              type="button"
+              className="btn small-btn"
+              onClick={() => {
+                // Only checks the connection again; it never re-sends a paid question.
+                if (navigator.onLine !== false) setOnline(true);
+                else setOfflineNote(CHAT_TEXT.stillOffline);
+              }}
+            >
+              {CHAT_TEXT.retry}
+            </button>
+            {offlineNote && <span className="small"> {offlineNote}</span>}
+          </p>
+        )}
         <div className="chips chat-data" aria-label="Δεδομένα που στέλνονται">
           <button className={`chip small-chip ${useData.live && live ? 'on' : ''}`} disabled={!live} onClick={() => setUseData({ ...useData, live: !useData.live })}>
             Live {live ? `(${ago(live.at)})` : '—'}
@@ -214,7 +254,7 @@ export function ChatView() {
       {log.entries.length === 0 && configured && !waiting && (
         <section className="chat-suggest">
           <p className="muted small">Έτοιμες ερωτήσεις: πάτα για να μπει στο πεδίο, μετά «Ρώτα».</p>
-          {SUGGESTIONS.map((s) => (
+          {(kind ? CHAT_TEXT.questions[kind] : SUGGESTIONS).map((s) => (
             <button key={s} className={`chip ${draft === s ? 'on' : ''}`} onClick={() => setDraft(s)} disabled={busy}>
               {s}
             </button>
@@ -277,7 +317,7 @@ export function ChatView() {
           rows={2}
           aria-label="Ερώτηση στον σύμβουλο"
         />
-        <button className="btn primary chat-send" disabled={busy || !draft.trim() || !configured || waiting} aria-label="Ρώτα (περίπου 10 λεπτά του ευρώ)">
+        <button className="btn primary chat-send" disabled={busy || !draft.trim() || !configured || waiting || !online} aria-label="Ρώτα (περίπου 10 λεπτά του ευρώ)">
           <Icon name="send" />
           <span>Ρώτα ≈ €0,10</span>
         </button>
