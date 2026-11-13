@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { describe, expect, it } from 'vitest';
 import worker, { type Env } from './worker';
+import { cleanRacePlan, cleanShared } from './crews';
 import type { D1Database, D1PreparedStatement } from './accounts';
 
 /** Crews with invitations (P-022) over the real routes, on an in-memory D1. */
@@ -247,5 +248,33 @@ describe('crews and invitations (P-022)', () => {
     await call(env, 'PUT', `/crews/${crewId}/races/r1`, training(), owner);
     const m = await call<{ member: { races: unknown[] }[] }>(env, 'GET', '/crews', undefined, mate);
     expect(m.member[0].races).toEqual([]);
+  });
+
+  it('race plans are cleaned exactly as before, with or without kind (P-035 regression)', () => {
+    const plan = {
+      name: 'Χειμερινό 3η',
+      start: 1_700_000_000_000,
+      courseName: 'Διαδρομή Β',
+      marks: [{ name: 'Π', lat: 37.9, lon: 23.6, extra: 1 }],
+      note: 'Στις 10',
+      crew: [{ name: 'Μαρία Π', role: 'helm' }],
+      // Training-only fields must not leak into a race plan.
+      goal: 'upwind',
+      summary: { durationSec: 1 },
+      track: [1, 2, 3],
+    };
+    const expected = {
+      name: 'Χειμερινό 3η',
+      start: 1_700_000_000_000,
+      courseName: 'Διαδρομή Β',
+      marks: [{ name: 'Π', lat: 37.9, lon: 23.6 }],
+      note: 'Στις 10',
+      crew: [{ userId: undefined, name: 'Μαρία Π', role: 'helm' }],
+    };
+    expect(cleanRacePlan(plan)).toEqual(expected);
+    expect(cleanShared(plan)).toEqual(expected);
+    expect(cleanShared({ ...plan, kind: 'race' })).toEqual(expected);
+    expect(cleanShared({ ...plan, kind: null })).toEqual(expected);
+    expect(() => cleanShared({ ...plan, kind: 'cruise' })).toThrow('Αυτή η έξοδος δεν μοιράζεται με το πλήρωμα.');
   });
 });

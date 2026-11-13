@@ -4,7 +4,8 @@ import { useRace } from './RaceContext';
 import { Icon } from './Icons';
 import { Toggle } from './AlertsCard';
 import { useCrews } from './CrewViews';
-import { syncShare, SHARE_TEXT } from './crewShare';
+import { settledShareMsg, syncShare, SHARE_TEXT, useShareHeld, type ShareMsg } from './crewShare';
+import { lessonsFailure } from './lessonsState';
 import { DEFAULT_SERVER } from './settings';
 import { TRAINING_TEXT as TT } from './sessionText';
 import { dayStr, hhmm } from './SessionBar';
@@ -68,31 +69,40 @@ function LapsCard({ s }: { s: TrainingSummary }) {
         <p className="small">{TT.oneLap}</p>
       ) : (
         <>
-          <div className="tbl-wrap tall">
-            <table className="tbl laps-tbl">
+          <div className="tbl-wrap tall cq">
+            <table className="tbl laps-tbl stack">
               <thead>
                 <tr>
                   <th>#</th>
                   <th>χρόνος</th>
                   <th>% στόχου</th>
-                  <th>σημείωση</th>
+                  <th className="wide">σημείωση</th>
                 </tr>
               </thead>
-              <tbody>
-                {s.laps.map((l) => (
-                  <tr key={l.n} className={l.n === best ? 'best' : ''}>
-                    <td>
-                      {l.n}
-                      {l.n === best ? ' ★' : ''}
-                    </td>
-                    <td>{mss(l.sec)}</td>
-                    <td>
-                      {pctTxt(l.pct)}
-                    </td>
-                    <td className="note">{[l.sail, l.helm ? `τιμ. ${l.helm}` : '', l.trim].filter(Boolean).join(' · ')}</td>
-                  </tr>
-                ))}
-              </tbody>
+              {s.laps.map((l) => {
+                const note = [l.sail, l.helm ? `τιμ. ${l.helm}` : '', l.trim].filter(Boolean).join(' · ');
+                // Narrow card or big text: the note goes on its own full-width row under the lap.
+                return (
+                  <tbody key={l.n} className={l.n === best ? 'best' : ''}>
+                    <tr>
+                      <td>
+                        {l.n}
+                        {l.n === best ? ' ★' : ''}
+                      </td>
+                      <td>{mss(l.sec)}</td>
+                      <td>{pctTxt(l.pct)}</td>
+                      <td className="note wide">{note}</td>
+                    </tr>
+                    {note && (
+                      <tr className="sub">
+                        <td colSpan={4} className="note">
+                          {note}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                );
+              })}
             </table>
           </div>
           <p className="small muted">
@@ -148,24 +158,32 @@ function ManoeuvresCard({ s }: { s: TrainingSummary }) {
   return (
     <section className="card">
       <h3>{TT.manCard}</h3>
-      <div className="tbl-wrap">
-        <table className="tbl">
+      <div className="tbl-wrap cq">
+        <table className="tbl stack">
           <thead>
             <tr>
               <th />
               <th>πόσες</th>
-              <th>ανάκαμψη στο 90%</th>
+              <th className="wide">ανάκαμψη στο 90%</th>
             </tr>
           </thead>
-          <tbody>
-            {s.manoeuvres.map((m) => (
-              <tr key={m.kind}>
-                <td>{m.kind === 'tack' ? TT.tacks : TT.gybes}</td>
-                <td>{m.count}</td>
-                <td>{m.avgRecoverSec === null ? '—' : `μέση ${t(m.avgRecoverSec)} · καλύτερη ${t(m.bestRecoverSec)}`}</td>
-              </tr>
-            ))}
-          </tbody>
+          {s.manoeuvres.map((m) => {
+            const rec = m.avgRecoverSec === null ? '—' : `μέση ${t(m.avgRecoverSec)} · καλύτερη ${t(m.bestRecoverSec)}`;
+            return (
+              <tbody key={m.kind}>
+                <tr>
+                  <td>{m.kind === 'tack' ? TT.tacks : TT.gybes}</td>
+                  <td>{m.count}</td>
+                  <td className="wide">{rec}</td>
+                </tr>
+                <tr className="sub">
+                  <td colSpan={3}>
+                    <span className="muted">ανάκαμψη στο 90%:</span> {rec}
+                  </td>
+                </tr>
+              </tbody>
+            );
+          })}
         </table>
       </div>
       {s.indicative && (
@@ -250,13 +268,29 @@ function ShareCard({ r }: { r: Race }) {
   const race = useRace();
   const c = useCrews();
   const crew = crewFor(c.data?.owned, r, activeBoat);
-  const [msg, setMsg] = useState<{ text: string; retry: boolean }>();
+  const [msg, setMsg] = useState<ShareMsg>();
   const [busy, setBusy] = useState(false);
+  const held = useShareHeld(r.id);
   const can = c.signedIn && (!!crew || !!r.crewId);
+  // A pending share done in the background (internet back, undo over) updates the message.
+  const wasPending = useRef(!!r.crewSharePending);
+  useEffect(() => {
+    // Read the ref now: the updater runs later, after the ref below has changed.
+    const was = wasPending.current;
+    wasPending.current = !!r.crewSharePending;
+    setMsg((m) => settledShareMsg(m, was, r));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [r.crewSharePending, r.crewShared]);
   const send = async (patch: Partial<Race>) => {
     const next: Race = { ...r, ...patch, crewId: r.crewId ?? crew?.id };
     setBusy(true);
     try {
+      // In the 10″ undo of «Τέλος» nothing goes yet: it is sent with the rest when the undo is over.
+      if (held) {
+        await race.patchRace(r.id, { ...patch, crewId: next.crewId, crewSharePending: true });
+        setMsg(undefined);
+        return;
+      }
       await race.patchRace(r.id, { ...patch, crewId: next.crewId });
       const { out, patch: p } = await syncShare(next, { server: c.server, token: c.token });
       await race.patchRace(r.id, p);
@@ -284,7 +318,11 @@ function ShareCard({ r }: { r: Race }) {
           />
         </label>
       )}
-      {(msg || r.crewSharePending) && (
+      {held && r.crewSharePending ? (
+        <p className="small muted" role="status">
+          {SHARE_TEXT.afterUndo}
+        </p>
+      ) : (msg || r.crewSharePending) && (
         <p className="small" role="status">
           {msg?.text ?? SHARE_TEXT.offline}{' '}
           {(msg?.retry ?? r.crewSharePending) && (
@@ -312,6 +350,7 @@ function LessonsCard({ r }: { r: Race }) {
     if (inFlight.current || r.analysis?.lessons.length) return;
     if (offline()) {
       setWaiting(true);
+      setErr(undefined);
       return;
     }
     inFlight.current = true;
@@ -323,8 +362,10 @@ function LessonsCard({ r }: { r: Race }) {
       setWaiting(false);
       await race.patchRace(r.id, { analysis: { lessons: res.lessons, at: Date.now(), model: res.model } });
     } catch (e) {
-      if (e instanceof ApiError && e.status === 0 && offline()) setWaiting(true);
-      else setErr((e as Error).message);
+      // Only one of «Χωρίς ίντερνετ …» and the error shows (QA Φ3).
+      const f = lessonsFailure(e instanceof ApiError ? e.status : undefined, (e as Error).message, offline());
+      setWaiting(f.waiting);
+      setErr(f.err);
     } finally {
       inFlight.current = false;
       setBusy(false);

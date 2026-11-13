@@ -173,12 +173,17 @@ export function liveLaps(r: Race, now: number): { done: { n: number; sec: number
   return { done, current: { n: starts.length, sec: Math.round(overlapMs(spans, from, now) / 1000), from } };
 }
 
-/** Patch for «Γύρος» at `now`: closes the running lap and starts the next; undefined on a double tap. */
+/**
+ * Patch for «Γύρος» at `now`: closes the running lap and starts the next; undefined on a double tap.
+ * The new lap keeps the helm of the lap before (AC 11) unless `note` gives one.
+ */
 export function addLap(r: Race, now: number, note: Omit<Lap, 't'> = {}): Partial<Race> | undefined {
   // The first press also writes lap 1, with the sail of the Live.
   const laps: Lap[] = r.laps?.length ? r.laps : [{ t: r.start, ...(note.sail ? { sail: note.sail } : {}) }];
-  if (now - laps[laps.length - 1].t < LAP_GUARD_MS || now <= r.start) return undefined;
-  return { laps: [...laps, { t: now, ...note }] };
+  const last = laps[laps.length - 1];
+  if (now - last.t < LAP_GUARD_MS || now <= r.start) return undefined;
+  const helm = note.helm ?? last.helm;
+  return { laps: [...laps, { t: now, ...note, ...(helm ? { helm } : {}) }] };
 }
 
 /** Patch for «↶ Αναίρεση»: the last lap limit goes. */
@@ -188,11 +193,18 @@ export function undoLap(r: Race): Partial<Race> | undefined {
   return { laps: laps.length < 2 ? (laps[0] && Object.keys(laps[0]).length > 1 ? laps : undefined) : laps };
 }
 
-/** Patch for the note of lap `n` (1-based). */
+/**
+ * Patch for the note of lap `n` (1-based). The note is written on the lap that just closed,
+ * after the next one started: a helm set on the lap right before the running one goes on to the
+ * running lap too, unless that lap already has a helm of its own (not the one it carried over).
+ */
 export function noteLap(r: Race, n: number, note: Omit<Lap, 't'>): Partial<Race> {
   const laps = r.laps?.length ? [...r.laps] : [{ t: r.start }];
   if (n < 1 || n > laps.length) return {};
+  const before = laps[n - 1].helm;
   laps[n - 1] = { ...laps[n - 1], ...note, ...(note.trim !== undefined ? { trim: note.trim.slice(0, TRIM_MAX) } : {}) };
+  const running = laps[n];
+  if (note.helm && n === laps.length - 1 && (!running.helm || running.helm === before)) laps[n] = { ...running, helm: note.helm };
   return { laps };
 }
 

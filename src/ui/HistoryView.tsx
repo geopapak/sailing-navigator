@@ -6,6 +6,7 @@ import { RaceAnalysisView } from './RaceAnalysisView';
 import { ScoringView } from './ScoringView';
 import { SharedRaces } from './CrewViews';
 import { dayStr, hhmm, type Ended } from './SessionBar';
+import { holdShare, releaseShare } from './crewShare';
 import { analyseRace, toGpx } from '../race/analysis';
 import { estimateRace } from '../race/estimate';
 import { KIND_INFO, isCancelled, kindOf, reopen, sessionStats } from '../race/session';
@@ -251,6 +252,8 @@ export function EndedScreen({ ended, onUndone, onHistory }: { ended: Ended; onUn
   useHoldUpdate(left > 0, 'undo');
   const r = race.races.find((x) => x.id === ended.id);
   const undo = async () => {
+    // The crew share waits for the undo (SessionBar): keep it held while the session reopens.
+    holdShare(ended.id, Infinity);
     race.setActiveId(ended.id);
     race.setFreshId(undefined);
     try {
@@ -258,6 +261,7 @@ export function EndedScreen({ ended, onUndone, onHistory }: { ended: Ended; onUn
     } catch {
       /* the session strip offers «Ξανά» */
     }
+    releaseShare(ended.id);
     onUndone();
   };
   return (

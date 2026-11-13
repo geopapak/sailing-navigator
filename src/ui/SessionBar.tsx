@@ -15,8 +15,7 @@ import type { Theme } from './settings';
 import { TestBadge } from './TestBadge';
 import { KindAlertToggles } from './AlertsCard';
 import { SESSION_FLASH } from './sessionFlash';
-import { syncShare } from './crewShare';
-import { DEFAULT_SERVER } from './settings';
+import { holdShare } from './crewShare';
 import { activeMs, goalOf, goalSub, mss } from '../race/training';
 import { pausedSince } from '../race/pauses';
 
@@ -60,6 +59,9 @@ export function useNow(ms = 1000) {
 
 type Sheet = 'kind' | 'quick' | 'end' | undefined;
 
+/** How long «↶ Αναίρεση» stays after «■ Τέλος». */
+export const ENDED_UNDO_MS = 10_000;
+
 /** What the session ended with, for the summary and its 10″ undo. */
 export interface Ended {
   id: string;
@@ -71,7 +73,6 @@ export interface Ended {
 
 export function SessionBar({ onEnded }: { onEnded: (e: Ended) => void }) {
   const race = useRace();
-  const { settings } = useApp();
   const r = race.session;
   const now = useNow();
   const [sheet, setSheet] = useState<Sheet>();
@@ -115,7 +116,13 @@ export function SessionBar({ onEnded }: { onEnded: (e: Ended) => void }) {
 
   const end = async (o: { at?: number } = {}) => {
     const t = Date.now();
-    const out = o.at !== undefined ? finishAt(r, o.at, t) : finishNow(r, t);
+    let out = o.at !== undefined ? finishAt(r, o.at, t) : finishNow(r, t);
+    // A training shared with the crew: its summary goes only when the 10″ undo is over
+    // (or with the next connection), so an undone «Τέλος» never reaches the crew.
+    if (out.crewShared && out.crewId) {
+      holdShare(r.id, t + ENDED_UNDO_MS + 1000);
+      out = { ...out, crewSharePending: true };
+    }
     setSheet(undefined);
     try {
       await race.save(out);
@@ -123,12 +130,7 @@ export function SessionBar({ onEnded }: { onEnded: (e: Ended) => void }) {
       /* the strip offers «Ξανά» */
     }
     race.setFreshId(r.id);
-    onEnded({ id: r.id, before: r, until: t + 10_000, atLastMove: o.at !== undefined });
-    // A training shared with the crew: its summary goes now (or when the internet is back).
-    if (out.crewShared && out.crewId) {
-      const { patch } = await syncShare(out, { server: settings.aiUrl || DEFAULT_SERVER, token: settings.authToken, now: t });
-      await race.patchRace(r.id, patch).catch(() => undefined);
-    }
+    onEnded({ id: r.id, before: r, until: t + ENDED_UNDO_MS, atLastMove: o.at !== undefined });
   };
 
   return (

@@ -58,9 +58,8 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
       const now = Date.now();
       const sailId = getLiveSail();
       const sail = activeBoat?.sails.find((s) => s.id === sailId)?.name;
-      const last = cur.laps?.[cur.laps.length - 1];
-      // The new lap: the sail of the Live and the helm of the lap before.
-      const p = addLap(cur, now, { ...(sail ? { sail } : {}), ...(last?.helm ? { helm: last.helm } : {}) });
+      // The new lap: the sail of the Live; `addLap` carries over the helm of the lap before.
+      const p = addLap(cur, now, sail ? { sail } : {});
       if (!p) return false;
       race.update(p);
       try {

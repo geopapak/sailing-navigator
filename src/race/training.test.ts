@@ -182,6 +182,39 @@ describe('laps', () => {
     expect(undoLap({ ...r, laps: [{ t: T0 }, { t: T0 + M }] })).toEqual({ laps: undefined });
   });
 
+  it('a new lap starts with the helm of the lap before (AC 11, QA Φ3)', () => {
+    let r = race({ laps: [{ t: T0, helm: 'Α' }] });
+    r = { ...r, ...addLap(r, T0 + 6 * M)! };
+    expect(r.laps![1].helm).toBe('Α');
+    // A helm given with the press wins.
+    expect(addLap(r, T0 + 12 * M, { helm: 'Γ' })!.laps![2].helm).toBe('Γ');
+    // No helm yet: none is made up.
+    expect(addLap(race(), T0 + 6 * M)!.laps![1].helm).toBeUndefined();
+  });
+
+  it('the note of the lap that just closed also gives its helm to the running lap', () => {
+    // «Γύρος» first, then the note on lap 1, with lap 2 already running.
+    let r = race();
+    r = { ...r, ...addLap(r, T0 + 6 * M)! };
+    r = { ...r, ...noteLap(r, 1, { helm: 'Β' }) };
+    expect(r.laps!.map((l) => l.helm)).toEqual(['Β', 'Β']);
+    // A correction follows too, as lap 2 only carried it over …
+    r = { ...r, ...noteLap(r, 1, { helm: 'Γ' }) };
+    expect(r.laps!.map((l) => l.helm)).toEqual(['Γ', 'Γ']);
+    // … and the next lap carries it on.
+    r = { ...r, ...addLap(r, T0 + 12 * M)! };
+    expect(r.laps![2].helm).toBe('Γ');
+    // The running lap with a helm of its own keeps it.
+    r = { ...r, ...noteLap(r, 3, { helm: 'Α' }) };
+    r = { ...r, ...noteLap(r, 2, { helm: 'Β' }) };
+    expect(r.laps!.map((l) => l.helm)).toEqual(['Γ', 'Β', 'Α']);
+    // An older lap does not touch the running one.
+    r = { ...r, ...noteLap(r, 1, { helm: 'Β' }) };
+    expect(r.laps![2].helm).toBe('Α');
+    // Notes without a helm leave the running lap alone.
+    expect(noteLap(r, 2, { trim: 'x' }).laps![2]).toEqual(r.laps![2]);
+  });
+
   it('notes a lap, trim at most 60 characters', () => {
     const r = race({ laps: [{ t: T0 }, { t: T0 + 6 * M }] });
     const n = noteLap(r, 1, { helm: 'Β', trim: 'x'.repeat(80) });

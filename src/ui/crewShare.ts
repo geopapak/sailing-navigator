@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { crewApi } from '../crew/api';
 import { ApiError } from '../sync/api';
 import { trainingShare } from '../race/training';
@@ -20,6 +20,7 @@ export const SHARE_TEXT = {
   tooBig: 'Η σύνοψη είναι πολύ μεγάλη για το πλήρωμα.',
   noCrew: 'Δεν έχεις πλήρωμα για αυτό το σκάφος. Πρόσθεσέ το από «Σκάφη» → «Πρόσκληση στο πλήρωμα».',
   signIn: 'Χρειάζεται σύνδεση στον λογαριασμό.',
+  afterUndo: 'Θα σταλεί στο πλήρωμα μόλις περάσει η αναίρεση.',
 } as const;
 
 export type ShareOutcome = { ok: true; text: string } | { ok: false; text: string; pending: boolean };
@@ -54,7 +55,59 @@ export async function syncShare(r: Race, o: { server: string; token: string; now
   }
 }
 
-/** Sends the pending shares of finished sessions when the app starts and whenever the internet comes back. */
+/** The message on the share card: what the last try said, and if «Ξανά» is offered. */
+export type ShareMsg = { text: string; retry: boolean };
+
+/**
+ * When a pending share is done in the background (the retry when the internet is back), the card
+ * must stop saying «Θα σταλεί …» / offering «Ξανά»: it shows what is true now.
+ */
+export function settledShareMsg(msg: ShareMsg | undefined, wasPending: boolean, r: Pick<Race, 'crewShared' | 'crewSharePending'>): ShareMsg | undefined {
+  if (r.crewSharePending || !(wasPending || msg?.retry)) return msg;
+  if (msg && !msg.retry) return msg;
+  return { text: r.crewShared ? SHARE_TEXT.sent : SHARE_TEXT.removed, retry: false };
+}
+
+/**
+ * The share of a just-ended session waits for the 10″ «Αναίρεση» to pass (QA Φ3): the race is stored
+ * with `crewSharePending` and is held here until then, so an undone «Τέλος» never reaches the crew.
+ * In memory only: after a restart the undo is gone too, and the pending share goes.
+ */
+const holds = new Map<string, number>();
+const HOLD_EVENT = 'share-hold';
+export function holdShare(id: string, until: number) {
+  holds.set(id, until);
+  window.dispatchEvent(new Event(HOLD_EVENT));
+}
+export function releaseShare(id: string) {
+  holds.delete(id);
+  window.dispatchEvent(new Event(HOLD_EVENT));
+}
+export const heldUntil = (id: string) => holds.get(id);
+
+/** A pending share that may go now: finished and not held by the undo of «Τέλος». */
+export function shareDue(r: Pick<Race, 'crewSharePending' | 'status'>, now: number, holdUntil?: number): boolean {
+  return !!r.crewSharePending && r.status === 'finished' && !(holdUntil !== undefined && holdUntil > now);
+}
+
+/** Whether the share of `id` waits for the undo; re-renders when that ends. */
+export function useShareHeld(id: string): boolean {
+  const [, setTick] = useState(0);
+  const until = holds.get(id);
+  const held = until !== undefined && until > Date.now();
+  useEffect(() => {
+    const on = () => setTick((x) => x + 1);
+    window.addEventListener(HOLD_EVENT, on);
+    const t = held && until !== undefined && Number.isFinite(until) ? window.setTimeout(on, until - Date.now() + 50) : undefined;
+    return () => {
+      window.removeEventListener(HOLD_EVENT, on);
+      if (t !== undefined) window.clearTimeout(t);
+    };
+  }, [held, until]);
+  return held;
+}
+
+/** Sends the pending shares of finished sessions when the app starts, whenever the internet comes back, and when the undo of «Τέλος» is over. */
 export function useShareRetry() {
   const { settings, account } = useApp();
   const race = useRace();
@@ -73,7 +126,8 @@ export function useShareRetry() {
       if (busy.current || navigator.onLine === false) return;
       busy.current = true;
       try {
-        for (const r of ref.current.races.filter((x) => x.crewSharePending && x.status === 'finished')) {
+        const now = Date.now();
+        for (const r of ref.current.races.filter((x) => shareDue(x, now, holds.get(x.id)))) {
           const { out, patch } = await syncShare(r, { server, token });
           await ref.current.patchRace(r.id, patch).catch(() => undefined);
           if (!out.ok && out.pending) break; // still offline: try again later
@@ -82,8 +136,32 @@ export function useShareRetry() {
         busy.current = false;
       }
     };
+    // Held shares go when their undo is over (or is cancelled: `releaseShare`).
+    let timer: number | undefined;
+    const schedule = () => {
+      if (timer !== undefined) window.clearTimeout(timer);
+      timer = undefined;
+      const now = Date.now();
+      const next = Math.min(
+        ...ref.current.races
+          .filter((x) => x.crewSharePending && x.status === 'finished')
+          .map((x) => holds.get(x.id) ?? 0)
+          .filter((u) => u > now && Number.isFinite(u)),
+      );
+      if (Number.isFinite(next)) timer = window.setTimeout(() => void run().then(schedule), next - now + 50);
+    };
+    const onHold = () => {
+      schedule();
+      void run();
+    };
     if (pendingKey) void run();
+    schedule();
     window.addEventListener('online', run);
-    return () => window.removeEventListener('online', run);
+    window.addEventListener(HOLD_EVENT, onHold);
+    return () => {
+      window.removeEventListener('online', run);
+      window.removeEventListener(HOLD_EVENT, onHold);
+      if (timer !== undefined) window.clearTimeout(timer);
+    };
   }, [account, token, server, race.loaded, pendingKey]);
 }

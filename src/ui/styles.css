@@ -2670,12 +2670,24 @@ ol.how li {
 .tbl { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin: 4px 0 8px; font-variant-numeric: tabular-nums; }
 .tbl th, .tbl td { text-align: left; padding: 6px 4px; border-top: 1px solid var(--line); vertical-align: top; }
 .tbl th { font-size: 0.8rem; color: var(--muted); font-weight: 700; }
-.tbl tr.best td { font-weight: 900; }
+.tbl tr.best td, .tbl tbody.best td { font-weight: 900; }
 .laps-tbl { table-layout: fixed; }
 .laps-tbl th:nth-child(1), .laps-tbl td:nth-child(1) { width: 3.2em; }
 .laps-tbl th:nth-child(2), .laps-tbl td:nth-child(2) { width: 4.4em; }
 .laps-tbl th:nth-child(3), .laps-tbl td:nth-child(3) { width: 4.6em; }
-.laps-tbl td.note { overflow-wrap: anywhere; }
+.laps-tbl td.note { overflow-wrap: break-word; }
+/* Stacked tables (training summary): the wide column moves to its own full-width row under
+   each row when the card is narrow in em (320 px with «Μεγάλα» / «Πολύ μεγάλα»), so nothing
+   scrolls sideways and notes wrap on whole words. Normal text at 320 px keeps all columns. */
+.tbl-wrap.cq { container-type: inline-size; }
+.tbl.stack tr.sub { display: none; }
+.tbl.stack tr.sub td { border-top: 0; padding-top: 0; font-weight: inherit; }
+@container (max-width: 15em) {
+  .tbl.stack .wide { display: none; }
+  .tbl.stack tr.sub { display: table-row; }
+  .laps-tbl.stack { table-layout: auto; }
+  .laps-tbl.stack th, .laps-tbl.stack td { width: auto !important; }
+}
 .pct-track { position: relative; }
 .pct-track .disc {
   position: absolute;
