@@ -99,8 +99,13 @@ export const accountApi = {
       `/ais?mmsi=${mmsis.join(',')}&wait=12000`,
       { token, timeoutMs: 30_000 },
     ),
-  analysis: (server: string, token: string, summary: unknown) =>
-    api<{ lessons: { text: string; impact?: string }[]; model: string }>(server, '/analysis', { body: { summary }, token, timeoutMs: 120_000 }),
+  /** Lessons after a race (no kind) or a training (`kind: 'training'`, P-035). */
+  analysis: (server: string, token: string, summary: unknown, kind?: 'race' | 'training') =>
+    api<{ lessons: { text: string; impact?: string }[]; model: string }>(server, '/analysis', {
+      body: kind ? { summary, kind } : { summary },
+      token,
+      timeoutMs: 120_000,
+    }),
   crewNotes: (server: string, token: string) => api<{ notes: import('../knowledge/types').KnowledgeNote[] }>(server, '/notes/crew', { token }),
   updateUser: (server: string, token: string, id: string, patch: { aiAllowed?: boolean; aiLimit?: number; resetPassword?: boolean }) =>
     api<{ user: PublicUser; tempPassword?: string }>(server, `/admin/users/${id}`, { body: patch, token }),

@@ -19,6 +19,9 @@ import {
 } from '../crew/api';
 import type { BoatProfile } from '../boat/types';
 import type { Race } from '../race/types';
+import { isTrainingShare, type TrainingShare } from '../race/training';
+import { SharedTrainingView } from './TrainingSummary';
+import { dayStr } from './SessionBar';
 
 /** Loads my crews (P-022) when signed in. */
 export function useCrews() {
@@ -202,13 +205,21 @@ export function CrewCard({ boats }: { boats: BoatProfile[] }) {
 const when = (t: number) =>
   new Date(t).toLocaleString('el-GR', { weekday: 'short', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' });
 
-/** Races tab: races that boat owners shared with me (read-only). */
+/** «Οι έξοδοί μου»: races and trainings that boat owners shared with me (read-only). */
 export function SharedRaces() {
   const c = useCrews();
-  const list = (c.data?.member ?? []).flatMap((m) => m.races.map((r) => ({ ...r, boat: m.boatName, owner: m.owner })));
-  if (!list.length) return null;
+  const all = (c.data?.member ?? []).flatMap((m) =>
+    // A guest sees only the race of the invitation; trainings are for the permanent crew (AC 28).
+    m.races.filter((r) => m.kind === 'crew' || !isTrainingShare(r.data)).map((r) => ({ ...r, boat: m.boatName, owner: m.owner })),
+  );
+  const trainings = all.flatMap((r) => (isTrainingShare(r.data) ? [{ ...r, data: r.data }] : [])).sort((a, b) => b.data.start - a.data.start);
+  const list = all.flatMap((r) => (isTrainingShare(r.data) ? [] : [{ ...r, data: r.data as RacePlan }]));
+  if (!list.length && !trainings.length) return null;
   list.sort((a, b) => a.data.start - b.data.start);
   return (
+    <>
+      {trainings.length > 0 && <SharedTrainings list={trainings} />}
+      {list.length > 0 && (
     <section className="card crew">
       <h3>Αγώνες του πληρώματος</h3>
       <p className="muted small">Τους στέλνει ο ιδιοκτήτης του σκάφους. Εδώ μόνο τους βλέπεις.</p>
@@ -234,6 +245,32 @@ export function SharedRaces() {
                   ))}
                 </ul>
               )}
+            </details>
+          </li>
+        ))}
+      </ul>
+    </section>
+      )}
+    </>
+  );
+}
+
+/** Trainings shared with me: «Προπόνηση · <σκάφος> · <ημέρα>», summary and notes, never the track. */
+function SharedTrainings({ list }: { list: { raceId: string; boat: string; owner: string; data: TrainingShare }[] }) {
+  return (
+    <section className="card crew">
+      <h3>Προπονήσεις του πληρώματος</h3>
+      <p className="muted small">Τις μοιράζεται ο ιδιοκτήτης του σκάφους: σύνοψη και σημειώσεις, όχι το ίχνος. Εδώ μόνο τις βλέπεις.</p>
+      <ul className="rows shared-races">
+        {list.map((r) => (
+          <li key={`${r.boat}-${r.raceId}`}>
+            <details>
+              <summary>
+                <strong>
+                  Προπόνηση · {r.boat} · {dayStr(r.data.start)}
+                </strong>
+              </summary>
+              <SharedTrainingView s={r.data.summary} goal={r.data.goal} note={r.data.note} owner={r.owner} />
             </details>
           </li>
         ))}

@@ -159,7 +159,8 @@ export async function listCrews(env: AccountEnv, u: UserRow, now = Date.now()) {
       /** My own card only; other members' cards are not shown to members. */
       athleteCard: c.m_card,
       crew: (members.get(c.id) ?? []).map((m) => ({ userId: m.user_id, name: m.name, kind: m.kind })),
-      races: (races.get(c.id) ?? []).filter((r) => c.m_kind === 'crew' || r.raceId === c.m_race),
+      // Guests see only their race, never a shared training.
+      races: (races.get(c.id) ?? []).filter((r) => c.m_kind === 'crew' || (r.raceId === c.m_race && !isTraining(r.data))),
     })),
   };
 }
@@ -171,6 +172,11 @@ export async function createInvite(env: AccountEnv, u: UserRow, crewId: string, 
   const raceId = kind === 'guest' ? str(body.raceId, 64) : '';
   if (kind === 'guest' && !raceId) throw new HttpError(400, 'Ο καλεσμένος χρειάζεται αγώνα.');
   const d = db(env);
+  if (kind === 'guest') {
+    // A shared training is for the permanent crew only (P-035).
+    const r = await d.prepare('SELECT data FROM shared_races WHERE crew_id = ? AND race_id = ?').bind(c.id, raceId).first<{ data: string }>();
+    if (r && isTraining(JSON.parse(r.data))) throw new HttpError(400, 'Ο καλεσμένος χρειάζεται αγώνα.');
+  }
   const m = await d.prepare('SELECT COUNT(*) AS n FROM crew_members WHERE crew_id = ?').bind(c.id).first<{ n: number }>();
   if ((m?.n ?? 0) >= MAX_MEMBERS) throw new HttpError(400, 'Το πλήρωμα είναι γεμάτο.');
   if (!(await hit(env.DB, INVITE_LIMIT, u.id, now))) throw new HttpError(429, 'Πολλές προσκλήσεις σήμερα. Δοκίμασε αύριο.');
@@ -295,11 +301,105 @@ export function cleanRacePlan(b: Record<string, unknown>) {
   return { name, start, courseName: str(b.courseName, 80), marks, note: str(b.note, 500), crew };
 }
 
+export const TRAINING_GOALS = ['free', 'upwind', 'downwind', 'tacks', 'gybes', 'starts'] as const;
+const HELMS = ['Α', 'Β', 'Γ'] as const;
+const LEGS = ['upwind', 'reach', 'downwind'] as const;
+const MANOEUVRES = ['tack', 'gybe'] as const;
+export const MAX_LAPS = 100;
+const MAX_PCT_ROWS = 30;
+
+/** Keys that would carry a position (or a track) anywhere in a training share. */
+const POSITION_KEY = /^(track|tracks|marks|fixes|lat|lon|lng|long|latitude|longitude|coord|coords|coordinates|position|positions|geometry)$/i;
+
+/** True when any object key at any depth looks like a position or a track. */
+export function hasPositionData(v: unknown, depth = 0): boolean {
+  if (depth > 8) return true; // nothing legitimate is this deep; refuse rather than walk forever
+  if (Array.isArray(v)) return v.some((x) => hasPositionData(x, depth + 1));
+  if (v && typeof v === 'object') return Object.entries(v).some(([k, x]) => POSITION_KEY.test(k) || hasPositionData(x, depth + 1));
+  return false;
+}
+
+const BAD_TRAINING = 'Άκυρη σύνοψη προπόνησης.';
+const bad = (): never => {
+  throw new HttpError(400, BAD_TRAINING);
+};
+const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : bad());
+const numOrNull = (v: unknown): number | null => (v === null || v === undefined ? null : num(v));
+const optNum = (v: unknown): number | undefined => (v === undefined || v === null ? undefined : num(v));
+const optStr = (v: unknown, max: number): string | undefined => {
+  if (v === undefined || v === null) return undefined;
+  if (typeof v !== 'string') bad();
+  return str(v, max) || undefined;
+};
+const oneOf = <T extends string>(list: readonly T[], v: unknown): T => (list.includes(v as T) ? (v as T) : bad());
+const list = (v: unknown, max: number): Record<string, unknown>[] => {
+  if (v === undefined || v === null) return [];
+  if (!Array.isArray(v) || v.length > max) bad();
+  return (v as unknown[]).map((x) => (x && typeof x === 'object' && !Array.isArray(x) ? (x as Record<string, unknown>) : bad()));
+};
+
+/**
+ * A shared training session (P-035): name, start, goal, owner note and the
+ * computed summary only. Strict schema; refuses any track, marks, fixes or
+ * coordinates (no position data from a training reaches the server).
+ */
+export function cleanTrainingSummary(b: Record<string, unknown>) {
+  if (hasPositionData(b)) throw new HttpError(400, 'Η προπόνηση μοιράζεται χωρίς ίχνος και θέσεις.');
+  const name = str(b.name, 80);
+  const start = typeof b.start === 'number' && Number.isFinite(b.start) ? b.start : NaN;
+  if (!name || Number.isNaN(start)) throw new HttpError(400, 'Λείπει όνομα ή ώρα προπόνησης.');
+  const goal = b.goal === undefined || b.goal === null ? 'free' : oneOf(TRAINING_GOALS, b.goal);
+  const s = b.summary;
+  if (!s || typeof s !== 'object' || Array.isArray(s)) bad();
+  const x = s as Record<string, unknown>;
+  if (typeof x.indicative !== 'boolean') bad();
+  const summary = {
+    durationSec: num(x.durationSec),
+    distanceNm: numOrNull(x.distanceNm),
+    twsMin: numOrNull(x.twsMin),
+    twsMax: numOrNull(x.twsMax),
+    avgPct: numOrNull(x.avgPct),
+    pausedSec: x.pausedSec === undefined ? 0 : num(x.pausedSec),
+    indicative: x.indicative as boolean,
+    trainingUntil: optNum(x.trainingUntil),
+    laps: list(x.laps, MAX_LAPS).map((l) => ({
+      n: num(l.n),
+      sec: num(l.sec),
+      pct: numOrNull(l.pct),
+      sail: optStr(l.sail, 60),
+      helm: l.helm === undefined || l.helm === null ? undefined : oneOf(HELMS, l.helm),
+      trim: optStr(l.trim, 60),
+    })),
+    pctTable: list(x.pctTable, MAX_PCT_ROWS).map((r) => ({
+      leg: oneOf(LEGS, r.leg),
+      band: optStr(r.band, 20) ?? bad(),
+      pct: numOrNull(r.pct),
+    })),
+    manoeuvres: list(x.manoeuvres, MANOEUVRES.length).map((m) => ({
+      kind: oneOf(MANOEUVRES, m.kind),
+      count: num(m.count),
+      avgRecoverSec: numOrNull(m.avgRecoverSec),
+      bestRecoverSec: numOrNull(m.bestRecoverSec),
+    })),
+  };
+  return { kind: 'training' as const, name, start, goal, note: str(b.note, 500), summary };
+}
+
+/** Shared item → cleaned JSON: a race plan (default) or a training summary. Cruises are never shared. */
+export function cleanShared(body: Record<string, unknown>) {
+  if (body.kind === 'training') return cleanTrainingSummary(body);
+  if (body.kind === undefined || body.kind === null || body.kind === 'race') return cleanRacePlan(body);
+  throw new HttpError(400, 'Αυτή η έξοδος δεν μοιράζεται με το πλήρωμα.');
+}
+
+const isTraining = (data: unknown) => !!data && typeof data === 'object' && (data as { kind?: unknown }).kind === 'training';
+
 export async function putRace(env: AccountEnv, u: UserRow, crewId: string, raceId: string, body: Record<string, unknown>, now = Date.now()) {
   const c = await ownedCrew(env, u, crewId);
   if (!/^[A-Za-z0-9_-]{1,64}$/.test(raceId)) throw new HttpError(400, 'Άκυρος αγώνας.');
-  const data = JSON.stringify(cleanRacePlan(body));
-  if (data.length > MAX_RACE_BYTES) throw new HttpError(413, 'Πολύ μεγάλο.');
+  const data = JSON.stringify(cleanShared(body));
+  // Bytes, not UTF-16 units: Greek text is 2 bytes a letter in the stored JSON.
+  if (new TextEncoder().encode(data).length > MAX_RACE_BYTES) throw new HttpError(413, 'Πολύ μεγάλο.');
   await db(env)
     .prepare(
       `INSERT INTO shared_races (crew_id, race_id, data, updated_at) VALUES (?, ?, ?, ?)

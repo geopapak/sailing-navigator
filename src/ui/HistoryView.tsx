@@ -11,6 +11,12 @@ import { estimateRace } from '../race/estimate';
 import { KIND_INFO, isCancelled, kindOf, reopen, sessionStats } from '../race/session';
 import { formatDuration } from '../scoring/corrected';
 import type { Race, SessionKind } from '../race/types';
+import { TrainingSummaryView } from './TrainingSummary';
+import { TRAINING_TEXT as TT } from './sessionText';
+import { kindSpans, mss, trainingSummary } from '../race/training';
+
+/** A shared training, or a cruise whose training part is shared (P-035 AC 27, 29). */
+const sharedTraining = (r: Race) => !!r.crewShared && (kindOf(r) === 'training' || (!!r.finish && kindSpans(r, r.finish).some((k) => k.kind === 'training')));
 
 const n1 = (x: number) => x.toFixed(1).replace('.', ',');
 const durTxt = (sec: number) => {
@@ -40,8 +46,8 @@ export function SessionCard({ r, fresh, onOpen }: { r: Race; fresh?: boolean; on
     }
     const s = sessionStats(r);
     if (kind === 'training') {
-      const a = analyseRace(r);
-      return { dist: s.distanceNm, dur: s.durationSec, m: a.avgPct !== undefined ? `${Math.round(a.avgPct * 100)}% του στόχου` : 'χωρίς στόχους' };
+      const t = trainingSummary(r);
+      return { dist: s.distanceNm, dur: s.durationSec, m: t.avgPct !== null ? `${t.avgPct}% του στόχου` : 'χωρίς στόχους' };
     }
     return { dist: s.distanceNm, dur: s.durationSec, m: s.avgKt !== undefined ? `μέση ${n1(s.avgKt)} κν` : 'χωρίς ίχνος' };
   }, [r, kind]);
@@ -58,6 +64,7 @@ export function SessionCard({ r, fresh, onOpen }: { r: Race; fresh?: boolean; on
         <span className="s">
           {KIND_INFO[kind].name} · {dayStr(r.start)}
           {line2.dur !== undefined ? ` · ${durTxt(line2.dur)}` : ''} · {n1(line2.dist)} νμ
+          {sharedTraining(r) ? TT.sharedTag : ''}
         </span>
         <span className="m">{line2.m}</span>
       </span>
@@ -150,6 +157,11 @@ export function HistoryView({ onHome, openId }: { onHome: () => void; openId?: s
 
 /** Summary of a finished session (AC 23). */
 export function SessionSummary({ r, onAnalysis }: { r: Race; onAnalysis?: () => void }) {
+  if (kindOf(r) === 'training') return <TrainingSummaryView r={r} />;
+  return <OtherSummary r={r} onAnalysis={onAnalysis} />;
+}
+
+function OtherSummary({ r, onAnalysis }: { r: Race; onAnalysis?: () => void }) {
   const kind = kindOf(r);
   const cancelled = isCancelled(r);
   const stats = useMemo(() => {
@@ -199,6 +211,10 @@ export function SessionSummary({ r, onAnalysis }: { r: Race; onAnalysis?: () => 
         ))}
       </div>
       {cancelled && <p className="small">Ακύρωση / αναβολή: ο αγώνας έκλεισε πριν την εκκίνηση, χωρίς αποτέλεσμα.</p>}
+      {kind !== 'race' && sessionStats(r).pausedSec > 0 && <p className="small muted">{TT.noPauses(mss(sessionStats(r).pausedSec))}</p>}
+      {kind === 'cruise' && sharedTraining(r) && (
+        <p className="small muted">{TT.sharedPart(hhmm(trainingSummary(r, { kindOnly: 'training' }).trainingUntil ?? r.finish ?? r.start))}</p>
+      )}
       {kind === 'race' && !cancelled && own && r.results?.[own.id] === undefined && (
         <p className="small warn-text">Ο χρόνος του σκάφους δεν γράφτηκε: βάλ' τον από τα αποτελέσματα.</p>
       )}

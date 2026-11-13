@@ -6,6 +6,8 @@ import { InstrumentsProvider, useInstruments } from './InstrumentsContext';
 import { RaceLive, RaceSetup, OpponentPosition } from './RaceView';
 import { RaceProvider, useRace } from './RaceContext';
 import { AlertBanner, AlertsProvider } from './RaceAlerts';
+import { TrainingProvider } from './TrainingContext';
+import { useShareRetry } from './crewShare';
 import { InviteScreen } from './CrewViews';
 import { pendingInvite } from '../crew/api';
 import { KnowledgeProvider } from './KnowledgeContext';
@@ -62,6 +64,8 @@ function Shell() {
   const [flash, setFlash] = useState<string>();
   const inSessionRef = useRef(inSession);
   inSessionRef.current = inSession;
+  // Training summaries for the crew that waited for the internet (P-035).
+  useShareRetry();
 
   useEffect(
     () =>
@@ -336,8 +340,10 @@ export function App() {
         <KnowledgeProvider>
           <RaceProvider>
             <AlertsProvider>
-              <Shell />
-              <AppUpdater />
+              <TrainingProvider>
+                <Shell />
+                <AppUpdater />
+              </TrainingProvider>
             </AlertsProvider>
           </RaceProvider>
         </KnowledgeProvider>

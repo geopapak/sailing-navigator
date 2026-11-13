@@ -27,7 +27,7 @@ import { MAX_CERT_BASE64, readCertificate, validateCertificateBody } from './cer
 import { aisPositions, orcBoat, readEntryList } from './race';
 import { cacheGet, cachePut, fileHash } from './pdfCache';
 import type { CertificateExtract } from '../src/boat/certificate';
-import { MAX_SUMMARY_CHARS, crewNotes, raceLessons } from './analysis';
+import { MAX_SUMMARY_CHARS, analysisInput, crewNotes, raceLessons } from './analysis';
 import {
   HttpError,
   TERMS_VERSION,
@@ -319,8 +319,10 @@ async function analysis(req: Request, env: Env, cors: Record<string, string>): P
   const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY, maxRetries: 1, timeout: 100_000 });
   try {
     const t0 = Date.now();
-    const out = await raceLessons(client, (r.body as { summary?: unknown }).summary);
-    log('ai', { kind: 'analysis', model: out.model, ms: Date.now() - t0, lessons: out.lessons.length, ...out.usage });
+    const input = analysisInput(r.body);
+    const out = await raceLessons(client, input.summary, input.kind);
+    // Never the summary text itself: only mode, model, counts and tokens.
+    log('ai', { kind: 'analysis', mode: input.kind, model: out.model, ms: Date.now() - t0, lessons: out.lessons.length, ...out.usage });
     return json({ lessons: out.lessons, model: out.model }, 200, cors);
   } catch (e) {
     if (e instanceof HttpError) throw e;

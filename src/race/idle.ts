@@ -1,6 +1,7 @@
 import { distanceNm } from '../nav/geo';
 import type { Race, TrackPoint } from './types';
 import { recordFrom } from './session';
+import { isPaused, lastPauseEnd } from './pauses';
 
 /**
  * Forgotten session (P-033): ask «Τελείωσε;» when the boat has not moved for
@@ -48,6 +49,7 @@ export type ForgottenPrompt =
  * Which prompt to show now for a running session, if any. «Όχι, συνεχίζω» moves
  * the reference: the idle prompt comes back after another 2 idle hours, the
  * 24-hour one after another 24 hours. The 24-hour prompt wins when both apply.
+ * While paused only the 24-hour prompt is asked.
  */
 export function forgottenPrompt(r: Race, now: number): ForgottenPrompt | undefined {
   if (r.status !== 'running') return undefined;
@@ -56,7 +58,9 @@ export function forgottenPrompt(r: Race, now: number): ForgottenPrompt | undefin
   const lastMove = lastMovement(r.track, from);
   if (now - r.start >= STALE_MS && now - Math.max(r.start, r.staleAskedAt ?? 0) >= STALE_MS)
     return { kind: 'stale', lastMove, hours: Math.floor((now - r.start) / 3600_000) };
-  if (now - Math.max(lastMove, r.idleAskedAt ?? 0) >= IDLE_MS) return { kind: 'idle', lastMove };
+  // Not moving during a pause is the point of the pause: no idle prompt then, nor right after it (P-039 AC 17).
+  if (isPaused(r)) return undefined;
+  if (now - Math.max(lastMove, r.idleAskedAt ?? 0, lastPauseEnd(r) ?? 0) >= IDLE_MS) return { kind: 'idle', lastMove };
   return undefined;
 }
 

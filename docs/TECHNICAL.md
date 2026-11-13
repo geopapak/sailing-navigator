@@ -77,6 +77,14 @@ scripts/         εικονίδια, CHANGELOG, ακτογραμμή
 - **Νούμερα του Live** (`useLiveNumbers`): όργανα, αλλιώς SOG από GPS και ο χειροκίνητος άνεμος της Γρήγορης ματιάς (`live-state`). Ο μέσος όρος 15″ του % στόχου κρατιέται μόνο στη μνήμη (`src/race/liveNumbers.ts`). Το Live της εξόδου ενημερώνει το snapshot του συμβούλου, με θέση στρογγυλεμένη στα ~100 m (P-030). Το `/chat` παίρνει και `context.session.kind`, χωρίς αλλαγή στον server.
 - Κείμενα: `src/ui/sessionText.ts`.
 
+### 3.2 Προπόνηση v1 και Παύση (P-035, P-039)
+
+- **Μοντέλο** (`src/race/types.ts`, χωρίς αλλαγή schema Dexie): `Race.goal` («Τι δουλεύουμε»), `laps` (αρχές γύρων με σημείωση: πανί, τιμονιέρης Α/Β/Γ, τριμάρισμα ≤ 60), `pauses` (`{from, to?}`· ποτέ σε Αγώνα), `manoeuvres` (από τα πυκνά δείγματα της μνήμης, με `recoverSec` ως το 90%), `crewShared`, `crewSharePending`, `crewId`.
+- **Παύσεις** (`src/race/pauses.ts`): `isPaused`, `activeSpans`, `trackSegments`, `pauseAt`/`resumeAt`, `closePausesAt`. Σε παύση το `recording` του `RaceContext` είναι `false` (σβήνουν ίχνος, ειδοποιήσεις, wake lock)· το `trackGap` και η ερώτηση ακινησίας δεν μετράνε την παύση· το `sessionStats`, το `analyseRace` και τα `toGpx` (ένα `<trkseg>` ανά διάστημα) / `toCsv` (στήλη `segment`) δεν μετράνε χρόνο ούτε απόσταση πάνω από παύση.
+- **Προπόνηση** (`src/race/training.ts`, καθαρές συναρτήσεις): `activeIntervals(race, { kindOnly?, now? })` (από `kindLog` και παύσεις), `lapStats`, `pctByLegAndBand` (ζώνες TWS ανά 4 κν, χωρίς τα 25″ μετά από μανούβρα), `manoeuvreStats`, `recoverySec`, `trainingSummary(race, { kindOnly? })`. Η ίδια σύνοψη πάει στην οθόνη, στο πλήρωμα (`trainingShare`, μόνο τα διαστήματα Προπόνησης, ≤ 32 KB: κόβονται πρώτα τα τριμαρίσματα των παλαιότερων γύρων) και στο `/analysis` (`analysisBody`, `{ summary, kind: 'training' }`).
+- **Live**: `TrainingProvider` (`src/ui/TrainingContext.tsx`) κρατά στη μνήμη την αναίρεση γύρου (5″, προστασία 3″) και την αντίστροφη μέτρηση εκκίνησης (ειδοποίηση 1′, νέος γύρος στο 0). Το `AlertsProvider` βρίσκει τις μανούβρες από την TWA κάθε 2″ και γράφει `manoeuvres` όταν κλείσει η ανάκαμψη (ή 90″).
+- **Πλήρωμα** (`src/ui/crewShare.ts`): `PUT /crews/:crewId/races/:raceId` με `kind: 'training'` και `summary` (καμία θέση), `DELETE` όταν κλείνει ο διακόπτης. Offline: `crewSharePending`, που στέλνεται στην επόμενη σύνδεση (`useShareRetry`). Το μέλος βλέπει την κοινή προπόνηση στο «Οι έξοδοί μου» χωρίς ίχνος (`SharedTrainings` στο `CrewViews.tsx`).
+
 ## 4. Βάση δεδομένων
 
 ### 4.1 Στον server: Cloudflare D1 (SQLite)

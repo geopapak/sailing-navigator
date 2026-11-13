@@ -53,6 +53,36 @@ export interface TrackPoint {
 /** What a session ("έξοδος") is: a race, a training sail or a cruise (P-033). */
 export type SessionKind = 'race' | 'training' | 'cruise';
 
+/** «Τι δουλεύουμε» of a training (P-035): only changes what Live shows big and the summary order. */
+export type TrainingGoal = 'free' | 'upwind' | 'downwind' | 'tacks' | 'gybes' | 'starts';
+
+/** Helm of a lap: a letter, never a name. */
+export type Helm = 'Α' | 'Β' | 'Γ';
+
+/** Start of a training lap (`t`), with the crew's note for that lap (≤ 60 characters). */
+export interface Lap {
+  t: number;
+  sail?: string;
+  helm?: Helm;
+  trim?: string;
+}
+
+/** «⏸ Παύση» (P-039): no track, no alerts; `to` is missing while the pause lasts. */
+export interface Pause {
+  from: number;
+  to?: number;
+}
+
+/** A tack or gybe found live from the dense in-memory samples, with the time back to 90% of target. */
+export interface Manoeuvre {
+  t: number;
+  kind: 'tack' | 'gybe';
+  /** Seconds until the 15″ mean was back at ≥ 90%; missing: not back within 90″ (or no speed). */
+  recoverSec?: number;
+  /** Measured without instruments (GPS speed, manual wind). */
+  indicative?: boolean;
+}
+
 export interface Race {
   id: string;
   name: string;
@@ -86,5 +116,19 @@ export interface Race {
   crewNote?: string;
   /** When the plan was last sent to the crew. */
   crewSharedAt?: number;
+  /** Training (P-035): «Τι δουλεύουμε»; missing means 'free'. */
+  goal?: TrainingGoal;
+  /** Training laps: each entry is the start of a lap. Fewer than 2: one lap, the whole training. */
+  laps?: Lap[];
+  /** Pauses (training and cruise; never in a race). */
+  pauses?: Pause[];
+  /** Training manoeuvres found live. */
+  manoeuvres?: Manoeuvre[];
+  /** Training: the summary is (to be) shared with the crew (summary and notes, never the track). */
+  crewShared?: boolean;
+  /** The crew share (or its removal) still has to reach the server (offline). */
+  crewSharePending?: boolean;
+  /** Crew the training is shared with (the owner's crew of the boat). */
+  crewId?: string;
   updatedAt: number;
 }

@@ -13,6 +13,7 @@ import { useInstruments } from './InstrumentsContext';
 import { DEFAULT_SERVER } from './settings';
 import { useStoredState, useWakeLock } from './hooks';
 import { trackGap } from '../race/gaps';
+import { isPaused, pauseAt, resumeAt } from '../race/pauses';
 
 export type WindSource = 'instruments' | 'live' | 'forecast';
 
@@ -23,6 +24,8 @@ interface RaceState {
   setActiveId: (id: string | undefined) => void;
   save: (r: Race) => Promise<void>;
   update: (patch: Partial<Race> | ((r: Race) => Partial<Race>)) => void;
+  /** Changes one saved session (e.g. the crew share state after it reached the server) and stores it. */
+  patchRace: (id: string, patch: Partial<Race>) => Promise<void>;
   remove: (id: string) => Promise<void>;
   addFix: (f: RaceFix) => void;
   /** Live leaderboard of the active race. */
@@ -45,6 +48,11 @@ interface RaceState {
   kind?: SessionKind;
   /** Track interval of the running session (ms). */
   everyMs: number;
+  /** The running session is paused (P-039): no track, no alerts, the screen may sleep. */
+  paused: boolean;
+  /** «⏸ Παύση» / «▶ Συνέχεια» (training and cruise only). Saved at once. */
+  pause: () => void;
+  resume: () => void;
   /** The races of this account have been read from the device. */
   loaded: boolean;
   /** Session that has just ended: shown as «νέα» in the history. */
@@ -130,6 +138,14 @@ export function RaceProvider({ children }: { children: ReactNode }) {
     if (ui.activeId === id) setUi((u) => ({ freshId: u.freshId }));
   }, [setUi, ui.activeId]);
 
+  const patchRace = useCallback(
+    async (id: string, patch: Partial<Race>) => {
+      const cur = racesRef.current.find((r) => r.id === id);
+      if (cur) await save({ ...cur, ...patch, updatedAt: Date.now() });
+    },
+    [save],
+  );
+
   const addFix = useCallback((f: RaceFix) => update((r) => ({ fixes: [...r.fixes, f] })), [update]);
 
   // Persist the active race now and then (and when leaving the page).
@@ -161,7 +177,8 @@ export function RaceProvider({ children }: { children: ReactNode }) {
   const running = active?.status === 'running';
   const kind = running && active ? kindOf(active) : undefined;
   const everyMs = trackEveryMs(kind ?? 'race', settings.cruiseTrackSec);
-  const recording = running && !!active && Date.now() >= recordFrom(active);
+  const paused = running && !!active && isPaused(active);
+  const recording = running && !!active && !paused && Date.now() >= recordFrom(active);
 
   // Race mode (P-013): keep the screen on in every tab, and notice holes in the track.
   const wakeOn = useWakeLock(!!recording);
@@ -208,7 +225,7 @@ export function RaceProvider({ children }: { children: ReactNode }) {
     const t = window.setInterval(() => {
       setTick((x) => x + 1);
       const r = activeRef.current;
-      if (!r || r.status !== 'running') return;
+      if (!r || r.status !== 'running' || isPaused(r)) return;
       const now = Date.now();
       const { fix: f, inst, boat, cruiseSec } = latest.current;
       const snap = getLiveSnapshot(2)?.ctx.live;
@@ -315,6 +332,17 @@ export function RaceProvider({ children }: { children: ReactNode }) {
     [active, windKey, tick],
   );
 
+  const togglePause = useCallback(
+    (on: boolean) => {
+      const r = activeRef.current;
+      if (!r || r.status !== 'running') return;
+      const p = on ? pauseAt(r, Date.now()) : resumeAt(r, Date.now());
+      // Saved at once: a pause must survive the app being closed right after.
+      if (p) save({ ...r, ...p, updatedAt: Date.now() }).catch(() => undefined);
+    },
+    [save],
+  );
+
   return (
     <Ctx.Provider
       value={{
@@ -324,6 +352,7 @@ export function RaceProvider({ children }: { children: ReactNode }) {
         setActiveId: (id) => setUi((u) => ({ ...u, activeId: id })),
         save,
         update,
+        patchRace,
         remove,
         addFix,
         rows,
@@ -338,6 +367,9 @@ export function RaceProvider({ children }: { children: ReactNode }) {
         session: running ? active : undefined,
         kind,
         everyMs,
+        paused,
+        pause: () => togglePause(true),
+        resume: () => togglePause(false),
         loaded,
         freshId: ui.freshId,
         setFreshId: (id) => setUi((u) => ({ ...u, freshId: id })),
