@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useHoldUpdate } from './useHoldUpdate';
 import { useApp } from './AppContext';
 import { useNav } from './NavContext';
@@ -212,6 +212,9 @@ export function QuickLook({ onHome }: { onHome: () => void }) {
   const inst = useInstruments();
   const [chat, setChat] = useState(false);
   const nothing = !nav.gps.fix && !inst.live;
+  // Opened by the user to see the numbers: the position is needed.
+  const { requestGps } = nav;
+  useEffect(() => requestGps(), [requestGps]);
   return (
     <div className="quick-look">
       <p className="msg warn">Γρήγορη ματιά: δεν καταγράφεται ίχνος, χωρίς ειδοποιήσεις.</p>

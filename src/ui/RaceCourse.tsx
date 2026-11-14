@@ -197,10 +197,16 @@ export function CourseEditor({
           <button className={`btn ${addMode ? 'primary' : ''}`} onClick={() => setAddMode(!addMode)}>
             {addMode ? '✓ Τέλος προσθήκης' : '+ Σημαδούρα στον χάρτη'}
           </button>
-          {nav.gps.fix && (
+          {nav.gps.fix ? (
             <button className="btn" onClick={() => add(nav.gps.fix!.lat, nav.gps.fix!.lon, marks.length === 0 ? 'Εκκίνηση' : 'Θέση GPS')}>
               + Από GPS
             </button>
+          ) : (
+            !nav.gpsEnabled && (
+              <button className="btn" onClick={() => nav.setGpsEnabled(true)}>
+                Άνοιξε το GPS
+              </button>
+            )
           )}
           {marks.length > 1 && (
             <button className="btn" onClick={() => setMarks([...marks].reverse())}>

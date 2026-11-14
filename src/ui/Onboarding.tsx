@@ -5,6 +5,7 @@ import { InstallHelp } from './InstallHelp';
 import { startNewBoat } from './WelcomeCard';
 import { openTab } from './openTab';
 import { Icon } from './Icons';
+import { writeOnboardedMirror } from './onboardingGate';
 
 const STEPS = 5;
 
@@ -18,7 +19,9 @@ export function Onboarding() {
   const firstName = account?.name?.trim().split(/\s+/)[0];
 
   const finish = (then?: () => void) => {
-    updateSettings({ onboarded: true });
+    // Remember it first (also outside IndexedDB), then leave this screen.
+    writeOnboardedMirror();
+    updateSettings({ onboarded: true, onboardReplay: false });
     if (then) then();
     else openTab('home');
   };

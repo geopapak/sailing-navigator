@@ -23,7 +23,11 @@ export function useGps(enabled: boolean): { status: GpsStatus; fix?: GpsFix; mes
 
   useEffect(() => {
     if (!enabled) {
+      // A switched-off GPS must not keep showing the last position.
       setStatus('off');
+      setFix(undefined);
+      setMessage(undefined);
+      history.current = [];
       return;
     }
     if (!('geolocation' in navigator)) {

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useHoldUpdate } from './useHoldUpdate';
 import { useApp } from './AppContext';
 import { useNav } from './NavContext';
@@ -94,6 +94,11 @@ function NoteEditor({ note, onDone }: { note?: KnowledgeNote; onDone: () => void
   const nav = useNav();
   const k = useKnowledge();
   const fix = nav.gps.fix;
+  // A new note is placed at the boat's position: the user chose to write one.
+  const { requestGps } = nav;
+  useEffect(() => {
+    if (!note) requestGps();
+  }, [note, requestGps]);
   const [n, setN] = useState<KnowledgeNote>(
     () =>
       note ?? {

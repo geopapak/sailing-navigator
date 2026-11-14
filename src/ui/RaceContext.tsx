@@ -179,6 +179,12 @@ export function RaceProvider({ children }: { children: ReactNode }) {
   const everyMs = trackEveryMs(kind ?? 'race', settings.cruiseTrackSec);
   const paused = running && !!active && isPaused(active);
   const recording = running && !!active && !paused && Date.now() >= recordFrom(active);
+  // A session needs the position: start the phone's GPS when one starts (a user action,
+  // so a permission prompt appears then) or opens again after a reload.
+  const { requestGps } = nav;
+  useEffect(() => {
+    if (running) requestGps();
+  }, [running, requestGps]);
 
   // Race mode (P-013): keep the screen on in every tab, and notice holes in the track.
   const wakeOn = useWakeLock(!!recording);
