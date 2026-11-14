@@ -1,0 +1,964 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" href="data:," />
+<title>Ανανέωση εμφάνισης + Προφίλ (P-049 / P-050)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..900&display=swap" rel="stylesheet" />
+<style>
+  /* ---------- Canvas around the phones (not part of the design) ---------- */
+  body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:#dfe3e8; color:#111; }
+  .controls { position:sticky; top:0; z-index:50; background:#fff; border-bottom:1px solid #cfd4da; padding:8px 14px; display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; }
+  .controls .grp { display:flex; align-items:center; gap:6px; }
+  .controls label { font-size:.78rem; font-weight:700; color:#374151; }
+  .pick { display:inline-flex; border:1px solid #9ca3af; border-radius:999px; overflow:hidden; flex-wrap:wrap; }
+  .pick button { border:0; background:#fff; padding:7px 11px; font:inherit; font-size:.82rem; font-weight:600; min-height:38px; cursor:pointer; }
+  .pick button + button { border-left:1px solid #d1d5db; }
+  .pick button.on { background:#0b2a4a; color:#fff; }
+  .page { display:flex; flex-wrap:wrap; gap:22px; padding:20px 14px 40px; justify-content:center; align-items:flex-start; }
+  .phones { display:flex; flex-wrap:wrap; gap:18px; justify-content:center; }
+  .cap { text-align:center; font-size:.8rem; font-weight:700; color:#374151; margin:6px 0 0; }
+  .notes { width:460px; max-width:100%; background:#fff; border-radius:16px; padding:16px 20px; line-height:1.5; font-size:.93rem; box-sizing:border-box; }
+  .notes h2 { margin:.1em 0 .4em; font-size:1.2rem; } .notes h3 { margin:1em 0 .3em; font-size:1rem; }
+  .notes ul, .notes ol { padding-left:1.2em; margin:.3em 0; }
+  .notes table { border-collapse:collapse; width:100%; font-size:.84rem; margin:.4em 0; }
+  .notes td, .notes th { border:1px solid #d1d5db; padding:4px 6px; text-align:left; vertical-align:top; }
+  .tag { display:inline-block; font-size:.72rem; font-weight:800; padding:2px 7px; border-radius:6px; background:#dcfce7; color:#14532d; margin-right:4px; }
+  .tag.same { background:#e5e7eb; color:#374151; } .tag.ask { background:#fef3c7; color:#78350f; }
+  .warnbox { background:#fef3c7; border-left:4px solid #b45309; padding:8px 10px; border-radius:6px; font-size:.86rem; }
+
+  /* =====================================================================
+     DESIGN TOKENS (proposal). Names map 1:1 to CSS variables for src/ui/styles.css.
+     ===================================================================== */
+  .phone[data-theme='day'] {
+    --bg:#ffffff; --surface:#f2f4f7; --surface-2:#e4e8ee; --fg:#05080f; --muted:#475467; --line:#667085; --line-soft:#d0d5dd;
+    --accent:#0b2a4a; --accent-fg:#ffffff; --accent-cont:#dbe7f5; --on-accent-cont:#0b2a4a;
+    --good:#047857; --good-cont:#d1fae5; --fair:#b45309; --fair-cont:#fef3c7; --bad:#b91c1c; --bad-cont:#fee2e2;
+    --stbd:#047857; --port:#b91c1c; --scrim:rgba(5,8,15,.48);
+    --shadow-1:0 1px 2px rgba(16,24,40,.10),0 1px 3px rgba(16,24,40,.10); --shadow-2:0 8px 24px rgba(16,24,40,.18);
+  }
+  .phone[data-theme='dark'] {
+    --bg:#0b1220; --surface:#152033; --surface-2:#1e2b42; --fg:#f8fafc; --muted:#a3b1c6; --line:#6b7c96; --line-soft:#2a3a55;
+    --accent:#7cb4ff; --accent-fg:#0b1220; --accent-cont:#1e3a5f; --on-accent-cont:#dbeafe;
+    --good:#34d399; --good-cont:#0f3b2e; --fair:#fbbf24; --fair-cont:#3d2e0a; --bad:#f87171; --bad-cont:#3f1616;
+    --stbd:#34d399; --port:#f87171; --scrim:rgba(0,0,0,.6);
+    --shadow-1:none; --shadow-2:0 8px 24px rgba(0,0,0,.5);
+  }
+  .phone[data-theme='night'] {
+    --bg:#000000; --surface:#120202; --surface-2:#1c0403; --fg:#ff3b30; --muted:#d8372c; --line:#b02a20; --line-soft:#4a0b07;
+    --accent:#ff3b30; --accent-fg:#000000; --accent-cont:#2a0503; --on-accent-cont:#ff3b30;
+    --good:#ff6b5e; --good-cont:#2a0503; --fair:#d1342a; --fair-cont:#2a0503; --bad:#ff3b30; --bad-cont:#2a0503;
+    --stbd:#ff6b5e; --port:#d8372c; --scrim:rgba(0,0,0,.78);
+    --shadow-1:none; --shadow-2:none;
+  }
+  .phone {
+    --font:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,'Noto Sans',sans-serif;
+    --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px;
+    --r-s:10px; --r-m:14px; --r-l:20px; --r-xl:28px; --r-pill:999px;
+    --hit:48px; --hit-main:56px;
+    --dur-1:120ms; --dur-2:220ms; --ease:cubic-bezier(.2,0,0,1);
+  }
+
+  /* ---------- Phone frame ---------- */
+  .phone { width:var(--pw,375px); height:812px; max-width:100%; border-radius:34px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,.28); border:10px solid #111; position:relative; display:flex; flex-direction:column; background:var(--bg); color:var(--fg); font-family:var(--font); font-size:17px; font-weight:500; line-height:1.35; }
+  .phone.sz-l { font-size:20px; } .phone.sz-xl { font-size:23px; }
+  .phone * { box-sizing:border-box; }
+  .phone button, .phone input { font:inherit; color:inherit; }
+  .phone button { cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .phone :focus-visible { outline:3px solid var(--fg); outline-offset:2px; }
+  .num { font-variant-numeric:tabular-nums; letter-spacing:-.02em; }
+  .muted { color:var(--muted); }
+  .cap2 { font-size:.8em; font-weight:600; color:var(--muted); }
+  .sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
+  .ic { width:1.3em; height:1.3em; flex-shrink:0; }
+  .scr { flex:1; overflow-y:auto; overflow-x:hidden; padding:var(--s3) var(--s4) var(--s5); position:relative; }
+
+  /* Top bar (outside a session): boat chip left, avatar right. */
+  .top { display:flex; align-items:center; gap:var(--s2); padding:var(--s2) var(--s3); min-height:68px; background:var(--bg); border-bottom:1px solid var(--line-soft); }
+  .top .ttl { flex:1; min-width:0; font-weight:800; font-size:1.1em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .boatchip { display:flex; align-items:center; gap:6px; min-height:var(--hit); max-width:72%; padding:0 14px 0 10px; border-radius:var(--r-pill); border:2px solid var(--line); background:var(--surface); font-weight:800; }
+  .boatchip span { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+  .iconbtn { min-width:var(--hit); min-height:var(--hit); border-radius:var(--r-pill); border:0; background:none; display:inline-flex; align-items:center; justify-content:center; font-weight:800; }
+  .avbtn { position:relative; border:0; background:none; padding:0; width:52px; height:52px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin-left:auto; flex-shrink:0; }
+  .avbtn .dot { position:absolute; right:2px; bottom:2px; width:14px; height:14px; border-radius:50%; background:var(--good); border:3px solid var(--bg); }
+  .avbtn .dot.off { background:var(--fair); }
+
+  /* Status strip (only when something is wrong). */
+  .strip { display:flex; gap:var(--s2); align-items:center; padding:8px var(--s4); min-height:44px; font-size:.84em; font-weight:700; background:var(--fair-cont); color:var(--fg); border-bottom:2px solid var(--fair); }
+  .strip.bad { background:var(--bad-cont); border-bottom-color:var(--bad); }
+  .strip .d { width:10px; height:10px; border-radius:5px; background:var(--fair); flex-shrink:0; }
+  .strip.bad .d { background:var(--bad); }
+
+  /* Cards */
+  .c { background:var(--surface); border-radius:var(--r-l); padding:var(--s4); margin-bottom:var(--s3); border:1px solid var(--line-soft); box-shadow:var(--shadow-1); }
+  .c.flat { box-shadow:none; }
+  .sec { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; margin:var(--s5) 2px var(--s2); min-height:44px; gap:0 8px; }
+  .sec h3 { white-space:nowrap; }
+  .sec h3 { margin:0; font-size:1.05em; font-weight:800; }
+  .sec .lnk { background:none; border:0; min-height:var(--hit); font-weight:800; color:var(--accent); padding:0 6px; }
+  .phone[data-theme='night'] .sec .lnk { color:var(--fg); text-decoration:underline; }
+  .hello { font-size:1.45em; font-weight:800; margin:var(--s2) 2px var(--s3); letter-spacing:-.01em; }
+
+  /* Buttons */
+  .b { min-height:var(--hit); padding:0 18px; border-radius:var(--r-m); border:2px solid transparent; font-weight:800; display:inline-flex; align-items:center; justify-content:center; gap:8px; transition:transform var(--dur-1) var(--ease), filter var(--dur-1); text-align:center; line-height:1.15; }
+  .b:active { transform:scale(.98); filter:brightness(.92); }
+  .b.main { min-height:var(--hit-main); font-size:1.05em; }
+  .b.wide { width:100%; }
+  .b.fill { background:var(--accent); color:var(--accent-fg); }
+  .b.tonal { background:var(--accent-cont); color:var(--on-accent-cont); }
+  .b.out { background:var(--bg); border-color:var(--line); color:var(--fg); }
+  .b.text { background:none; color:var(--accent); padding:0 10px; }
+  .b.danger { background:var(--bg); border-color:var(--bad); color:var(--bad); }
+  .b.dangerfill { background:var(--bad); color:var(--bg); }
+  .b:disabled { opacity:.45; cursor:default; transform:none; filter:none; }
+  .phone[data-theme='night'] .b.fill, .phone[data-theme='night'] .b.dangerfill { background:#000; color:var(--fg); border-color:var(--fg); box-shadow:inset 0 0 0 1px var(--fg); }
+  .phone[data-theme='night'] .b.tonal { border-color:var(--line); }
+  .phone[data-theme='night'] .b.text { color:var(--fg); text-decoration:underline; }
+  .brow { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:var(--s2); }
+
+  /* Mode cards (Home) */
+  .mode { display:grid; grid-template-columns:60px minmax(0,1fr) auto; gap:14px; align-items:center; width:100%; text-align:left; min-height:92px; border:2px solid var(--line-soft); background:var(--surface); border-radius:var(--r-l); padding:12px 14px; margin-bottom:var(--s2); box-shadow:var(--shadow-1); transition:transform var(--dur-1) var(--ease); }
+  .mode:active { transform:scale(.985); }
+  .mode .mi { width:60px; height:60px; border-radius:18px; background:var(--accent-cont); color:var(--on-accent-cont); display:flex; align-items:center; justify-content:center; }
+  .mode.race .mi { background:var(--accent); color:var(--accent-fg); }
+  .phone[data-theme='night'] .mode .mi { background:#000; color:var(--fg); border:2px solid var(--fg); }
+  .mode b { display:block; font-size:1.25em; font-weight:800; }
+  .mode .d { display:block; font-size:.82em; font-weight:600; color:var(--muted); }
+  .mode .go { width:28px; height:28px; color:var(--muted); }
+  .phone[data-theme='night'] .mode { border-color:var(--line); }
+  .mode.need { border-style:dashed; box-shadow:none; }
+
+  .next { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:var(--s3); align-items:center; }
+  .next .cd { text-align:center; background:var(--accent); color:var(--accent-fg); border-radius:var(--r-m); padding:8px 12px; min-width:88px; }
+  .phone[data-theme='night'] .next .cd { background:#000; color:var(--fg); border:2px solid var(--fg); }
+  .next .cd b { display:block; font-size:1.5em; font-weight:900; line-height:1; }
+  .next .cd span { font-size:.72em; font-weight:800; }
+  .chiprow { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+  .schip { display:inline-flex; align-items:center; gap:4px; min-height:30px; padding:2px 10px; border-radius:var(--r-pill); background:var(--bg); border:1.5px solid var(--line); font-size:.76em; font-weight:700; white-space:nowrap; }
+  .schip.good { border-color:var(--good); } .schip.fair { border-color:var(--fair); }
+
+  .quick { display:flex; align-items:center; gap:12px; width:100%; min-height:60px; border:2px dashed var(--line); background:none; border-radius:var(--r-l); padding:8px 14px; font-weight:800; text-align:left; }
+  .quick .d { display:block; font-weight:600; font-size:.8em; color:var(--muted); }
+
+  .hc { display:grid; grid-template-columns:48px minmax(0,1fr) auto; gap:12px; align-items:center; width:100%; text-align:left; border:0; background:none; padding:10px 4px; min-height:72px; border-top:1px solid var(--line-soft); }
+  .hc:first-child { border-top:0; }
+  .hc .hi { width:48px; height:48px; border-radius:14px; background:var(--surface-2); display:flex; align-items:center; justify-content:center; }
+  .hc b { display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .hc .s { display:block; font-size:.8em; font-weight:600; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .hc .m { font-size:.9em; font-weight:800; text-align:right; }
+
+  /* Empty state */
+  .empty { text-align:center; padding:var(--s5) var(--s4); }
+  .empty svg { width:64px; height:64px; display:block; margin:0 auto var(--s2); color:var(--muted); }
+  .empty b { display:block; font-size:1.08em; margin-bottom:4px; }
+  .empty p { margin:0 0 var(--s3); color:var(--muted); font-size:.9em; }
+
+  /* Bottom navigation (M3 style, active pill). */
+  .nav { display:grid; grid-template-columns:repeat(var(--n,4),minmax(0,1fr)); background:var(--surface); border-top:1px solid var(--line-soft); padding:6px 4px 14px; }
+  .nav button { background:none; border:0; min-height:64px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; font-size:.74em; font-weight:700; color:var(--muted); min-width:0; }
+  .nav button .pill { width:64px; height:34px; border-radius:17px; display:flex; align-items:center; justify-content:center; transition:background var(--dur-2) var(--ease); }
+  .nav button.on { color:var(--fg); font-weight:800; }
+  .nav button.on .pill { background:var(--accent-cont); color:var(--on-accent-cont); }
+  .phone[data-theme='night'] .nav button.on .pill { background:#000; border:2px solid var(--fg); color:var(--fg); }
+  .nav button span.l { max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+  /* Session bar */
+  .sbar { display:flex; align-items:center; gap:var(--s2); padding:var(--s2) var(--s3); background:var(--accent); color:var(--accent-fg); min-height:76px; }
+  .phone[data-theme='night'] .sbar { background:#000; color:var(--fg); border-bottom:2px solid var(--line); }
+  .sbar .mode2 { flex:1; min-width:0; line-height:1.15; }
+  .sbar .mode2 b { display:flex; align-items:center; gap:6px; font-size:.82em; font-weight:800; letter-spacing:.04em; }
+  .sbar .mode2 .clk { display:block; font-size:1.5em; font-weight:900; }
+  .narrow.sz-xl .sbar .mode2 .clk, .narrow.sz-l .sbar .mode2 .clk { font-size:1.15em; }
+  .narrow.sz-xl .sbar .sb.endb { min-width:0; }
+  .sbar .mode2 .s { display:block; font-size:.74em; font-weight:700; opacity:.9; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .rec { width:12px; height:12px; border-radius:6px; background:#ef4444; box-shadow:0 0 0 2px currentColor; animation:pulse 1.6s infinite; }
+  .phone[data-theme='night'] .rec { background:var(--fg); box-shadow:none; }
+  @keyframes pulse { 50% { opacity:.35; } }
+  .sb { min-width:52px; min-height:52px; border-radius:var(--r-m); border:2px solid currentColor; background:none; color:inherit; font-weight:900; padding:0 10px; display:inline-flex; align-items:center; justify-content:center; gap:4px; }
+
+  /* Live */
+  .band { border-radius:var(--r-l); padding:10px 14px; margin-bottom:var(--s2); min-height:84px; display:flex; flex-direction:column; justify-content:center; }
+  .band.warn { background:var(--fair); color:var(--bg); }
+  .band.idle { background:var(--surface); min-height:56px; border:1px solid var(--line-soft); }
+  .band .big { font-size:1.55em; font-weight:900; line-height:1.05; }
+  .band.idle .big { font-size:1em; font-weight:800; }
+  .band .sub { font-weight:800; font-size:.88em; margin-top:4px; }
+  .phone[data-theme='night'] .band.warn { background:#000; color:var(--fg); border:3px solid var(--fg); }
+  .phone[data-theme='dark'] .band.warn { color:#0b1220; }
+  .t { background:var(--surface); border-radius:var(--r-l); padding:10px 14px; border:1px solid var(--line-soft); min-width:0; }
+  .t .lab { font-weight:800; font-size:.86em; display:flex; flex-wrap:wrap; justify-content:space-between; gap:0 6px; }
+  .t .lab .ab { color:var(--muted); font-weight:700; }
+  .t .val { font-weight:900; line-height:1; white-space:nowrap; font-size:2.6em; margin-top:4px; }
+  .t .val small { font-size:.4em; font-weight:800; margin-left:2px; }
+  .t .sub { font-size:.82em; font-weight:700; color:var(--muted); margin-top:4px; }
+  .t .sub.good { color:var(--good); } .t .sub.fair { color:var(--fair); }
+  .t.hero { padding:12px 16px; border:2px solid var(--line); }
+  .t.hero .val { font-size:4.4em; }
+  .bar { height:10px; border-radius:5px; background:var(--surface-2); margin-top:8px; overflow:hidden; border:1px solid var(--line-soft); }
+  .bar i { display:block; height:100%; background:var(--good); border-radius:5px; transition:width var(--dur-2) var(--ease); }
+  .g2 { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:var(--s2); margin:var(--s2) 0; }
+  .g3 { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:var(--s2); }
+  .g3 .t { padding:8px 10px; } .g3 .t .val { font-size:1.45em; } .g3 .t .lab { font-size:.76em; }
+  .tws .val.stbd { color:var(--stbd); } .tws .val.port { color:var(--port); }
+  .narrow.sz-xl .t.hero .val { font-size:3.4em; }
+  .narrow.sz-xl .g2 .t .val { font-size:2em; }
+  .narrow.sz-xl .g3 { grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
+  .narrow.sz-xl .g3 .t:last-child { grid-column:1 / -1; }
+  .narrow.sz-l .g2 .t .val { font-size:2.2em; }
+  .stale { opacity:.55; }
+  .phone[data-theme='night'] .bar i { background:var(--fg); }
+
+  /* Profile */
+  .ph { text-align:center; padding:var(--s5) var(--s4) var(--s4); }
+  .ph .avwrap { position:relative; width:112px; height:112px; margin:0 auto var(--s3); }
+  .ph .edit { position:absolute; right:-6px; bottom:-6px; width:52px; height:52px; border-radius:50%; border:3px solid var(--surface); background:var(--accent); color:var(--accent-fg); display:flex; align-items:center; justify-content:center; }
+  .phone[data-theme='night'] .ph .edit { background:#000; color:var(--fg); border-color:var(--fg); }
+  .ph .nm { font-size:1.45em; font-weight:800; overflow-wrap:anywhere; }
+  .ph .em { font-weight:700; overflow-wrap:anywhere; margin-top:6px; }
+  .ph .priv { display:flex; gap:8px; align-items:flex-start; text-align:left; font-size:.8em; font-weight:600; color:var(--muted); background:var(--bg); border-radius:var(--r-m); padding:10px 12px; margin-top:var(--s3); }
+  .stats { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:var(--s2); }
+  .stats div { background:var(--surface); border:1px solid var(--line-soft); border-radius:var(--r-l); padding:10px 14px; min-width:0; }
+  .stats b { display:block; font-size:1.9em; font-weight:900; line-height:1.05; }
+  .stats b small { font-size:.45em; font-weight:800; }
+  .stats span { font-size:.82em; font-weight:700; color:var(--muted); }
+  .list { background:var(--surface); border-radius:var(--r-l); border:1px solid var(--line-soft); overflow:hidden; }
+  .rowb { display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:12px; align-items:center; width:100%; min-height:60px; padding:10px 14px; border:0; border-top:1px solid var(--line-soft); background:none; text-align:left; }
+  .rowb:first-child { border-top:0; }
+  .rowb.noic { grid-template-columns:minmax(0,1fr) auto; }
+  .rowb b { display:block; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .rowb .s { display:block; font-size:.8em; font-weight:600; color:var(--muted); }
+  .rowb .v { font-weight:800; font-size:.9em; text-align:right; }
+  .rowb .chev { width:22px; height:22px; color:var(--muted); }
+  .bi { width:48px; height:48px; border-radius:14px; background:var(--surface-2); display:flex; align-items:center; justify-content:center; }
+  .role { display:inline-block; margin-top:4px; font-size:.74em; font-weight:800; padding:2px 8px; border-radius:var(--r-pill); border:1.5px solid var(--line); white-space:nowrap; }
+  .role.own { background:var(--accent-cont); color:var(--on-accent-cont); border-color:transparent; }
+  .role.guest { border-style:dashed; }
+  .phone[data-theme='night'] .role.own { border-color:var(--fg); }
+
+  /* Avatars */
+  .av { border-radius:50%; display:inline-flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0; color:#fff; position:relative; }
+  .av svg { width:100%; height:100%; display:block; }
+  .av.photo { background:#888; }
+  .av.photo img { width:100%; height:100%; object-fit:cover; display:block; }
+  .phone[data-theme='night'] .av { background:#000 !important; color:var(--fg) !important; box-shadow:inset 0 0 0 2px var(--fg); }
+  .phone[data-theme='night'] .av.photo { background:var(--fg) !important; }
+  .phone[data-theme='night'] .av.photo img { filter:grayscale(1) contrast(1.1); mix-blend-mode:multiply; opacity:.9; }
+  .phone[data-theme='dark'] .av.photo img { filter:brightness(.92); }
+  .avgrid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin:var(--s3) 0; }
+  .narrow .avgrid, .sz-xl .avgrid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .avopt { border:3px solid transparent; background:none; border-radius:50%; padding:3px; aspect-ratio:1; min-height:var(--hit); display:flex; align-items:center; justify-content:center; position:relative; }
+  .avopt.on { border-color:var(--fg); }
+  .avopt .av { width:100%; height:100%; }
+  .avopt.on::after { content:'✓'; position:absolute; right:-2px; top:-2px; width:24px; height:24px; border-radius:12px; background:var(--fg); color:var(--bg); font-size:15px; font-weight:900; display:flex; align-items:center; justify-content:center; }
+  .colors { display:flex; flex-wrap:wrap; gap:8px; margin:var(--s2) 0 var(--s3); }
+  .sw { width:48px; height:48px; border-radius:50%; border:3px solid var(--bg); box-shadow:0 0 0 2px var(--line); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:900; }
+  .sw.on { box-shadow:0 0 0 3px var(--fg); }
+  .phone[data-theme='night'] .sw { background:#000 !important; color:var(--fg); border-color:#000; }
+  .phone[data-theme='night'] .colors::after { content:'Στη Νύχτα όλα τα σήματα δείχνουν κόκκινα.'; font-size:.8em; font-weight:600; color:var(--muted); width:100%; }
+
+  /* Segmented control (M3 / iOS style) */
+  .seg { display:grid; grid-auto-flow:column; grid-auto-columns:minmax(0,1fr); background:var(--surface-2); border-radius:var(--r-m); padding:4px; gap:4px; }
+  .seg button { min-height:var(--hit); border:0; border-radius:11px; background:none; font-weight:800; color:var(--muted); padding:0 6px; }
+  .seg button.on { background:var(--bg); color:var(--fg); box-shadow:var(--shadow-1); }
+  .phone[data-theme='dark'] .seg button.on { background:var(--accent-cont); color:var(--on-accent-cont); }
+  .phone[data-theme='night'] .seg button.on { background:#000; border:2px solid var(--fg); color:var(--fg); }
+
+  /* Inputs */
+  .fl { display:block; font-weight:800; font-size:.9em; margin-bottom:var(--s3); }
+  .fl input { display:block; width:100%; margin-top:6px; min-height:var(--hit-main); border:2px solid var(--line); border-radius:var(--r-m); background:var(--bg); padding:0 14px; font-weight:600; font-size:1.05em; }
+  .fl input:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-cont); }
+  .fl .help { display:block; font-weight:600; font-size:.85em; color:var(--muted); margin-top:4px; }
+  .fl.err input { border-color:var(--bad); }
+  .fl.err .help { color:var(--bad); font-weight:700; }
+  .toggle { display:flex; align-items:center; gap:12px; width:100%; min-height:60px; border:0; background:none; text-align:left; padding:6px 0; font-weight:800; }
+  .toggle .tx { flex:1; min-width:0; }
+  .knob { width:56px; height:32px; border-radius:16px; background:var(--surface-2); border:2px solid var(--line); position:relative; flex-shrink:0; transition:background var(--dur-2); }
+  .knob::after { content:''; position:absolute; top:4px; left:4px; width:20px; height:20px; border-radius:10px; background:var(--line); transition:left var(--dur-2) var(--ease); }
+  .toggle.on .knob { background:var(--accent); border-color:var(--accent); }
+  .toggle.on .knob::after { left:28px; background:var(--accent-fg); }
+  .phone[data-theme='night'] .toggle.on .knob { background:#000; border-color:var(--fg); } .phone[data-theme='night'] .toggle.on .knob::after { background:var(--fg); }
+
+  /* Bottom sheet (modal, one at a time, with ✕) */
+  .scrim { position:absolute; inset:0; background:var(--scrim); z-index:20; display:flex; align-items:flex-end; animation:fade var(--dur-2) var(--ease); }
+  .sheet { width:100%; max-height:88%; overflow-y:auto; background:var(--bg); border-radius:var(--r-xl) var(--r-xl) 0 0; padding:0 var(--s4) var(--s5); box-shadow:var(--shadow-2); animation:up var(--dur-2) var(--ease); }
+  .phone[data-theme='night'] .sheet { border:2px solid var(--line); border-bottom:0; }
+  .sheet .hdl { display:flex; justify-content:center; align-items:center; height:28px; }
+  .sheet .hdl i { width:40px; height:5px; border-radius:3px; background:var(--line); }
+  .sheet .sh { display:flex; align-items:center; gap:8px; margin-bottom:var(--s3); }
+  .sheet .sh h3 { flex:1; margin:0; font-size:1.2em; font-weight:800; }
+  .sheet .foot { position:sticky; bottom:calc(-1 * var(--s5)); background:var(--bg); padding:var(--s3) 0 var(--s2); margin-top:var(--s3); border-top:1px solid var(--line-soft); }
+  @keyframes up { from { transform:translateY(40px); opacity:.4; } to { transform:none; opacity:1; } }
+  @keyframes fade { from { opacity:0; } }
+  .info { display:flex; gap:10px; align-items:flex-start; background:var(--surface); border-radius:var(--r-m); padding:12px; font-size:.84em; font-weight:600; margin:var(--s3) 0; border:1px solid var(--line-soft); }
+  .info.warn { background:var(--fair-cont); border-color:var(--fair); }
+
+  /* Crop screen (full screen, like iOS photo editing) */
+  .crop { position:absolute; inset:0; z-index:30; background:#000; color:#fff; display:flex; flex-direction:column; }
+  .phone[data-theme='night'] .crop { color:var(--fg); }
+  .crop .ctop { display:flex; align-items:center; min-height:64px; padding:0 8px; font-weight:800; }
+  .crop .ctop b { flex:1; text-align:center; }
+  .crop .area { position:relative; flex:1; overflow:hidden; touch-action:none; cursor:grab; display:flex; align-items:center; justify-content:center; }
+  .crop canvas { display:block; }
+  .crop .mask { position:absolute; left:50%; top:50%; border-radius:50%; transform:translate(-50%,-50%); box-shadow:0 0 0 2000px rgba(0,0,0,.62); border:2px solid #fff; pointer-events:none; }
+  .phone[data-theme='night'] .crop .mask { border-color:var(--fg); box-shadow:0 0 0 2000px rgba(0,0,0,.85); }
+  .crop .tint { position:absolute; inset:0; pointer-events:none; }
+  .phone[data-theme='night'] .crop canvas { filter:grayscale(1) brightness(.75); }
+  .phone[data-theme='night'] .crop .tint { background:var(--fg); mix-blend-mode:multiply; }
+  .crop .ctl { padding:var(--s3) var(--s4) var(--s5); background:#000; }
+  .crop .zoom { display:grid; grid-template-columns:52px minmax(0,1fr) 52px; gap:10px; align-items:center; margin-bottom:var(--s3); }
+  .crop .zoom button { min-height:52px; border-radius:var(--r-m); border:2px solid #666; background:#111; color:inherit; font-size:1.3em; font-weight:900; }
+  .phone[data-theme='night'] .crop .zoom button { border-color:var(--line); background:#000; }
+  .crop input[type=range] { width:100%; height:44px; accent-color:#fff; }
+  .phone[data-theme='night'] .crop input[type=range] { accent-color:var(--fg); }
+  .crop .hint { text-align:center; font-size:.8em; font-weight:600; opacity:.85; margin:0 0 var(--s2); }
+  .crop .b.out { background:#000; color:inherit; border-color:#666; }
+  .crop .b.fill { background:#fff; color:#000; }
+  .phone[data-theme='night'] .crop .b.fill { background:#000; color:var(--fg); border-color:var(--fg); }
+
+  /* Snackbar */
+  .snack { position:absolute; left:var(--s3); right:var(--s3); bottom:96px; z-index:25; background:var(--fg); color:var(--bg); border-radius:var(--r-m); padding:8px 8px 8px 16px; display:flex; align-items:center; gap:8px; font-weight:700; font-size:.9em; min-height:56px; box-shadow:var(--shadow-2); animation:up var(--dur-2) var(--ease); }
+  .snack span { flex:1; min-width:0; }
+  .snack button { background:none; border:0; color:inherit; font-weight:900; text-decoration:underline; min-height:var(--hit); padding:0 10px; }
+  .phone[data-theme='night'] .snack { background:#000; color:var(--fg); border:2px solid var(--fg); }
+
+  /* Tokens screen */
+  .tk h4 { margin:var(--s5) 0 var(--s2); font-size:.95em; font-weight:800; }
+  .tk h4:first-child { margin-top:0; }
+  .swatches { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; }
+  .swatches div { border-radius:var(--r-s); padding:6px; min-height:56px; font-size:.68em; font-weight:700; border:1px solid var(--line-soft); overflow-wrap:anywhere; display:flex; align-items:flex-end; }
+  .ty div { margin:4px 0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ty span { font-size:12px; font-weight:600; color:var(--muted); margin-left:6px; font-family:var(--font); letter-spacing:0; }
+  .radii { display:flex; gap:8px; flex-wrap:wrap; }
+  .radii div { width:56px; height:56px; background:var(--accent-cont); border:2px solid var(--line); display:flex; align-items:flex-end; justify-content:center; font-size:.66em; font-weight:800; padding-bottom:3px; }
+  .spc { display:flex; gap:8px; align-items:flex-end; }
+  .spc div { background:var(--accent); width:14px; } .phone[data-theme='night'] .spc div { background:var(--fg); }
+  .bstack > * { margin-bottom:var(--s2); }
+
+  /* "Σημερινό" (current look) for comparison: approximates today's styles.css. */
+  .old { font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif; font-weight:400; }
+  .old .otop { display:flex; align-items:center; gap:6px; padding:8px; background:var(--accent); color:var(--accent-fg); min-height:60px; }
+  .phone[data-theme='night'] .old .otop { background:#000; color:var(--fg); border-bottom:2px solid var(--line); }
+  .old .otop b { flex:1; }
+  .old .osel { border:2px solid currentColor; border-radius:8px; min-height:44px; padding:0 10px; display:flex; align-items:center; font-weight:700; }
+  .old .ocard { background:var(--surface); border-radius:12px; padding:12px; margin-bottom:10px; }
+  .old .omode { display:grid; grid-template-columns:56px minmax(0,1fr) auto; gap:12px; align-items:center; min-height:96px; border:3px solid var(--line); border-radius:16px; padding:10px 12px; margin-bottom:10px; }
+  .old .omode .mi { width:56px; height:56px; border-radius:14px; background:var(--accent); color:var(--accent-fg); display:flex; align-items:center; justify-content:center; }
+  .phone[data-theme='night'] .old .omode .mi { background:#000; color:var(--fg); border:2px solid var(--fg); }
+  .old .omode b { display:block; font-size:1.3em; }
+  .old .onav { display:grid; grid-template-columns:repeat(var(--n,4),minmax(0,1fr)); background:var(--surface); border-top:2px solid var(--line); }
+  .old .onav div { min-height:60px; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:.74em; font-weight:600; color:var(--muted); }
+  .old .onav div.on { color:var(--fg); box-shadow:inset 0 3px 0 var(--accent); }
+  .old .otile { background:var(--surface); border-radius:14px; padding:6px 12px; display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; min-height:84px; margin-bottom:8px; gap:8px; }
+  .old .otile .v { font-size:2.8em; font-weight:900; font-variant-numeric:tabular-nums; }
+  .narrow.sz-xl .old .otile .v { font-size:2.1em; }
+  .old .orow { display:flex; justify-content:space-between; padding:8px 0; border-top:1px solid var(--line); gap:8px; }
+  .old .oav { width:48px; height:48px; border-radius:24px; border:2px solid var(--accent); color:var(--accent); display:flex; align-items:center; justify-content:center; font-weight:700; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .phone *, .phone *::after { animation:none !important; transition:none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="controls" id="controls"></div>
+<div class="page">
+  <div>
+    <div class="phones" id="phones"></div>
+  </div>
+  <aside class="notes" id="notes"></aside>
+</div>
+
+<script>
+/* ---------------- State ---------------- */
+const S = {
+  screen: 'home',      // tokens | home | live | profile
+  theme: 'day',        // day | dark | night | all
+  width: 375,          // 375 | 320
+  size: 'm',           // m | l | xl
+  ver: 'new',          // new | old
+  cond: 'ok',          // ok | offline | first | nogps | noinst
+  sheet: null,         // avatar | name | delete | signout
+  avTab: 'badge',      // badge | photo
+  crop: null,          // { img, scale, ox, oy, rot }
+  snack: null,
+  name: 'Ελένη Κ.',
+  email: 'eleni.k@example.com',
+  avatar: { kind: 'boat', color: 'sea', sailno: '1234' },
+  draft: null,
+  photo: null,         // data URL (compressed)
+  photoKB: 0,
+  unsynced: false,
+};
+
+const COLORS = [
+  ['navy', '#0b2a4a', 'Ναυτικό μπλε'], ['sea', '#0e7490', 'Θάλασσα'], ['stbd', '#047857', 'Πράσινο δεξιάς'], ['port', '#b91c1c', 'Κόκκινο αριστεράς'],
+  ['orange', '#c2410c', 'Πορτοκαλί σωσιβίου'], ['sun', '#a16207', 'Ώχρα'], ['violet', '#6d28d9', 'Μωβ'], ['slate', '#475467', 'Γκρι'],
+];
+const colorOf = (id) => (COLORS.find((c) => c[0] === id) || COLORS[0])[1];
+const colorName = (id) => (COLORS.find((c) => c[0] === id) || COLORS[0])[2];
+
+/* Sailing-themed avatar glyphs, 64×64, drawn in currentColor on the colour disc. */
+const GLYPHS = {
+  initials: ['Αρχικά', (a) => `<text x="32" y="43" text-anchor="middle" font-family="Inter,system-ui" font-weight="800" font-size="30" fill="currentColor">${S.name.trim().charAt(0).toUpperCase() || '?'}</text>`],
+  boat: ['Σκάφος', () => `<path d="M31 11v29H15z" fill="currentColor"/><path d="M34 15l14 25H34z" fill="currentColor" opacity=".8"/><path d="M11 43h42l-6 8H18z" fill="currentColor"/>`],
+  helmet: ['Κράνος', () => `<path d="M13 40c0-13 9-22 20-22s19 8 19 19v3z" fill="currentColor"/><path d="M27 40h25v5H27z" fill="currentColor" opacity=".75"/><path d="M18 40v6c0 3 3 5 6 5" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/>`],
+  sailno: ['Αριθμός πανιού', (a) => `<path d="M32 9v40H12z" fill="currentColor" opacity=".28"/><text x="32" y="41" text-anchor="middle" font-family="Inter,system-ui" font-weight="900" font-size="${(a.sailno || '').length > 3 ? 16 : 20}" fill="currentColor">${esc(a.sailno || '1234')}</text>`],
+  burgee: ['Επισείων', () => `<path d="M20 10v44" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/><path d="M22 13l29 9-29 9z" fill="currentColor"/>`],
+  spi: ['Μπαλόνι', () => `<path d="M32 9c17 3 22 20 13 35H19C10 29 15 12 32 9z" fill="currentColor"/><path d="M18 49h28l-4 5H22z" fill="currentColor" opacity=".8"/>`],
+  wheel: ['Τιμόνι', () => `<circle cx="32" cy="32" r="13" stroke="currentColor" stroke-width="4" fill="none"/><circle cx="32" cy="32" r="4" fill="currentColor"/>${[0,45,90,135,180,225,270,315].map((d)=>{const r=d*Math.PI/180;return `<line x1="${32+4*Math.cos(r)}" y1="${32+4*Math.sin(r)}" x2="${32+20*Math.cos(r)}" y2="${32+20*Math.sin(r)}" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/>`;}).join('')}`],
+  anchor: ['Άγκυρα', () => `<circle cx="32" cy="14" r="4.5" stroke="currentColor" stroke-width="3.5" fill="none"/><path d="M32 19v33M23 26h18M15 37c1 9 8 15 17 15s16-6 17-15" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round"/>`],
+  rose: ['Ανεμολόγιο', () => `<path d="M32 8l5 19 19 5-19 5-5 19-5-19-19-5 19-5z" fill="currentColor"/><circle cx="32" cy="32" r="3" fill="#000" opacity=".35"/>`],
+  buoy: ['Σημαδούρα', () => `<path d="M24 46l8-30 8 30z" fill="currentColor"/><path d="M26 34h12" stroke="#000" stroke-opacity=".3" stroke-width="4"/><path d="M12 50c4-3 8-3 12 0s8 3 12 0 8-3 12 0 4 2 4 2" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/>`],
+  flag: ['Σημαία Μ', () => `<rect x="14" y="16" width="36" height="28" rx="2" stroke="currentColor" stroke-width="3" fill="none"/><path d="M16 18l32 24M48 18L16 42" stroke="currentColor" stroke-width="6"/>`],
+  wave: ['Κύμα', () => `<path d="M8 30c6-8 12-8 18 0s12 8 18 0 10-7 12-4" stroke="currentColor" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M8 42c6-8 12-8 18 0s12 8 18 0 10-7 12-4" stroke="currentColor" stroke-width="5" fill="none" stroke-linecap="round" opacity=".6"/>`],
+};
+
+function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+function avatarHTML(px, a = S.avatar, usePhoto = true) {
+  if (usePhoto && S.photo) return `<span class="av photo" style="width:${px}px;height:${px}px"><img src="${S.photo}" alt=""></span>`;
+  const g = GLYPHS[a.kind] || GLYPHS.initials;
+  const fg = a.color === 'sun' ? '#fff' : '#fff';
+  return `<span class="av" style="width:${px}px;height:${px}px;background:${colorOf(a.color)};color:${fg}"><svg viewBox="0 0 64 64" aria-hidden="true">${g[1](a)}</svg></span>`;
+}
+
+/* ---------------- Icons ---------------- */
+const P = {
+  home: '<path d="M4 11l8-7 8 7v9h-5v-6H9v6H4z"/>',
+  history: '<path d="M4 12a8 8 0 1 0 3-6.2M4 4v4h4M12 8v4l3 2"/>',
+  boats: '<path d="M11 3v13H4zM13 6l6 10h-6zM3 18h18l-3 3H6z"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
+  live: '<path d="M3 12h4l3-7 4 14 3-7h4"/>',
+  map: '<path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2zM9 4v14M15 6v14"/>',
+  chat: '<path d="M4 5h16v11H9l-5 4z"/>',
+  flag: '<path d="M5 21V3"/><path d="M5 4h13l-3 4.5 3 4.5H5z" fill="currentColor"/>',
+  watch: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/>',
+  chev: '<path d="M9 5l7 7-7 7"/>',
+  back: '<path d="M15 5l-7 7 7 7"/>',
+  close: '<path d="M6 6l12 12M18 6L6 18"/>',
+  pen: '<path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"/>',
+  cam: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
+  img: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 17l5-5 4 4 3-3 6 6"/><circle cx="15.5" cy="8.5" r="1.5"/>',
+  trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
+  sync: '<path d="M4 12a8 8 0 0 1 14-5l2 2M20 12a8 8 0 0 1-14 5l-2-2M20 4v5h-5M4 20v-5h5"/>',
+  out: '<path d="M14 4h6v16h-6M10 8l-4 4 4 4M6 12h10"/>',
+  down: '<path d="M12 4v11M7 10l5 5 5-5M4 20h16"/>',
+  lock: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+  shield: '<path d="M12 3l8 3v6c0 5-4 8-8 9-4-1-8-4-8-9V6z"/>',
+  doc: '<path d="M6 3h8l4 4v14H6zM14 3v4h4M9 12h6M9 16h6"/>',
+  ai: '<path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/>',
+  rotate: '<path d="M20 12a8 8 0 1 1-3-6.2M20 4v4h-4"/>',
+  wifi: '<path d="M2 9a15 15 0 0 1 20 0M5 13a10 10 0 0 1 14 0M8.5 16.5a5 5 0 0 1 7 0M12 20h.01"/>',
+};
+const icon = (n, cls = 'ic') => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n]}</svg>`;
+
+/* ---------------- Data (fictional, Saronic) ---------------- */
+const BOATS = [
+  { name: 'Θέτις', sail: 'GRE 1234', role: 'own', label: 'Ιδιοκτήτης', more: '6 μέλη' },
+  { name: 'Αύρα του Σαρωνικού', sail: 'GRE 2207', role: 'crew', label: 'Μέλος', more: 'Τελευταία θέση: Τακτικός' },
+  { name: 'Ζέφυρος', sail: 'GRE 0915', role: 'guest', label: 'Καλεσμένος', more: '1 αγώνας · λήγει 22/11' },
+];
+const HIST = [
+  { k: 'flag', n: 'Πειραιάς – Αίγινα', s: 'Αγώνας · Σάβ 8/11 · 17,4 nm', m: '3η / 11' },
+  { k: 'watch', n: 'Ταχύτητα όρτσα · Φάληρο', s: 'Προπόνηση · Τετ 5/11 · 6 γύροι', m: '94%' },
+  { k: 'sun', n: 'Βόλτα Σαλαμίνα', s: 'Βόλτα · Κυρ 2/11 · 21,0 nm', m: '4:12' },
+];
+
+/* ---------------- Screens ---------------- */
+function navBar(items, on) {
+  return `<nav class="nav" style="--n:${items.length}" aria-label="Κύρια πλοήγηση">${items.map(([id, l, ic]) => `<button class="${id === on ? 'on' : ''}" data-act="nav" data-v="${id}" ${id === on ? 'aria-current="page"' : ''}><span class="pill">${icon(ic)}</span><span class="l">${l}</span></button>`).join('')}</nav>`;
+}
+const NAV_OUT = [['home', 'Αρχική', 'home'], ['history', 'Ιστορικό', 'history'], ['boats', 'Σκάφη', 'boats'], ['settings', 'Ρυθμίσεις', 'gear']];
+const NAV_IN = [['live', 'Live', 'live'], ['map', 'Χάρτης', 'map'], ['chat', 'Σύμβουλος', 'chat']];
+
+function strip() {
+  if (S.cond === 'offline') return `<div class="strip" role="status"><span class="d"></span><span>Χωρίς ίντερνετ. Όλα δουλεύουν, ο συγχρονισμός περιμένει.</span></div>`;
+  return '';
+}
+
+function topBar() {
+  const first = S.cond === 'first';
+  return `<header class="top">
+    <button class="boatchip" data-act="noop" aria-label="Ενεργό σκάφος: ${first ? 'κανένα' : 'Θέτις'}. Αλλαγή">${icon('boats')}<span>${first ? 'Χωρίς σκάφος' : 'Θέτις'}</span>${icon('chev', 'ic')}</button>
+    <button class="avbtn" data-act="go" data-v="profile" aria-label="Προφίλ: ${esc(S.name)}${S.cond === 'offline' ? ', χωρίς ίντερνετ' : ''}">${avatarHTML(44)}<span class="dot ${S.cond === 'offline' ? 'off' : ''}" aria-hidden="true"></span></button>
+  </header>`;
+}
+
+function homeNew() {
+  const first = S.cond === 'first';
+  const h = new Date().getHours();
+  const hi = h < 12 ? 'Καλημέρα' : h < 19 ? 'Καλησπέρα' : 'Καλό βράδυ';
+  return `${topBar()}${strip()}
+  <main class="scr">
+    <div class="hello">${hi}, ${esc(S.name.split(' ')[0])}</div>
+    ${first ? `<div class="c"><b>Πρόσθεσε το σκάφος σου</b><div class="cap2" style="margin:2px 0 10px">Από το πιστοποιητικό ORC (PDF). Η Βόλτα δουλεύει και χωρίς.</div><button class="b fill main wide" data-act="noop">${icon('boats')} Προσθήκη σκάφους</button></div>` : ''}
+    <button class="mode race ${first ? 'need' : ''}" data-act="go" data-v="live"><span class="mi">${icon('flag', 'ic big')}</span><span><b>Αγώνας</b><span class="d">${first ? 'Θέλει σκάφος' : 'Διαδρομή, εκκίνηση, αντίπαλοι'}</span></span>${icon('chev', 'go')}</button>
+    <button class="mode" data-act="go" data-v="live"><span class="mi">${icon('watch')}</span><span><b>Προπόνηση</b><span class="d">Γύροι, μανούβρες, % στόχου</span></span>${icon('chev', 'go')}</button>
+    <button class="mode" data-act="go" data-v="live"><span class="mi">${icon('sun')}</span><span><b>Βόλτα</b><span class="d">Προορισμός, ETA, βάθος</span></span>${icon('chev', 'go')}</button>
+    <button class="quick" data-act="noop">${icon('live')}<span>Γρήγορη ματιά<span class="d">Άνεμος και όργανα, χωρίς καταγραφή</span></span></button>
+    ${first ? '' : `
+    <div class="sec"><h3>Επόμενος αγώνας</h3></div>
+    <div class="c next">
+      <div><b>Χειμερινό Σαρωνικού · 3η</b><div class="cap2">Σάβ 15/11 · 11:00 · Φάληρο → Αίγινα</div>
+        <div class="chiprow"><span class="schip good">✓ Διαδρομή</span><span class="schip fair">! Λείπει τιμονιέρης</span></div></div>
+      <div class="cd num"><b>1</b><span>ΜΕΡΑ</span></div>
+    </div>`}
+    <div class="sec"><h3>Οι έξοδοί μου</h3>${first ? '' : '<button class="lnk" data-act="noop">Όλες</button>'}</div>
+    ${first ? `<div class="c empty"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M31 10v30H15zM34 15l14 25H34zM10 44h44l-6 8H17z"/><path d="M6 58c5-3 10-3 15 0s10 3 15 0 10-3 15 0 7 2 7 2"/></svg><b>Ακόμα καμία έξοδος</b><p>Μετά την πρώτη, εδώ βλέπεις μίλια, χρόνο και σύνοψη.</p></div>` :
+      `<div class="c flat" style="padding:4px 12px">${HIST.map((x) => `<button class="hc" data-act="noop"><span class="hi">${icon(x.k)}</span><span style="min-width:0"><b>${x.n}</b><span class="s">${x.s}</span></span><span class="m num">${x.m}</span></button>`).join('')}</div>`}
+  </main>${navBar(NAV_OUT, 'home')}`;
+}
+
+function liveNew() {
+  const nogps = S.cond === 'nogps', noinst = S.cond === 'noinst', off = S.cond === 'offline';
+  const alertStrip = nogps ? `<div class="strip bad" role="alert"><span class="d"></span><span>Χωρίς GPS εδώ και 40″. Οι τιμές είναι οι τελευταίες.</span></div>`
+    : noinst ? `<div class="strip" role="status"><span class="d"></span><span>Χωρίς όργανα. Άνεμος από το χέρι (TWS 14, TWD 210°).</span></div>`
+    : off ? `<div class="strip" role="status"><span class="d"></span><span>Χωρίς ίντερνετ. Η έξοδος γράφεται κανονικά.</span></div>` : '';
+  const st = nogps ? 'stale' : '';
+  return `<header class="sbar">
+    <div class="mode2"><b><span class="rec" aria-hidden="true"></span>ΑΓΩΝΑΣ</b><span class="clk num" data-k="clock">01:12:40</span><span class="s">Σκέλος 2/5 · → Αίγινα</span></div>
+    <button class="sb" data-act="noop" aria-label="Γρήγορες ρυθμίσεις">${icon('gear')}</button>
+    <button class="sb endb" data-act="noop" style="min-width:88px">■ Τέλος</button>
+  </header>${alertStrip}
+  <main class="scr" style="padding-top:var(--s2)">
+    <div class="band warn" role="status"><div class="big">Layline σε 2′</div><div class="sub">Αναστροφή σε δεξιές · μετά 2,1 nm ως τη σημαδούρα</div></div>
+    <div class="t hero ${st}"><div class="lab"><span>Ταχύτητα</span><span class="ab">BSP · kn</span></div>
+      <div class="val num" data-k="bsp">6,8</div>
+      <div class="bar" aria-hidden="true"><i data-k="pctbar" style="width:96%"></i></div>
+      <div class="sub good"><span data-k="pct">96%</span> του στόχου 7,1 ${noinst ? '· από GPS (SOG)' : ''}</div></div>
+    <div class="g2">
+      <div class="t tws ${st}"><div class="lab"><span>Άνεμος</span><span class="ab">TWA</span></div><div class="val num stbd" data-k="twa">42°</div><div class="sub">Όρτσα · δεξιές</div></div>
+      <div class="t ${st}"><div class="lab"><span>Επόμενη</span><span class="ab">μανούβρα</span></div><div class="val num" style="font-size:2.1em">9′</div><div class="sub">Αναστροφή · 1,2 nm</div></div>
+    </div>
+    <div class="g3">
+      <div class="t ${st}"><div class="lab"><span>TWS</span></div><div class="val num" data-k="tws">14<small>kn</small></div></div>
+      <div class="t ${st}"><div class="lab"><span>Πλώρη</span></div><div class="val num" data-k="hdg">205°</div></div>
+      <div class="t ${st}"><div class="lab"><span>Σημαδούρα</span></div><div class="val num">3,3<small>nm</small></div></div>
+    </div>
+  </main>${navBar(NAV_IN, 'live')}`;
+}
+
+function profileNew() {
+  const first = S.cond === 'first', off = S.cond === 'offline';
+  return `<header class="top"><button class="iconbtn" data-act="go" data-v="home" aria-label="Πίσω">${icon('back')}</button><span class="ttl">Προφίλ</span></header>${strip()}
+  <main class="scr">
+    <section class="c ph">
+      <div class="avwrap">${avatarHTML(112)}<button class="edit" data-act="sheet" data-v="avatar" aria-label="Αλλαγή εικόνας προφίλ">${icon(S.photo ? 'cam' : 'pen')}</button></div>
+      <div class="nm">${esc(S.name)}</div>
+      <button class="b text" data-act="sheet" data-v="name">${icon('pen')} Αλλαγή ονόματος</button>
+      <div class="em">${esc(S.email)}</div>
+      <div class="priv">${icon('lock')}<span>Το email σου το βλέπεις μόνο εσύ. Το πλήρωμα βλέπει το όνομα και την εικόνα σου.</span></div>
+    </section>
+
+    <div class="sec"><h3>Στο νερό</h3><span class="cap2">από αυτή τη συσκευή</span></div>
+    ${first ? `<div class="c empty"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="32" cy="32" r="22"/><path d="M32 14l5 18-5 18-5-18z"/></svg><b>Ακόμα καμία έξοδος</b><p>Τα νούμερα γεμίζουν μόλις τελειώσει η πρώτη σου έξοδος.</p><button class="b fill main wide" data-act="go" data-v="home">Νέα έξοδος</button></div>` :
+      `<div class="stats">
+        <div><b class="num">23</b><span>Έξοδοι</span></div>
+        <div><b class="num">312<small> nm</small></b><span>Μίλια</span></div>
+        <div><b class="num">9</b><span>Αγώνες</span></div>
+        <div><b class="num">61<small> ώρ.</small></b><span>Στο νερό</span></div>
+      </div>
+      <p class="cap2" style="margin:8px 2px 0">Φέτος: 18 έξοδοι · 248 nm · καλύτερη θέση 2η</p>`}
+
+    <div class="sec"><h3>Σκάφη και πληρώματα</h3></div>
+    ${first ? `<div class="c empty" style="padding:16px"><b>Δεν είσαι ακόμα σε σκάφος</b><p>Πρόσθεσε το δικό σου ή άνοιξε τον σύνδεσμο πρόσκλησης που σου έστειλαν.</p><button class="b tonal main wide" data-act="noop">Προσθήκη σκάφους</button></div>` :
+      `<div class="list">${BOATS.map((b) => `<button class="rowb" data-act="noop"><span class="bi">${icon('boats')}</span><span style="min-width:0"><b>${b.name}</b><span class="s">${b.sail} · ${b.more}</span><span class="role ${b.role}">${b.label}</span></span>${icon('chev', 'chev')}</button>`).join('')}</div>`}
+
+    <div class="sec"><h3>Λογαριασμός</h3></div>
+    <div class="list">
+      <button class="rowb" data-act="noop" ${off ? 'disabled' : ''}><span class="bi">${icon('sync')}</span><span><b>Συγχρονισμός</b><span class="s">${off ? 'Περιμένει ίντερνετ' : S.unsynced ? '2 αλλαγές περιμένουν' : 'OK · 14:32'}</span></span><span class="v">${off ? '' : 'Τώρα'}</span></button>
+      <div class="rowb" style="cursor:default"><span class="bi">${icon('ai')}</span><span><b>Σύμβουλος AI</b><span class="s">ερωτήσεις αυτόν τον μήνα</span></span><span class="v num">12 / 100</span></div>
+      <button class="rowb" data-act="noop"><span class="bi">${icon('lock')}</span><span><b>Αλλαγή κωδικού</b></span>${icon('chev', 'chev')}</button>
+    </div>
+
+    <div class="sec"><h3>Τα δεδομένα μου</h3></div>
+    <div class="list">
+      <button class="rowb" data-act="noop" ${off ? 'disabled' : ''}><span class="bi">${icon('down')}</span><span><b>Κατέβασε τα δεδομένα μου</b><span class="s">${off ? 'Θέλει ίντερνετ' : 'Όλα σε ένα αρχείο JSON'}</span></span>${icon('chev', 'chev')}</button>
+      <button class="rowb" data-act="noop"><span class="bi">${icon('doc')}</span><span><b>Όροι χρήσης</b><span class="s">αποδεκτοί 02/11/2026</span></span>${icon('chev', 'chev')}</button>
+      <button class="rowb" data-act="noop"><span class="bi">${icon('shield')}</span><span><b>Πολιτική απορρήτου</b></span>${icon('chev', 'chev')}</button>
+    </div>
+
+    <div style="margin-top:var(--s5)" class="bstack">
+      <button class="b out main wide" data-act="sheet" data-v="signout">${icon('out')} Αποσύνδεση</button>
+      <button class="b text wide" style="color:var(--bad)" data-act="sheet" data-v="delete">Διαγραφή λογαριασμού</button>
+    </div>
+  </main>`;
+}
+
+function tokensScreen() {
+  const sw = (v, label, fgv) => `<div style="background:var(${v});color:var(${fgv || '--fg'})">${label}</div>`;
+  return `<header class="top"><span class="ttl">Design tokens</span></header>
+  <main class="scr tk">
+    <h4>Χρώματα</h4>
+    <div class="swatches">
+      ${sw('--bg', '--bg')}${sw('--surface', '--surface')}${sw('--surface-2', '--surface-2')}
+      ${sw('--accent', '--accent', '--accent-fg')}${sw('--accent-cont', '--accent-cont', '--on-accent-cont')}${sw('--line', '--line', '--bg')}
+      ${sw('--good', '--good', '--bg')}${sw('--fair', '--fair', '--bg')}${sw('--bad', '--bad', '--bg')}
+      ${sw('--good-cont', '--good-cont')}${sw('--fair-cont', '--fair-cont')}${sw('--bad-cont', '--bad-cont')}
+    </div>
+    <h4>Τυπογραφία · Inter (ελληνικά), αριθμοί tabular</h4>
+    <div class="ty">
+      <div class="num" style="font-size:4.4em;font-weight:900;line-height:1">6,8<span>display · 4,4em/900</span></div>
+      <div class="num" style="font-size:2.6em;font-weight:900">42°<span>tile · 2,6em/900</span></div>
+      <div style="font-size:1.45em;font-weight:800">Καλημέρα<span>τίτλος · 1,45em/800</span></div>
+      <div style="font-size:1.05em;font-weight:800">Οι έξοδοί μου<span>ενότητα · 1,05em/800</span></div>
+      <div style="font-weight:500">Κείμενο σώματος<span>1em/500</span></div>
+      <div class="cap2">Λεζάντα, ποτέ κάτω από 13 px<span>0,8em/600</span></div>
+    </div>
+    <h4>Απόσταση (4 · 8 · 12 · 16 · 24 · 32)</h4>
+    <div class="spc">${[4, 8, 12, 16, 24, 32].map((h) => `<div style="height:${h}px"></div>`).join('')}</div>
+    <h4>Γωνίες</h4>
+    <div class="radii"><div style="border-radius:10px">10</div><div style="border-radius:14px">14</div><div style="border-radius:20px">20</div><div style="border-radius:28px 28px 0 0">28</div><div style="border-radius:999px">pill</div></div>
+    <h4>Κουμπιά (56 κύρια · 48 τα άλλα)</h4>
+    <div class="bstack">
+      <button class="b fill main wide">Ξεκίνα αγώνα</button>
+      <div class="brow"><button class="b tonal">Τονικό</button><button class="b out">Περίγραμμα</button></div>
+      <div class="brow"><button class="b danger">Διαγραφή</button><button class="b text">Κείμενο</button></div>
+      <button class="b fill wide" disabled>Ανενεργό</button>
+    </div>
+    <h4>Επιλογή (segmented)</h4>
+    <div class="seg" role="radiogroup" aria-label="Παράδειγμα"><button class="on" role="radio" aria-checked="true">Σήμα</button><button role="radio" aria-checked="false">Φωτογραφία</button></div>
+    <h4>Πεδίο</h4>
+    <label class="fl">Όνομα σκάφους<input value="Θέτις"><span class="help">Όπως στο πιστοποιητικό ORC</span></label>
+    <label class="fl err">Αριθμός πανιού<input value="GRE"><span class="help">! Λείπει ο αριθμός, π.χ. GRE 1234</span></label>
+    <button class="toggle on" data-act="tgl"><span class="tx">Μπιπ στις ειδοποιήσεις<span class="cap2" style="display:block">Και φωνή, αν θες</span></span><span class="knob" aria-hidden="true"></span></button>
+    <h4>Κάρτες και ενδείξεις</h4>
+    <div class="c"><b>Κάρτα</b><div class="cap2">επιφάνεια + λεπτό περίγραμμα· σκιά μόνο στη Μέρα</div><div class="chiprow"><span class="schip good">✓ Διαδρομή</span><span class="schip fair">! Λείπει τιμονιέρης</span></div></div>
+    <div class="t"><div class="lab"><span>Ταχύτητα</span><span class="ab">BSP · kn</span></div><div class="val num">6,8</div><div class="sub good">96% του στόχου</div></div>
+    <h4>Σήματα προφίλ</h4>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">${Object.keys(GLYPHS).map((k, i) => avatarHTML(48, { kind: k, color: COLORS[i % 8][0], sailno: '1234' }, false)).join('')}</div>
+  </main>`;
+}
+
+/* ---------- Current look (approximation of today's app) ---------- */
+function homeOld() {
+  return `<div class="old" style="display:flex;flex-direction:column;height:100%">
+    <div class="otop"><span style="width:40px"></span><b>Νέα έξοδος</b><span class="osel">Θέτις ▾</span><span style="font-weight:700">⛵</span></div>${strip()}
+    <main class="scr" style="padding:10px 12px">
+      <div style="font-size:1.35em;font-weight:900;margin:4px 2px 10px">Τι κάνουμε σήμερα;</div>
+      ${[['flag', 'Αγώνας'], ['watch', 'Προπόνηση'], ['sun', 'Βόλτα']].map(([i, l]) => `<div class="omode"><span class="mi">${icon(i)}</span><span><b>${l}</b></span><b>›</b></div>`).join('')}
+      <div class="ocard"><b>Επόμενος αγώνας</b><div class="muted" style="font-size:.85em">Σάβ 15/11 · 11:00</div></div>
+      <div class="ocard"><b>Οι έξοδοί μου</b>${HIST.map((x) => `<div class="orow"><span>${x.n}</span><b>${x.m}</b></div>`).join('')}</div>
+    </main>
+    <div class="onav" style="--n:4">${NAV_OUT.map(([id, l, ic], i) => `<div class="${i ? '' : 'on'}">${icon(ic)}${l}</div>`).join('')}</div></div>`;
+}
+function liveOld() {
+  return `<div class="old" style="display:flex;flex-direction:column;height:100%">
+    <div class="sbar"><div class="mode2"><b><span class="rec"></span>ΑΓΩΝΑΣ</b><span class="clk num">01:12:40</span></div><span class="sb">⚙</span><span class="sb">■ Τέλος</span></div>
+    <main class="scr" style="padding:10px 12px">
+      <div class="band warn"><div class="big">Layline σε 2′</div></div>
+      ${[['Ταχύτητα', 'BSP · στόχος 7,1', '6,8'], ['Γωνία ανέμου', 'TWA', '42°'], ['Επόμενη μανούβρα', 'σε 1,2 nm', '9′']].map(([a, b, v]) => `<div class="otile"><span><b>${a}</b><br><span class="muted" style="font-size:.8em">${b}</span></span><span class="v">${v}</span></div>`).join('')}
+    </main>
+    <div class="onav" style="--n:3">${NAV_IN.map(([id, l, ic], i) => `<div class="${i ? '' : 'on'}">${icon(ic)}${l}</div>`).join('')}</div></div>`;
+}
+function profileOld() {
+  return `<div class="old" style="display:flex;flex-direction:column;height:100%">
+    <div class="otop"><span style="width:40px"></span><b>Ρυθμίσεις</b></div>
+    <main class="scr" style="padding:10px 12px">
+      <p class="muted" style="font-size:.85em;margin:0 0 8px">Σήμερα ο λογαριασμός είναι μια κάρτα μέσα στις Ρυθμίσεις, κάτω από θέμα, μέγεθος κ.ά.</p>
+      <div class="ocard"><div style="display:flex;gap:10px;align-items:center"><span class="oav">${esc(S.name.charAt(0))}</span><div><b>${esc(S.name)}</b><div class="muted" style="font-size:.85em">${esc(S.email)}</div></div></div>
+        <div class="orow"><span>Συγχρονισμός</span><span>OK · 14:32</span></div><div class="orow"><span>Σύμβουλος AI</span><b>12 / 100</b></div>
+        <h4 style="margin:10px 0 0">Ασφάλεια</h4><div class="orow"><span>Αλλαγή κωδικού</span>›</div><div class="orow"><span>Αποσύνδεση</span>›</div>
+        <h4 style="margin:10px 0 0">Τα δεδομένα μου</h4><div class="orow"><span>Κατέβασε τα δεδομένα μου</span>›</div><div class="orow" style="color:var(--bad)"><span>Διαγραφή λογαριασμού</span>›</div></div>
+      <p class="muted" style="font-size:.85em">Λείπουν: σκάφη/πληρώματα με ρόλο, στατιστικά, αλλαγή ονόματος, εικόνα.</p>
+    </main>
+    <div class="onav" style="--n:4">${NAV_OUT.map(([id, l, ic], i) => `<div class="${i === 3 ? 'on' : ''}">${icon(ic)}${l}</div>`).join('')}</div></div>`;
+}
+
+/* ---------------- Sheets ---------------- */
+function sheetHTML() {
+  if (!S.sheet || S.screen !== 'profile' || S.ver === 'old') return '';
+  const off = S.cond === 'offline';
+  const head = (t) => `<div class="hdl" aria-hidden="true"><i></i></div><div class="sh"><h3 id="shT">${t}</h3><button class="iconbtn" data-act="close" aria-label="Κλείσιμο">${icon('close')}</button></div>`;
+  let body = '';
+  if (S.sheet === 'avatar') {
+    const d = S.draft;
+    body = `${head('Εικόνα προφίλ')}
+      <div style="text-align:center;margin-bottom:12px">${S.avTab === 'photo' && S.photo ? avatarHTML(96) : avatarHTML(96, d, false)}</div>
+      <div class="seg" role="radiogroup" aria-label="Τύπος εικόνας"><button class="${S.avTab === 'badge' ? 'on' : ''}" role="radio" aria-checked="${S.avTab === 'badge'}" data-act="avtab" data-v="badge">Σήμα</button><button class="${S.avTab === 'photo' ? 'on' : ''}" role="radio" aria-checked="${S.avTab === 'photo'}" data-act="avtab" data-v="photo">Φωτογραφία</button></div>`;
+    if (S.avTab === 'badge') {
+      body += `<div class="avgrid" role="radiogroup" aria-label="Σήμα">${Object.entries(GLYPHS).map(([k, g]) => `<button class="avopt ${d.kind === k ? 'on' : ''}" role="radio" aria-checked="${d.kind === k}" aria-label="${g[0]}" data-act="pickg" data-v="${k}">${avatarHTML(64, { ...d, kind: k }, false)}</button>`).join('')}</div>
+        ${d.kind === 'sailno' ? `<label class="fl">Αριθμός πανιού (έως 5)<input inputmode="numeric" maxlength="5" value="${esc(d.sailno)}" data-in="sailno"></label>` : ''}
+        <div class="flab" style="font-weight:800;font-size:.9em">Χρώμα</div>
+        <div class="colors" role="radiogroup" aria-label="Χρώμα">${COLORS.map(([id, hex, nm]) => `<button class="sw ${d.color === id ? 'on' : ''}" style="background:${hex}" role="radio" aria-checked="${d.color === id}" aria-label="${nm}" data-act="pickc" data-v="${id}">${d.color === id ? '✓' : ''}</button>`).join('')}</div>
+        ${S.photo ? `<div class="info warn">${icon('img')}<span>Έχεις φωτογραφία. Αν αποθηκεύσεις σήμα, η φωτογραφία σβήνεται.</span></div>` : ''}
+        <div class="foot brow"><button class="b out" data-act="close">Άκυρο</button><button class="b fill" data-act="savebadge">Αποθήκευση</button></div>`;
+    } else {
+      body += S.photo ? `
+        <div class="info">${icon('shield')}<span>Φωτογραφία ${S.photoKB} KB, 256×256. Τη βλέπουν μόνο εσύ και τα πληρώματα όπου είσαι μέλος.</span></div>
+        <div class="bstack"><button class="b tonal main wide" data-act="pickfile">${icon('img')} Άλλαξε φωτογραφία</button>
+        <button class="b danger main wide" data-act="rmphoto">${icon('trash')} Αφαίρεση φωτογραφίας</button></div>
+        <p class="cap2">Μετά την αφαίρεση δείχνει το σήμα σου (${GLYPHS[S.avatar.kind][0]}, ${colorName(S.avatar.color)}).</p>` : `
+        <div class="bstack" style="margin-top:12px"><button class="b fill main wide" data-act="pickfile">${icon('img')} Από τη συσκευή</button>
+        <button class="b tonal main wide" data-act="pickcam">${icon('cam')} Κάμερα</button>
+        <button class="b out wide" data-act="sample">Δοκιμαστική εικόνα (μόνο στο πρωτότυπο)</button></div>
+        <div class="info">${icon('shield')}<span><b>Ποιος τη βλέπει:</b> μόνο εσύ και τα πληρώματα όπου είσαι μέλος (και οι καλεσμένοι όσο ισχύει η πρόσκληση).<br><b>Στη συσκευή:</b> κόβεται σε κύκλο, μικραίνει σε 256×256 (~20 KB) και σβήνονται τα στοιχεία τοποθεσίας της φωτογραφίας πριν ανέβει.</span></div>
+        ${off ? `<div class="info warn">${icon('wifi')}<span>Χωρίς ίντερνετ: η φωτογραφία φαίνεται εδώ αμέσως και ανεβαίνει όταν βρεθεί σήμα.</span></div>` : ''}`;
+    }
+  } else if (S.sheet === 'name') {
+    body = `${head('Αλλαγή ονόματος')}
+      <label class="fl" id="nmf">Όνομα που βλέπει το πλήρωμα<input maxlength="40" value="${esc(S.name)}" data-in="name" autocomplete="name"><span class="help">2 έως 40 χαρακτήρες. Μπαίνει και στις λίστες πληρώματος.</span></label>
+      ${off ? `<div class="info warn">${icon('wifi')}<span>Χρειάζεται ίντερνετ. Δοκίμασε όταν βρεθεί σήμα.</span></div>` : ''}
+      <div class="foot brow"><button class="b out" data-act="close">Άκυρο</button><button class="b fill" data-act="savename" ${off ? 'disabled' : ''}>Αποθήκευση</button></div>`;
+  } else if (S.sheet === 'signout') {
+    body = `${head('Αποσύνδεση;')}
+      ${S.unsynced || off ? `<div class="info warn">${icon('sync')}<span>2 αλλαγές δεν έχουν ανέβει ακόμα. Αν αποσυνδεθείς τώρα, μένουν μόνο σε αυτή τη συσκευή.</span></div>` : ''}
+      <p style="margin:0 0 8px">Τα σκάφη, οι διαδρομές και οι έξοδοι μένουν σε αυτή τη συσκευή. Ξανασυνδέεσαι με το email σου.</p>
+      <div class="foot brow"><button class="b out" data-act="close">Άκυρο</button><button class="b fill" data-act="close">Αποσύνδεση</button></div>`;
+  } else if (S.sheet === 'delete') {
+    body = `${head('Διαγραφή λογαριασμού')}
+      <p style="margin:0 0 8px">Σβήνονται οριστικά από τον server ο λογαριασμός, τα σκάφη, οι διαδρομές, η εικόνα σου και η συμμετοχή σου στα πληρώματα. <b>Δεν αναιρείται.</b></p>
+      <p class="cap2" style="margin:0 0 8px">Τα δεδομένα σε αυτή τη συσκευή μένουν.</p>
+      <button class="b tonal wide" data-act="noop" ${off ? 'disabled' : ''}>${icon('down')} Κατέβασε πρώτα τα δεδομένα μου</button>
+      ${off ? `<div class="info warn">${icon('wifi')}<span>Η διαγραφή θέλει ίντερνετ.</span></div>` : ''}
+      <div class="foot brow"><button class="b out" data-act="close">Άκυρο</button><button class="b dangerfill" data-act="close" ${off ? 'disabled' : ''}>Οριστική διαγραφή</button></div>`;
+  }
+  return `<div class="scrim" data-act="scrim"><section class="sheet" role="dialog" aria-modal="true" aria-labelledby="shT">${body}</section></div>`;
+}
+
+function cropHTML(idx) {
+  if (!S.crop || S.screen !== 'profile') return '';
+  return `<div class="crop" role="dialog" aria-modal="true" aria-label="Κόψιμο φωτογραφίας">
+    <div class="ctop"><button class="iconbtn" data-act="cropcancel" aria-label="Άκυρο">${icon('close')}</button><b>Κόψιμο</b><button class="iconbtn" data-act="rot" aria-label="Περιστροφή 90 μοίρες">${icon('rotate')}</button></div>
+    <div class="area" data-crop="${idx}"><canvas width="300" height="300" data-cv="${idx}"></canvas><div class="tint"></div><div class="mask" style="width:240px;height:240px"></div></div>
+    <div class="ctl">
+      <p class="hint">Σύρε για να μετακινήσεις. Μεγέθυνση με τα κουμπιά.</p>
+      <div class="zoom"><button data-act="zoom" data-v="-1" aria-label="Σμίκρυνση">−</button><input type="range" min="1" max="3" step="0.05" value="${S.crop.scale}" data-in="zoom" aria-label="Μεγέθυνση"><button data-act="zoom" data-v="1" aria-label="Μεγέθυνση">+</button></div>
+      <div class="brow"><button class="b out main" data-act="cropcancel">Άκυρο</button><button class="b fill main" data-act="cropok">${S.crop.busy ? 'Συμπίεση…' : 'Χρήση'}</button></div>
+    </div></div>`;
+}
+
+function snackHTML() {
+  if (!S.snack) return '';
+  return `<div class="snack" role="status" style="bottom:${S.screen === 'profile' ? 24 : 96}px"><span>${S.snack.t}</span>${S.snack.undo ? '<button data-act="undo">Αναίρεση</button>' : ''}</div>`;
+}
+
+/* ---------------- Render ---------------- */
+function screenHTML() {
+  const old = S.ver === 'old';
+  if (S.screen === 'tokens') return tokensScreen();
+  if (S.screen === 'home') return old ? homeOld() : homeNew();
+  if (S.screen === 'live') return old ? liveOld() : liveNew();
+  return old ? profileOld() : profileNew();
+}
+
+function phone(theme, idx) {
+  const cls = `phone sz-${S.size} ${S.width === 320 ? 'narrow' : ''}`;
+  return `<div><div class="${cls}" data-theme="${theme}" style="--pw:${S.width + 20}px" data-idx="${idx}">${screenHTML()}${sheetHTML()}${idx === 0 ? cropHTML(idx) : ''}${snackHTML()}</div>
+    <p class="cap">${{ day: 'Μέρα', dark: 'Σούρουπο', night: 'Νύχτα' }[theme]} · ${S.width} px · ${{ m: 'Κανονικά', l: 'Μεγάλα', xl: 'Πολύ μεγάλα' }[S.size]}</p></div>`;
+}
+
+function render() {
+  const keep = [...document.querySelectorAll('.scr')].map((e) => e.scrollTop);
+  const themes = S.theme === 'all' ? ['day', 'dark', 'night'] : [S.theme];
+  document.getElementById('phones').innerHTML = themes.map((t, i) => phone(t, i)).join('');
+  document.querySelectorAll('.scr').forEach((e, i) => (e.scrollTop = keep[i] || 0));
+  renderControls();
+  renderNotes();
+  if (S.crop) drawCrop();
+}
+
+const CTRL = [
+  ['screen', 'Οθόνη', [['tokens', 'Tokens'], ['home', 'Αρχική'], ['live', 'Live'], ['profile', 'Προφίλ']]],
+  ['theme', 'Θέμα', [['day', 'Μέρα'], ['dark', 'Σούρουπο'], ['night', 'Νύχτα'], ['all', 'Και τα 3']]],
+  ['width', 'Πλάτος', [[375, '375'], [320, '320']]],
+  ['size', 'Γράμματα', [['m', 'Κανονικά'], ['l', 'Μεγάλα'], ['xl', 'Πολύ μεγάλα']]],
+  ['ver', 'Έκδοση', [['old', 'Σημερινό'], ['new', 'Νέο']]],
+  ['cond', 'Κατάσταση', [['ok', 'Κανονικά'], ['offline', 'Χωρίς ίντερνετ'], ['first', 'Πρώτη χρήση'], ['nogps', 'Χωρίς GPS'], ['noinst', 'Χωρίς όργανα']]],
+];
+function renderControls() {
+  document.getElementById('controls').innerHTML = CTRL.map(([k, l, opts]) => `<div class="grp"><label>${l}</label><div class="pick">${opts.map(([v, t]) => `<button class="${S[k] == v ? 'on' : ''}" data-ctl="${k}" data-v="${v}">${t}</button>`).join('')}</div></div>`).join('');
+}
+
+/* ---------------- Notes ---------------- */
+function renderNotes() {
+  document.getElementById('notes').innerHTML = `
+  <h2>Ανανέωση εμφάνισης + Προφίλ</h2>
+  <p class="small">P-049 / P-050 · πρωτότυπο, όχι αλλαγή στο <code>src/</code>. Φανταστικά δεδομένα. Η έρευνα με τις πηγές είναι στο <code>RESEARCH.md</code>.</p>
+  <h3>Τι αλλάζει</h3>
+  <ul>
+    <li><span class="tag">νέο</span><b>Tokens</b>: επιφάνειες σε 2 επίπεδα (<code>--surface</code>, <code>--surface-2</code>), «τονικό» χρώμα (<code>--accent-cont</code>), λεπτά περιγράμματα αντί για παχιά, γωνίες 14/20/28, κλίμακα απόστασης 4-8-12-16-24-32, σκιά μόνο στη Μέρα.</li>
+    <li><span class="tag">νέο</span><b>Γραμματοσειρά Inter</b> (έχει ελληνικά, αριθμούς ίδιου πλάτους). Σώμα 500, νούμερα 900. Στην εφαρμογή μπαίνει τοπικά στο cache, όχι από Google.</li>
+    <li><span class="tag">νέο</span><b>Πάνω μπάρα ανοιχτή</b> με τσιπ σκάφους αριστερά και <b>avatar δεξιά</b> (52 px) με τελεία συγχρονισμού. Η σκούρα μπάρα μένει μόνο μέσα στην έξοδο, ώστε να ξεχωρίζει αμέσως «γράφω».</li>
+    <li><span class="tag">νέο</span><b>Κάτω πλοήγηση</b> με «χάπι» στο ενεργό εικονίδιο (M3), 64 px ύψος.</li>
+    <li><span class="tag">νέο</span><b>Live</b>: ένα μεγάλο νούμερο (BSP με μπάρα % στόχου), δύο μεσαία, τρία μικρά. Λωρίδα κατάστασης εμφανίζεται <i>μόνο</i> όταν κάτι λείπει.</li>
+    <li><span class="tag">νέο</span><b>Προφίλ</b>: ξεχωριστή σελίδα από το avatar· στατιστικά, σκάφη/πληρώματα με ρόλο, αλλαγή ονόματος, εικόνα (σήμα ή φωτογραφία).</li>
+  </ul>
+  <h3>Τι μένει ίδιο</h3>
+  <ul>
+    <li><span class="tag same">ίδιο</span>Τρία θέματα· η Νύχτα μόνο μαύρο και κόκκινο (και οι φωτογραφίες γίνονται κόκκινες).</li>
+    <li><span class="tag same">ίδιο</span>Μεγέθη γραμμάτων 17/20/23 px, στόχοι ≥ 48 px, κύρια κουμπιά 56 px.</li>
+    <li><span class="tag same">ίδιο</span>Ροή «Πρώτα η έξοδος», λωρίδα εξόδου, καρτέλες Live · Χάρτης · Σύμβουλος.</li>
+    <li><span class="tag same">ίδιο</span>Ο διαχειριστής (λίστα χρηστών) μένει στις Ρυθμίσεις.</li>
+  </ul>
+  <h3>Δοκίμασε</h3>
+  <ol>
+    <li>Αρχική → avatar πάνω δεξιά → Προφίλ.</li>
+    <li>✎ στο avatar → «Σήμα»: διάλεξε σκάφος/κράνος/αριθμό πανιού και χρώμα.</li>
+    <li>«Φωτογραφία» → «Δοκιμαστική εικόνα» ή «Από τη συσκευή» → σύρε, μεγέθυνε, ↻ → «Χρήση». Δείχνει το πραγματικό μέγεθος μετά τη συμπίεση. Μετά «Αφαίρεση» με αναίρεση.</li>
+    <li>Θέμα «Νύχτα» ή «Και τα 3», πλάτος 320, «Πολύ μεγάλα».</li>
+    <li>Κατάσταση «Χωρίς ίντερνετ» στο Προφίλ: όνομα και διαγραφή κλειδώνουν, η φωτογραφία περιμένει.</li>
+  </ol>
+  <h3>Όρια</h3>
+  <ul>
+    <li>Το avatar πάνω δεξιά είναι μακριά από τον αντίχειρα. Είναι αποδεκτό γιατί το Προφίλ δεν είναι δουλειά της θάλασσας· μέσα σε έξοδο <b>δεν</b> φαίνεται.</li>
+    <li>Τα στατιστικά βγαίνουν από τις εξόδους της συσκευής· σε νέο κινητό δείχνουν ό,τι έχει συγχρονιστεί.</li>
+    <li>Ο «ρόλος» είναι Ιδιοκτήτης / Μέλος / Καλεσμένος (από τη D1). Η «τελευταία θέση» (π.χ. Τακτικός) βγαίνει από το πλάνο του τελευταίου αγώνα, αν υπάρχει.</li>
+    <li>Το κόψιμο στο πρωτότυπο δεν έχει «τσίμπημα» (pinch)· στην εφαρμογή υπάρχει και αυτό, αλλά πάντα και με κουμπιά.</li>
+    <li>Σε παλιά Safari το WebP μπορεί να βγει PNG· τότε JPEG 0,8.</li>
+  </ul>
+  <h3>Δεδομένα και server (φωτογραφία)</h3>
+  <table>
+    <tr><th>Τι</th><th>Πρόταση</th></tr>
+    <tr><td>Σήμα</td><td>Ένα πεδίο κειμένου στον χρήστη, π.χ. <code>boat:sea</code> ή <code>sailno:navy:1234</code>. Χωρίς αρχείο.</td></tr>
+    <tr><td>Φωτογραφία</td><td>WebP 256×256, ≤ 64 KB, σε πίνακα D1 <code>user_avatars</code> (χωρίς νέα υπηρεσία). Ο server ελέγχει τύπο και μέγεθος.</td></tr>
+    <tr><td>Ποιος τη βλέπει</td><td>Endpoint με έλεγχο: μόνο ο ίδιος και όσοι μοιράζονται πλήρωμα (ιδιοκτήτης, μέλη, καλεσμένοι εν ισχύ). Αλλιώς 404.</td></tr>
+    <tr><td>Offline</td><td>Αποθήκευση στη συσκευή με αριθμό έκδοσης· ανεβαίνει όταν βρεθεί σήμα.</td></tr>
+    <tr><td>GDPR</td><td>Μπαίνει στην εξαγωγή, σβήνεται με τη διαγραφή, νέα γραμμή στην πολιτική απορρήτου.</td></tr>
+  </table>
+  <div class="warnbox">Ερωτήματα προς τον ιδιοκτήτη: δες την αναφορά (ένα τη φορά).</div>`;
+}
+
+/* ---------------- Crop logic (real, on-device) ---------------- */
+function startCrop(img) {
+  S.crop = { img, scale: 1, ox: 0, oy: 0, rot: 0 };
+  S.sheet = null;
+  render();
+}
+function cropGeom() {
+  const c = S.crop, w = c.rot % 180 ? c.img.height : c.img.width, h = c.rot % 180 ? c.img.width : c.img.height;
+  const base = 240 / Math.min(w, h); // circle (240) is always covered at scale 1
+  return { w, h, k: base * c.scale };
+}
+function clampCrop() {
+  const c = S.crop, g = cropGeom();
+  const mx = Math.max(0, (g.w * g.k - 240) / 2), my = Math.max(0, (g.h * g.k - 240) / 2);
+  c.ox = Math.max(-mx, Math.min(mx, c.ox)); c.oy = Math.max(-my, Math.min(my, c.oy));
+}
+function paint(ctx, size, k2) {
+  const c = S.crop, g = cropGeom(), k = g.k * k2;
+  ctx.save(); ctx.fillStyle = '#000'; ctx.fillRect(0, 0, size, size);
+  ctx.translate(size / 2 + c.ox * k2, size / 2 + c.oy * k2); ctx.rotate((c.rot * Math.PI) / 180);
+  ctx.drawImage(c.img, (-c.img.width * k) / 2, (-c.img.height * k) / 2, c.img.width * k, c.img.height * k);
+  ctx.restore();
+}
+function drawCrop() {
+  const cv = document.querySelector('[data-cv="0"]'); if (!cv) return;
+  clampCrop(); paint(cv.getContext('2d'), 300, 1);
+}
+function finishCrop() {
+  S.crop.busy = true; render();
+  const out = document.createElement('canvas'); out.width = out.height = 256;
+  const ctx = out.getContext('2d');
+  // Output = the 240 px circle area scaled to 256 px. Re-encoding drops EXIF (incl. GPS).
+  ctx.save(); ctx.translate(-(300 - 240) / 2 * (256 / 240), -(300 - 240) / 2 * (256 / 240)); paint(ctx, 300 * (256 / 240), 256 / 240); ctx.restore();
+  const done = (blob) => {
+    const r = new FileReader();
+    r.onload = () => { S.photo = r.result; S.photoKB = Math.max(1, Math.round(blob.size / 1024)); S.crop = null;
+      toast(S.cond === 'offline' ? `Αποθηκεύτηκε (${S.photoKB} KB). Ανεβαίνει όταν βρεθεί ίντερνετ.` : `Η φωτογραφία αποθηκεύτηκε · ${S.photoKB} KB`); };
+    r.readAsDataURL(blob);
+  };
+  out.toBlob((b) => { if (b && b.type === 'image/webp') done(b); else out.toBlob((j) => done(j), 'image/jpeg', 0.8); }, 'image/webp', 0.8);
+}
+function sampleImage() {
+  // A fictional seascape with a sail, no person.
+  const c = document.createElement('canvas'); c.width = 1200; c.height = 900; const x = c.getContext('2d');
+  let g = x.createLinearGradient(0, 0, 0, 520); g.addColorStop(0, '#7dd3fc'); g.addColorStop(1, '#e0f2fe'); x.fillStyle = g; x.fillRect(0, 0, 1200, 520);
+  g = x.createLinearGradient(0, 520, 0, 900); g.addColorStop(0, '#0e7490'); g.addColorStop(1, '#083344'); x.fillStyle = g; x.fillRect(0, 520, 1200, 380);
+  x.fillStyle = '#fde68a'; x.beginPath(); x.arc(930, 170, 70, 0, 7); x.fill();
+  x.fillStyle = '#9ca3af'; x.beginPath(); x.moveTo(0, 520); x.lineTo(180, 450); x.lineTo(330, 500); x.lineTo(420, 470); x.lineTo(560, 520); x.fill();
+  x.fillStyle = '#fff'; x.beginPath(); x.moveTo(600, 170); x.lineTo(600, 560); x.lineTo(420, 560); x.fill();
+  x.fillStyle = '#f97316'; x.beginPath(); x.moveTo(612, 220); x.lineTo(760, 560); x.lineTo(612, 560); x.fill();
+  x.fillStyle = '#111827'; x.beginPath(); x.moveTo(380, 575); x.lineTo(800, 575); x.lineTo(740, 625); x.lineTo(430, 625); x.fill();
+  x.strokeStyle = 'rgba(255,255,255,.5)'; x.lineWidth = 6; for (let i = 0; i < 6; i++) { x.beginPath(); x.moveTo(80 + i * 190, 700 + (i % 2) * 60); x.quadraticCurveTo(140 + i * 190, 680 + (i % 2) * 60, 200 + i * 190, 700 + (i % 2) * 60); x.stroke(); }
+  const img = new Image(); img.onload = () => startCrop(img); img.src = c.toDataURL('image/jpeg', 0.9);
+}
+function pickFile(capture) {
+  const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; if (capture) inp.capture = 'user';
+  inp.onchange = () => {
+    const f = inp.files[0]; if (!f) return;
+    const url = URL.createObjectURL(f); const img = new Image();
+    img.onload = () => startCrop(img);
+    img.onerror = () => toast('Δεν διαβάζεται αυτή η εικόνα. Δοκίμασε JPG ή PNG.');
+    img.src = url;
+  };
+  inp.click();
+}
+
+let snackTimer;
+function toast(t, undo) {
+  S.snack = { t, undo }; render();
+  clearTimeout(snackTimer); snackTimer = setTimeout(() => { S.snack = null; render(); }, undo ? 6000 : 3500);
+}
+
+/* ---------------- Events ---------------- */
+document.addEventListener('click', (e) => {
+  const c = e.target.closest('[data-ctl]');
+  if (c) { const k = c.dataset.ctl; S[k] = k === 'width' ? Number(c.dataset.v) : c.dataset.v; if (k === 'screen') { S.sheet = null; S.crop = null; } render(); return; }
+  const a = e.target.closest('[data-act]'); if (!a) return;
+  const v = a.dataset.v;
+  switch (a.dataset.act) {
+    case 'go': S.screen = v; S.sheet = null; render(); break;
+    case 'nav': if (v === 'home') { S.screen = 'home'; render(); } else if (v === 'live') { S.screen = 'live'; render(); } break;
+    case 'sheet': S.sheet = v; S.snack = null; if (v === 'avatar') { S.draft = { ...S.avatar }; S.avTab = S.photo ? 'photo' : 'badge'; } render(); break;
+    case 'scrim': if (e.target === a) { S.sheet = null; render(); } break;
+    case 'close': S.sheet = null; render(); break;
+    case 'avtab': S.avTab = v; render(); break;
+    case 'pickg': S.draft.kind = v; render(); break;
+    case 'pickc': S.draft.color = v; render(); break;
+    case 'savebadge': { const hadPhoto = !!S.photo; const prev = { avatar: S.avatar, photo: S.photo, kb: S.photoKB };
+      S.avatar = { ...S.draft }; S.photo = null; S.sheet = null; window._undo = prev;
+      toast(hadPhoto ? 'Το σήμα αποθηκεύτηκε, η φωτογραφία σβήστηκε' : 'Το σήμα αποθηκεύτηκε', hadPhoto); break; }
+    case 'pickfile': pickFile(false); break;
+    case 'pickcam': pickFile(true); break;
+    case 'sample': sampleImage(); break;
+    case 'rmphoto': window._undo = { avatar: S.avatar, photo: S.photo, kb: S.photoKB }; S.photo = null; S.sheet = null; toast('Η φωτογραφία αφαιρέθηκε', true); break;
+    case 'undo': if (window._undo) { S.avatar = window._undo.avatar; S.photo = window._undo.photo; S.photoKB = window._undo.kb; } S.snack = null; render(); break;
+    case 'savename': { const inp = document.querySelector('[data-in="name"]'); const n = inp.value.trim();
+      if (n.length < 2) { inp.closest('.fl').classList.add('err'); inp.nextElementSibling.textContent = '! Γράψε τουλάχιστον 2 χαρακτήρες.'; return; }
+      S.name = n; S.sheet = null; toast('Το όνομα άλλαξε'); break; }
+    case 'cropcancel': S.crop = null; render(); break;
+    case 'cropok': if (!S.crop.busy) finishCrop(); break;
+    case 'rot': S.crop.rot = (S.crop.rot + 90) % 360; S.crop.ox = S.crop.oy = 0; drawCrop(); break;
+    case 'zoom': S.crop.scale = Math.max(1, Math.min(3, S.crop.scale + Number(v) * 0.25)); const r = document.querySelector('[data-in="zoom"]'); if (r) r.value = S.crop.scale; drawCrop(); break;
+    case 'tgl': a.classList.toggle('on'); break;
+  }
+});
+document.addEventListener('input', (e) => {
+  const k = e.target.dataset.in;
+  if (k === 'zoom') { S.crop.scale = Number(e.target.value); drawCrop(); }
+  if (k === 'sailno') { S.draft.sailno = e.target.value.replace(/[^0-9A-Za-z]/g, '').toUpperCase().slice(0, 5); const pv = document.querySelector('.sheet > div[style*="text-align:center"]'); if (pv) pv.innerHTML = avatarHTML(96, S.draft, false); }
+});
+let drag = null;
+document.addEventListener('pointerdown', (e) => { const ar = e.target.closest('[data-crop]'); if (!ar || !S.crop) return; drag = { x: e.clientX, y: e.clientY, ox: S.crop.ox, oy: S.crop.oy }; ar.setPointerCapture(e.pointerId); });
+document.addEventListener('pointermove', (e) => { if (!drag) return; S.crop.ox = drag.ox + e.clientX - drag.x; S.crop.oy = drag.oy + e.clientY - drag.y; drawCrop(); });
+document.addEventListener('pointerup', () => (drag = null));
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && (S.sheet || S.crop)) { S.sheet = null; S.crop = null; render(); } });
+
+/* Live numbers tick without re-rendering the page (no animation on values). */
+let t0 = 4360;
+setInterval(() => {
+  if (S.screen !== 'live' || S.ver === 'old' || S.cond === 'nogps') return;
+  t0++; const bsp = 6.6 + Math.random() * 0.5, pct = Math.round((bsp / 7.1) * 100);
+  const f = (n) => n.toFixed(1).replace('.', ',');
+  const set = (k, v) => document.querySelectorAll(`[data-k="${k}"]`).forEach((el) => (el.textContent = v));
+  set('bsp', f(bsp)); set('pct', pct + '%'); set('twa', Math.round(40 + Math.random() * 5) + '°'); set('hdg', Math.round(203 + Math.random() * 5) + '°');
+  set('clock', [Math.floor(t0 / 3600), Math.floor((t0 % 3600) / 60), t0 % 60].map((n) => String(n).padStart(2, '0')).join(':'));
+  document.querySelectorAll('[data-k="pctbar"]').forEach((el) => (el.style.width = Math.min(100, pct) + '%'));
+}, 1500);
+
+/* Deep links, e.g. #screen=profile&theme=all&width=320&size=xl&sheet=avatar */
+new URLSearchParams(location.hash.slice(1)).forEach((v, k) => {
+  if (k === 'width') S.width = Number(v);
+  else if (k === 'sheet') { S.sheet = v; S.draft = { ...S.avatar }; }
+  else if (k in S && k !== 'crop') S[k] = v;
+});
+render();
+if (location.hash.includes('crop=1')) sampleImage();
+</script>
+</body>
+</html>

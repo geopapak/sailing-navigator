@@ -18,6 +18,12 @@
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "http.server", "8091", "--bind", "127.0.0.1", "--directory", "design/session-home-2026-11"],
       "port": 8091
+    },
+    {
+      "name": "proto-refresh",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8090", "--bind", "127.0.0.1", "--directory", "design/refresh-2026-11"],
+      "port": 8090
     }
   ]
 }
