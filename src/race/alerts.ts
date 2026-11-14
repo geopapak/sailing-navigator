@@ -11,7 +11,8 @@ import type { SessionKind } from './types';
  * profile, it returns at most one alert to show. Everything is a suggestion; the skipper decides.
  */
 export type RaceAlertType = 'lay' | 'shift' | 'mark';
-export type AlertType = RaceAlertType | 'gps' | 'below' | 'shallow' | 'arrive';
+/** 'start': the 1′ of the «Εκκινήσεις» countdown (training, P-035). */
+export type AlertType = RaceAlertType | 'gps' | 'below' | 'start' | 'shallow' | 'arrive';
 export type AlertKind = 'warn' | 'now' | 'info';
 export type Lead = 120 | 60 | 6;
 
@@ -317,6 +318,11 @@ export function step(st: EngineState, s: AlertSettings, x: Situation, p: AlertPr
   }
   if (shown) st.last = x.now;
   return shown;
+}
+
+/** «ΕΚΚΙΝΗΣΗ ΣΕ 1′» of the start practice countdown (training «Εκκινήσεις»). */
+export function startAlert(now: number): Alert {
+  return { key: `start-${now}`, type: 'start', kind: 'warn', big: 'ΕΚΚΙΝΗΣΗ ΣΕ 1′', sub: 'Αντίστροφη μέτρηση άσκησης', say: 'Εκκίνηση σε ένα λεπτό.', at: now };
 }
 
 export const isMuted = (st: EngineState, now: number) => now < st.muteUntil;

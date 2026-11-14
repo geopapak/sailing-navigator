@@ -21,6 +21,8 @@ export interface Settings {
   liveMode: LiveMode;
   /** The step-by-step first run was finished or skipped. */
   onboarded: boolean;
+  /** «Δείξε ξανά τα πρώτα βήματα»: show them once more, even to a user with boats. */
+  onboardReplay?: boolean;
   activeBoatId: string;
   /** Magnetic declination, degrees East positive (Saronic ≈ +5°E). */
   declination: number;

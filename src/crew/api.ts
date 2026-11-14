@@ -1,5 +1,6 @@
 /** Crews and invitations (P-022): client side of /crews and /invites. */
 import { api } from '../sync/api';
+import type { TrainingShare } from '../race/training';
 
 export const ROLES = ['helm', 'tactician', 'navigator', 'genoa', 'main', 'spinnaker', 'pit', 'mast', 'bow'] as const;
 export type Role = (typeof ROLES)[number];
@@ -37,7 +38,7 @@ export interface OwnedCrew {
   boatName: string;
   sailNo: string | null;
   members: { userId: string; name: string; kind: 'crew' | 'guest'; raceId: string | null; expiresAt: number | null; athleteCard: string | null }[];
-  races: { raceId: string; data: RacePlan; updatedAt: number }[];
+  races: { raceId: string; data: RacePlan | TrainingShare; updatedAt: number }[];
 }
 
 export interface MemberCrew {
@@ -50,7 +51,8 @@ export interface MemberCrew {
   expiresAt: number | null;
   athleteCard: string | null;
   crew: { userId: string; name: string; kind: 'crew' | 'guest' }[];
-  races: { raceId: string; data: RacePlan; updatedAt: number }[];
+  /** Race plans and (P-035) training summaries shared by the owner. */
+  races: { raceId: string; data: RacePlan | TrainingShare; updatedAt: number }[];
 }
 
 export interface InvitePreview {
@@ -73,7 +75,8 @@ export const crewApi = {
   setCard: (server: string, token: string, crewId: string, userId: string, athleteCard: string) =>
     api(server, `/crews/${crewId}/members/${userId}`, { method: 'PATCH', body: { athleteCard }, token }),
   remove: (server: string, token: string, crewId: string, userId: string) => api(server, `/crews/${crewId}/members/${userId}`, { method: 'DELETE', token }),
-  shareRace: (server: string, token: string, crewId: string, raceId: string, plan: RacePlan) =>
+  /** A race plan, or a training summary (`kind: 'training'`, never a position). */
+  shareRace: (server: string, token: string, crewId: string, raceId: string, plan: RacePlan | TrainingShare) =>
     api(server, `/crews/${crewId}/races/${raceId}`, { method: 'PUT', body: plan, token }),
   unshareRace: (server: string, token: string, crewId: string, raceId: string) => api(server, `/crews/${crewId}/races/${raceId}`, { method: 'DELETE', token }),
 };

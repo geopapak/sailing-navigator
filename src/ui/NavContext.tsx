@@ -11,6 +11,7 @@ import { SARONIKOS_BOX, type GridForecast, type WindSample } from '../weather/ty
 import { calibrationFrom, gridField } from '../weather/field';
 import { useApp } from './AppContext';
 import { useGps, useStoredState, type GpsFix, type GpsStatus } from './hooks';
+import { queryGeoPermission, shouldWatchGps, toGeoPermission, type GeoPermission } from './gpsGate';
 import { useInstruments } from './InstrumentsContext';
 
 export interface PlanSettings {
@@ -91,8 +92,12 @@ interface NavState {
   rerouteLive: (observed?: WindSample, howMeasured?: string) => Promise<void>;
 
   gps: { status: GpsStatus; fix?: GpsFix; message?: string };
+  /** The phone's GPS is being watched (switch on and started). */
   gpsEnabled: boolean;
+  /** The GPS switch; turning it on is a user action, so it also starts the GPS. */
   setGpsEnabled: (v: boolean) => void;
+  /** Starts the phone's GPS for something the user did (may show the permission prompt). */
+  requestGps: () => void;
 }
 
 const Ctx = createContext<NavState | null>(null);
@@ -120,7 +125,27 @@ export function NavProvider({ children }: { children: ReactNode }) {
   const [planStatus, setPlanStatus] = useState<{ busy: boolean; error?: string }>({ busy: false });
   const [liveRoute, setLiveRoute] = useState<RouteResult>();
   const [liveStatus, setLiveStatus] = useState<NavState['liveStatus']>({ busy: false });
-  const phoneGps = useGps(ui.gps);
+  // Watch at load only when the permission is already known, so a reload never prompts.
+  const [geoPerm, setGeoPerm] = useState<GeoPermission>('unknown');
+  const [gpsRequested, setGpsRequested] = useState(false);
+  useEffect(() => {
+    let status: PermissionStatus | undefined;
+    let gone = false;
+    const onChange = () => status && setGeoPerm(toGeoPermission(status.state));
+    queryGeoPermission().then((r) => {
+      if (gone) return;
+      setGeoPerm(r.permission);
+      status = r.status;
+      status?.addEventListener?.('change', onChange);
+    });
+    return () => {
+      gone = true;
+      status?.removeEventListener?.('change', onChange);
+    };
+  }, []);
+  const gpsOn = shouldWatchGps({ enabled: ui.gps, permission: geoPerm, requested: gpsRequested });
+  const requestGps = useCallback(() => setGpsRequested(true), []);
+  const phoneGps = useGps(gpsOn);
   // Position from the boat's instruments when they are live; the phone's GPS otherwise.
   const inst = useInstruments();
   const iv = inst.values;
@@ -334,8 +359,12 @@ export function NavProvider({ children }: { children: ReactNode }) {
     liveStatus,
     rerouteLive,
     gps,
-    gpsEnabled: ui.gps,
-    setGpsEnabled: (v) => setUi((u) => ({ ...u, gps: v })),
+    gpsEnabled: gpsOn,
+    setGpsEnabled: (v) => {
+      if (v) setGpsRequested(true);
+      setUi((u) => ({ ...u, gps: v }));
+    },
+    requestGps,
   };
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

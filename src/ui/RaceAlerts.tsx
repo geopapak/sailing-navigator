@@ -1,6 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { MUTE_MS, isMuted, newEngine, profileFor, soundFor, step, type Alert, type AlertProfile, type Situation } from '../race/alerts';
 import { meanPct, pushPct, type PctSample } from '../race/liveNumbers';
+import { newManoeuvres, recoveryDone, recoverySec } from '../race/training';
+import type { Manoeuvre } from '../race/types';
 import { stallMinutes } from '../race/session';
 import { distanceNm } from '../nav/geo';
 import { meanWind, pushWind, type WindReading } from '../weather/windAverage';
@@ -28,6 +30,10 @@ interface AlertsState {
   profile?: AlertProfile;
   /** 15″ rolling mean of the speed as % of target (P-034), while a session records. */
   pct15?: number;
+  /** Training: a manoeuvre found live whose recovery to 90% is still being measured. */
+  pendingManoeuvre?: Pick<Manoeuvre, 't' | 'kind'>;
+  /** Shows an alert that does not come from the engine (the start practice countdown). */
+  announce: (a: Alert) => void;
 }
 
 const Ctx = createContext<AlertsState | null>(null);
@@ -53,6 +59,12 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
   const instSamples = useRef<WindReading[]>([]);
   const pctSamples = useRef<PctSample[]>([]);
   const [pct15, setPct15] = useState<number>();
+  // Training: dense samples (every 2″, in memory only) for the manoeuvres and their recovery (P-035).
+  const manSamples = useRef<{ t: number; twa?: number; pct?: number }[]>([]);
+  const pendingMan = useRef<(Pick<Manoeuvre, 't' | 'kind' | 'indicative'>)[]>([]);
+  const [pendingManoeuvre, setPendingManoeuvre] = useState<AlertsState['pendingManoeuvre']>();
+  const update = race.update;
+  const known = race.session?.manoeuvres;
 
   const fix = nav.gps.fix;
   const mark = marks.mark;
@@ -64,8 +76,8 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
   const waitingFor = race.waitingGps ? stallMinutes(race.everyMs) * 60_000 : undefined;
   const stalled = !!race.stalledMin;
 
-  const latest = useRef({ settings, inst, lay, markInSec, layInSec, marks, profile, numbers, stalled, waitingFor });
-  latest.current = { settings, inst, lay, markInSec, layInSec, marks, profile, numbers, stalled, waitingFor };
+  const latest = useRef({ settings, inst, lay, markInSec, layInSec, marks, profile, numbers, stalled, waitingFor, known });
+  latest.current = { settings, inst, lay, markInSec, layInSec, marks, profile, numbers, stalled, waitingFor, known };
 
   useEffect(() => {
     // A new kind (training ↔ cruise) starts the engine afresh and hides the alert (AC 17).
@@ -74,8 +86,12 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
     instSamples.current = [];
     pctSamples.current = [];
     setPct15(undefined);
+    manSamples.current = [];
+    setPendingManoeuvre(undefined);
     if (!on) return;
     const since = Date.now();
+    const training = kind === 'training';
+    const writeMan = (m: Manoeuvre) => update((r) => ({ manoeuvres: [...(r.manoeuvres ?? []), m].sort((a, b) => a.t - b.t) }));
     const t = window.setInterval(() => {
       const { settings: s, inst: i, lay: l, markInSec: m, layInSec: li, marks: mk, profile: p, numbers: nb, stalled: st, waitingFor: wf } = latest.current;
       const now = Date.now();
@@ -93,6 +109,22 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
       pctSamples.current = pushPct(pctSamples.current, now, pt === undefined ? undefined : pt * 100);
       const pm = meanPct(pctSamples.current, now);
       setPct15(pm);
+      if (training) {
+        // Manoeuvres from the signed TWA; recovery: the mean after it back at ≥ 90% (P-035 AC 7).
+        const res = nb.result;
+        const twa = res ? (res.tack === 'port' ? -res.twa : res.twa) : undefined;
+        manSamples.current = [...manSamples.current.filter((q) => q.t >= now - 4 * 60_000), { t: now, twa, pct: pt === undefined ? undefined : pt * 100 }];
+        const seen = [...(latest.current.known ?? []), ...pendingMan.current];
+        for (const m of newManoeuvres(manSamples.current, seen)) pendingMan.current.push({ ...m, indicative: !nb.withInst || undefined });
+        const left: typeof pendingMan.current = [];
+        for (const m of pendingMan.current) {
+          if (recoveryDone(manSamples.current, m.t, now)) writeMan({ ...m, recoverSec: recoverySec(manSamples.current, m.t) });
+          else left.push(m);
+        }
+        pendingMan.current = left;
+        const last = left[left.length - 1];
+        setPendingManoeuvre((p) => (p?.t === last?.t ? p : last ? { t: last.t, kind: last.kind } : undefined));
+      }
       if (p && p.types.length) {
         const x: Situation = {
           now,
@@ -117,8 +149,13 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
       }
       setTick((v) => v + 1);
     }, STEP_MS);
-    return () => window.clearInterval(t);
-  }, [on, kind]);
+    return () => {
+      window.clearInterval(t);
+      // A pause or a switch cuts the measurement short: keep the manoeuvre, without a recovery.
+      for (const m of pendingMan.current) writeMan({ ...m });
+      pendingMan.current = [];
+    };
+  }, [on, kind, update]);
 
   // Hide the banner after a while ("now" sooner).
   useEffect(() => {
@@ -142,6 +179,15 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
     e.muteUntil = isMuted(e, Date.now()) ? 0 : Date.now() + MUTE_MS;
     setTick((v) => v + 1);
   }, []);
+  const announce = useCallback((a: Alert) => {
+    const s = latest.current.settings;
+    const p = latest.current.profile;
+    const e = engine.current;
+    const muted = isMuted(e, a.at);
+    e.last = a.at;
+    setBanner({ ...a, muted });
+    if (!muted) notify(a, { ...s.alerts, sound: p ? soundFor(p, s.alerts.sound) : s.alerts.sound });
+  }, []);
   const enableAudio = useCallback(() => {
     unlockAudio();
     window.setTimeout(() => setAudioOk(audioReady()), 50);
@@ -149,7 +195,7 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
 
   return (
     <Ctx.Provider
-      value={{ banner, dismiss: () => setBanner(undefined), muteLeft, toggleMute, audioOk, enableAudio, lay, markInSec, layInSec, profile, pct15 }}
+      value={{ banner, dismiss: () => setBanner(undefined), muteLeft, toggleMute, audioOk, enableAudio, lay, markInSec, layInSec, profile, pct15, pendingManoeuvre, announce }}
     >
       {children}
     </Ctx.Provider>

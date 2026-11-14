@@ -14,6 +14,10 @@ import type { Race, SessionKind } from '../race/types';
 import type { Theme } from './settings';
 import { TestBadge } from './TestBadge';
 import { KindAlertToggles } from './AlertsCard';
+import { SESSION_FLASH } from './sessionFlash';
+import { holdShare } from './crewShare';
+import { activeMs, goalOf, goalSub, mss } from '../race/training';
+import { pausedSince } from '../race/pauses';
 
 /**
  * Inside a session (P-033): the bar on top with kind, running time, ⚙ quick
@@ -39,7 +43,7 @@ export const dayStr = (t: number) => {
 };
 export const hhmm = (t: number) => new Date(t).toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit', hour12: false });
 
-function useNow(ms = 1000) {
+export function useNow(ms = 1000) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     const t = window.setInterval(() => setNow(Date.now()), ms);
@@ -54,6 +58,9 @@ function useNow(ms = 1000) {
 }
 
 type Sheet = 'kind' | 'quick' | 'end' | undefined;
+
+/** How long «↶ Αναίρεση» stays after «■ Τέλος». */
+export const ENDED_UNDO_MS = 10_000;
 
 /** What the session ended with, for the summary and its 10″ undo. */
 export interface Ended {
@@ -75,11 +82,14 @@ export function SessionBar({ onEnded }: { onEnded: (e: Ended) => void }) {
   useEffect(() => {
     const on = () => setSheet('end');
     const onKind = () => setSheet('kind');
+    const onFlash = (e: Event) => setFlash((e as CustomEvent<string>).detail);
     window.addEventListener(END_EVENT, on);
     window.addEventListener(KIND_EVENT, onKind);
+    window.addEventListener(SESSION_FLASH, onFlash);
     return () => {
       window.removeEventListener(END_EVENT, on);
       window.removeEventListener(KIND_EVENT, onKind);
+      window.removeEventListener(SESSION_FLASH, onFlash);
     };
   }, []);
   useEffect(() => {
@@ -97,15 +107,22 @@ export function SessionBar({ onEnded }: { onEnded: (e: Ended) => void }) {
   const info = KIND_INFO[kind];
   const from = recordFrom(r);
   const before = now < r.start;
-  const recording = now >= from;
-  const sub = !recording
-    ? `καταγραφή από ${hhmm(from)}`
-    : `σε εξέλιξη · ${kind === 'race' ? r.name || 'Αγώνας' : kind === 'training' ? 'προπόνηση' : 'χωρίς προορισμό'}`;
-  const time = before ? `−${hms(r.start - now)}` : hms(now - r.start);
+  const paused = race.paused;
+  const recording = now >= from && !paused;
+  const what = kind === 'race' ? r.name || 'Αγώνας' : kind === 'training' ? goalSub(goalOf(r)) : 'χωρίς προορισμό';
+  const sub = now < from ? `καταγραφή από ${hhmm(from)}` : `${paused ? 'σε παύση' : 'σε εξέλιξη'} · ${what}`;
+  // Training and cruise: the clock leaves the pauses out (P-039 AC 16).
+  const time = before ? `−${hms(r.start - now)}` : hms(kind === 'race' ? now - r.start : activeMs(r, now));
 
   const end = async (o: { at?: number } = {}) => {
     const t = Date.now();
-    const out = o.at !== undefined ? finishAt(r, o.at, t) : finishNow(r, t);
+    let out = o.at !== undefined ? finishAt(r, o.at, t) : finishNow(r, t);
+    // A training shared with the crew: its summary goes only when the 10″ undo is over
+    // (or with the next connection), so an undone «Τέλος» never reaches the crew.
+    if (out.crewShared && out.crewId) {
+      holdShare(r.id, t + ENDED_UNDO_MS + 1000);
+      out = { ...out, crewSharePending: true };
+    }
     setSheet(undefined);
     try {
       await race.save(out);
@@ -113,7 +130,7 @@ export function SessionBar({ onEnded }: { onEnded: (e: Ended) => void }) {
       /* the strip offers «Ξανά» */
     }
     race.setFreshId(r.id);
-    onEnded({ id: r.id, before: r, until: t + 10_000, atLastMove: o.at !== undefined });
+    onEnded({ id: r.id, before: r, until: t + ENDED_UNDO_MS, atLastMove: o.at !== undefined });
   };
 
   return (
@@ -141,7 +158,7 @@ export function SessionBar({ onEnded }: { onEnded: (e: Ended) => void }) {
           ■ Τέλος
         </button>
       </div>
-      <SessionStrip r={r} now={now} flash={flash} />
+      <SessionStrip r={r} now={now} flash={flash} onFlash={setFlash} />
       <UpdateLine />
       {sheet === 'kind' && <KindSheet r={r} onClose={() => setSheet(undefined)} onSwitched={setFlash} />}
       {sheet === 'quick' && <QuickSettings kind={kind} onClose={() => setSheet(undefined)} />}
@@ -175,6 +192,15 @@ export function SessionBar({ onEnded }: { onEnded: (e: Ended) => void }) {
           now={now}
           onEnd={() => end({ at: prompt.lastMove })}
           onDismiss={() => setPromptOff(true)}
+          onPause={
+            kind !== 'race'
+              ? () => {
+                  race.pause();
+                  setFlash('Παύση · δεν καταγράφεται');
+                  setPromptOff(true);
+                }
+              : undefined
+          }
           onKeep={() => {
             // Saved at once (not with the 15″ flush), so a reload does not ask again.
             race.save({ ...r, ...keepGoing(prompt, Date.now()), updatedAt: Date.now() }).catch(() => undefined);
@@ -202,11 +228,27 @@ function UpdateLine() {
 }
 
 /** Status under the session bar (AC 15): recording, waiting for GPS, gaps, save errors. */
-function SessionStrip({ r, now, flash }: { r: Race; now: number; flash?: string }) {
+function SessionStrip({ r, now, flash, onFlash }: { r: Race; now: number; flash?: string; onFlash: (m: string) => void }) {
   const race = useRace();
   const { settings } = useApp();
   const inst = useInstruments();
   const every = trackEveryMs(kindOf(r), settings.cruiseTrackSec) / 1000;
+  // «⏸ Παύση» in training and cruise, never in a race (P-039 AC 13).
+  const pauseBtn =
+    kindOf(r) !== 'race' ? (
+      <button
+        type="button"
+        className="strip-btn"
+        aria-label="Παύση καταγραφής"
+        onClick={() => {
+          race.pause();
+          onFlash('Παύση · δεν καταγράφεται');
+        }}
+      >
+        ⏸ Παύση
+      </button>
+    ) : null;
+  const since = pausedSince(r);
   if (race.saveError)
     return (
       <div className="net-strip race-strip bad" role="alert">
@@ -222,6 +264,25 @@ function SessionStrip({ r, now, flash }: { r: Race; now: number; flash?: string 
       <div className="net-strip ok race-strip" role="status">
         <span className="dot" aria-hidden="true" />
         <span>{flash}</span>
+      </div>
+    );
+  if (since !== undefined)
+    return (
+      <div className="net-strip race-strip paused-strip" role="status">
+        <span className="dot" aria-hidden="true" />
+        <span>
+          <b>Σε παύση {mss((now - since) / 1000)}</b> · δεν καταγράφεται, χωρίς ειδοποιήσεις
+        </span>
+        <button
+          type="button"
+          className="strip-btn"
+          onClick={() => {
+            race.resume();
+            onFlash('Συνέχεια · η καταγραφή ξανάρχισε');
+          }}
+        >
+          ▶ Συνέχεια
+        </button>
       </div>
     );
   if (race.gap)
@@ -248,6 +309,7 @@ function SessionStrip({ r, now, flash }: { r: Race; now: number; flash?: string 
       <div className="net-strip race-strip bad" role="alert">
         <span className="dot" aria-hidden="true" />
         <span>Η καταγραφή περιμένει θέση GPS (ή όργανα).</span>
+        {pauseBtn}
       </div>
     );
   if (race.stalledMin)
@@ -255,6 +317,7 @@ function SessionStrip({ r, now, flash }: { r: Race; now: number; flash?: string 
       <div className="net-strip race-strip bad" role="alert">
         <span className="dot" aria-hidden="true" />
         <span>Η καταγραφή σταμάτησε πριν από {race.stalledMin}′: δεν έρχεται θέση GPS.</span>
+        {pauseBtn}
       </div>
     );
   const fromInst = inst.live && inst.values.lat !== undefined;
@@ -265,11 +328,12 @@ function SessionStrip({ r, now, flash }: { r: Race; now: number; flash?: string 
         Καταγραφή κάθε {every}″{race.wakeOn ? ' · η οθόνη μένει ανοιχτή' : ' · κράτα την οθόνη ανοιχτή'}
         {fromInst ? ' · θέση από όργανα' : ''}
       </span>
+      {pauseBtn}
     </div>
   );
 }
 
-function SheetFrame({ label, onClose, children }: { label: string; onClose: () => void; children: React.ReactNode }) {
+export function SheetFrame({ label, onClose, children }: { label: string; onClose: () => void; children: React.ReactNode }) {
   useEffect(() => {
     const k = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', k);
@@ -333,6 +397,9 @@ function KindSheet({ r, onClose, onSwitched }: { r: Race; onClose: () => void; o
           <span className="small muted">προορισμός, ETA, βάθη · ίχνος κάθε {cruiseSec}″ · μόνο ειδοποιήσεις ασφάλειας</span>
         </span>
       </button>
+      {kind === 'training' && r.crewShared && (
+        <p className="msg warn">Το κομμάτι της προπόνησης ως τώρα μένει κοινό με το πλήρωμα (σύνοψη και σημειώσεις). Η βόλτα από εδώ και πέρα δεν μοιράζεται.</p>
+      )}
       <button type="button" className="btn big-btn wide" onClick={onClose}>
         Άκυρο
       </button>
@@ -426,12 +493,15 @@ function ForgottenSheet({
   onEnd,
   onKeep,
   onDismiss,
+  onPause,
 }: {
   r: Race;
   p: ForgottenPrompt;
   now: number;
   onEnd: () => void;
   onKeep: () => void;
+  /** Training and cruise: «⏸ Παύση» instead of ending (P-039 AC 17). */
+  onPause?: () => void;
   /** Backdrop tap / Esc: just hide it (nothing saved, no snooze). */
   onDismiss: () => void;
 }) {
@@ -461,6 +531,11 @@ function ForgottenSheet({
       <button type="button" className="btn primary big-btn wide" onClick={onEnd}>
         Τέλος στην τελευταία κίνηση ({yesterday ? `χθες ${at}` : at})
       </button>
+      {p.kind === 'idle' && onPause && (
+        <button type="button" className="btn big-btn wide" onClick={onPause}>
+          ⏸ Παύση
+        </button>
+      )}
       <button type="button" className="btn big-btn wide" onClick={onKeep}>
         Όχι, συνεχίζω
       </button>

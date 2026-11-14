@@ -6,6 +6,8 @@ import { InstrumentsProvider, useInstruments } from './InstrumentsContext';
 import { RaceLive, RaceSetup, OpponentPosition } from './RaceView';
 import { RaceProvider, useRace } from './RaceContext';
 import { AlertBanner, AlertsProvider } from './RaceAlerts';
+import { TrainingProvider } from './TrainingContext';
+import { useShareRetry } from './crewShare';
 import { InviteScreen } from './CrewViews';
 import { pendingInvite } from '../crew/api';
 import { KnowledgeProvider } from './KnowledgeContext';
@@ -14,6 +16,7 @@ import { AcceptTermsScreen, AuthFlow, SetPasswordScreen } from './AuthFlow';
 import { Icon, type IconName } from './Icons';
 import { Dialogs } from './Dialogs';
 import { Onboarding } from './Onboarding';
+import { onboardingDecision, readOnboardedMirror, writeOnboardedMirror } from './onboardingGate';
 import { HomeView, QuickLook, SessionLive, SessionSetup } from './HomeView';
 import { EndedScreen, HistoryView } from './HistoryView';
 import { BoatsHub, SettingsHub } from './HubViews';
@@ -51,7 +54,7 @@ const TITLE: Partial<Record<AppTab, string>> = {
 type Screen = { s: 'setup'; kind: SessionKind; id?: string } | { s: 'ended'; e: Ended };
 
 function Shell() {
-  const { ready, error, activeBoat, boats, settings, updateSettings, account } = useApp();
+  const { ready, error, activeBoat, boats, settings, updateSettings, account, syncStatus } = useApp();
   const race = useRace();
   const inSession = !!race.session;
   // The app always opens at «Νέα έξοδος», or inside the running session (never at the last tab).
@@ -62,6 +65,8 @@ function Shell() {
   const [flash, setFlash] = useState<string>();
   const inSessionRef = useRef(inSession);
   inSessionRef.current = inSession;
+  // Training summaries for the crew that waited for the internet (P-035).
+  useShareRetry();
 
   useEffect(
     () =>
@@ -96,6 +101,22 @@ function Shell() {
   // All hooks must run before the early returns below (else React throws and the page is blank).
   const [invite, setInvite] = useState(() => pendingInvite());
 
+  // First-run steps: once per device, never for someone with boats or sessions.
+  const onboarding = onboardingDecision({
+    ready,
+    onboarded: settings.onboarded,
+    replay: !!settings.onboardReplay,
+    doneMirror: readOnboardedMirror(),
+    boatCount: boats.length,
+    sessionCount: race.loaded ? race.races.length : undefined,
+    syncPending: !!account && syncStatus.at === undefined && !syncStatus.error,
+  });
+  useEffect(() => {
+    if (onboarding !== 'mark-done') return;
+    writeOnboardedMirror();
+    updateSettings({ onboarded: true });
+  }, [onboarding, updateSettings]);
+
   // Sign-in comes first; then a new password after a temporary one; then the terms.
   if (ready && !account) return <AuthFlow />;
   if (ready && account?.mustChangePassword) return <SetPasswordScreen />;
@@ -104,7 +125,7 @@ function Shell() {
 
   const setup = !inSession && screen?.s === 'setup' ? screen : undefined;
   const ended = !inSession && screen?.s === 'ended' ? screen.e : undefined;
-  const showOnboarding = ready && !settings.onboarded && !inSession && !screen && !(['boats', 'settings'] as AppTab[]).includes(tab);
+  const showOnboarding = onboarding === 'show' && !inSession && !screen && !(['boats', 'settings'] as AppTab[]).includes(tab);
   // Setup and «Γρήγορη ματιά» hide the tab bar and get «←».
   const hasBack = !inSession && (!!setup || tab === 'quick');
   const goHome = () => {
@@ -336,8 +357,10 @@ export function App() {
         <KnowledgeProvider>
           <RaceProvider>
             <AlertsProvider>
-              <Shell />
-              <AppUpdater />
+              <TrainingProvider>
+                <Shell />
+                <AppUpdater />
+              </TrainingProvider>
             </AlertsProvider>
           </RaceProvider>
         </KnowledgeProvider>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useHoldUpdate } from './useHoldUpdate';
 import { useApp } from './AppContext';
 import { useNav } from './NavContext';
@@ -7,7 +7,13 @@ import { useInstruments } from './InstrumentsContext';
 import { Icon } from './Icons';
 import { LiveView, getLiveSail, setLiveSail } from './LiveView';
 import { ChatView } from './ChatView';
-import { CruiseLive, TrainingLive } from './SessionLiveViews';
+import { CruiseLive, PauseCard, TrainingLive } from './SessionLiveViews';
+import { Toggle } from './AlertsCard';
+import { useCrews } from './CrewViews';
+import { TRAINING_TEXT as TT } from './sessionText';
+import { GOALS } from '../race/training';
+import { DEFAULT_TRAINING_ALERTS } from '../race/alerts';
+import type { TrainingGoal } from '../race/types';
 import { showAlert } from './Dialogs';
 import { startNewBoat } from './WelcomeCard';
 import { entryBoat } from './RaceView';
@@ -190,8 +196,13 @@ function BasicLive() {
 /** Live inside a training or cruise session (Φ1: today's Live; without a polar, the basic numbers). */
 export function SessionLive() {
   const race = useRace();
-  // P-034: the Live of each kind (the race has its own, RaceLive).
-  return race.kind === 'training' ? <TrainingLive /> : <CruiseLive />;
+  // P-034: the Live of each kind (the race has its own, RaceLive); P-039: the pause card on top.
+  return (
+    <>
+      <PauseCard />
+      {race.kind === 'training' ? <TrainingLive /> : <CruiseLive />}
+    </>
+  );
 }
 
 /** «Γρήγορη ματιά»: Live without recording, the advisor one tap away (AC 5). */
@@ -201,6 +212,9 @@ export function QuickLook({ onHome }: { onHome: () => void }) {
   const inst = useInstruments();
   const [chat, setChat] = useState(false);
   const nothing = !nav.gps.fix && !inst.live;
+  // Opened by the user to see the numbers: the position is needed.
+  const { requestGps } = nav;
+  useEffect(() => requestGps(), [requestGps]);
   return (
     <div className="quick-look">
       <p className="msg warn">Γρήγορη ματιά: δεν καταγράφεται ίχνος, χωρίς ειδοποιήσεις.</p>
@@ -223,7 +237,10 @@ export function QuickLook({ onHome }: { onHome: () => void }) {
 
 /** Basic setup of a training (AC 18) or a cruise (AC 19). The race keeps today's «Νέος αγώνας». */
 export function SessionSetup({ kind, onStarted }: { kind: 'training' | 'cruise'; onStarted: () => void }) {
-  const { activeBoat, boats, updateSettings } = useApp();
+  const { activeBoat, boats, updateSettings, settings } = useApp();
+  const crews = useCrews();
+  const [goal, setGoal] = useState<TrainingGoal>('free');
+  const [shareOn, setShareOn] = useState(false);
   const nav = useNav();
   const race = useRace();
   const [withBoat, setWithBoat] = useState(kind === 'training' || !!activeBoat);
@@ -234,6 +251,10 @@ export function SessionSetup({ kind, onStarted }: { kind: 'training' | 'cruise';
   const [err, setErr] = useState<string>();
   const boat = withBoat ? activeBoat : undefined;
   const sails = boat ? selectableSails(boat) : [];
+  // «Μοιράσου με το πλήρωμα» needs an account and the owner's crew of this boat (AC 2).
+  const crew = boat ? crews.data?.owned.find((c) => c.boatId === boat.id) : undefined;
+  const canShare = crews.signedIn && !!crew;
+  const ta = { ...DEFAULT_TRAINING_ALERTS, ...(settings.training ?? {}) };
 
   const start = async () => {
     if (race.session) return; // one session at a time (AC 20)
@@ -243,6 +264,9 @@ export function SessionSetup({ kind, onStarted }: { kind: 'training' | 'cruise';
       now: Date.now(),
       entries: boat ? [{ id: 'own', name: boat.name, sailNo: boat.sailNumber, own: true, source: 'own', boat: entryBoat(boat) }] : [],
       course: kind === 'training' && course ? { id: course.id, name: course.name, marks: course.marks } : undefined,
+      goal: kind === 'training' ? goal : undefined,
+      crewShared: kind === 'training' && canShare && shareOn,
+      crewId: crew?.id,
     });
     setBusy(true);
     setErr(undefined);
@@ -321,7 +345,24 @@ export function SessionSetup({ kind, onStarted }: { kind: 'training' | 'cruise';
               </option>
             ))}
           </select>
-          <p className="small muted">Ίχνος κάθε 15″, μένει μόνο στο κινητό. Χωρίς αντιπάλους και διορθωμένο χρόνο. Οι ειδοποιήσεις της προπόνησης έρχονται σε επόμενη έκδοση.</p>
+          <div className="settings-sub">{TT.goalTitle}</div>
+          <div className="seg wrap goals" role="group" aria-label={TT.goalTitle}>
+            {GOALS.map((g) => (
+              <button key={g.id} type="button" className={goal === g.id ? 'on' : ''} aria-pressed={goal === g.id} onClick={() => setGoal(g.id)}>
+                {g.name}
+                {g.id === 'free' && <span className="small muted goal-sub">{TT.goalDefault}</span>}
+              </button>
+            ))}
+          </div>
+          <p className="small muted">{TT.goalNote}</p>
+          <Toggle
+            on={canShare && shareOn}
+            disabled={!canShare}
+            label={TT.share}
+            sub={canShare ? TT.shareSetup : `${TT.shareSetup}. ${TT.shareNeedsCrew}`}
+            onChange={setShareOn}
+          />
+          <p className="small muted">{TT.setupAlerts(ta.shiftDeg, goal === 'starts' && ta.startCountdown, !!courseId && ta.layNow)}</p>
         </>
       )}
 

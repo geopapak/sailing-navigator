@@ -90,6 +90,7 @@ export function KindAlertToggles({ kind, quick = false }: { kind: SessionKind; q
           onChange={(v) => setT({ below90: v })}
         />
         <Toggle on={t.layNow} label={T.layNow} sub={sub(T.layNowSub)} onChange={(v) => setT({ layNow: v })} />
+        <Toggle on={t.startCountdown} label={T.startCd} sub={sub(T.startCdSub)} onChange={(v) => setT({ startCountdown: v })} />
         <p className="small muted">{T.trainingNote}</p>
       </>
     );

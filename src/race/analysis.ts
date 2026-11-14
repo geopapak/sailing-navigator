@@ -5,6 +5,7 @@
 import { distanceNm } from '../nav/geo';
 import type { Race, TrackPoint } from './types';
 import { estimateRace, fmtGap } from './estimate';
+import { pausedMs, trackSegments } from './pauses';
 
 export interface LegStats {
   from: string;
@@ -165,9 +166,11 @@ export function analyseRace(race: Race): RaceAnalysis {
 
   const rows = estimateRace(race, undefined, race.finish ?? t1);
   const own = rows.find((r) => r.own);
+  // Pauses (training, cruise; never a race) count in neither time nor distance.
+  const paused = pausedMs(race, race.finish ?? t1) / 1000;
   return {
-    durationSec: race.finish ? (race.finish - race.start) / 1000 : (t1 - t0) / 1000,
-    sailedNm: sailed(track),
+    durationSec: Math.max(0, (race.finish ? (race.finish - race.start) / 1000 : (t1 - t0) / 1000) - paused),
+    sailedNm: trackSegments({ track, pauses: race.pauses }).reduce((d, seg) => d + sailed(seg), 0),
     courseNm,
     avgPct: avg(pcts.map((p) => p.pct!)),
     tacks: man.tacks,
@@ -231,26 +234,30 @@ export function sailChanges(track: TrackPoint[]): { t: number; sail: string }[] 
 
 const esc = (s: string) => s.replace(/[<>&"']/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' })[c]!);
 
+/** GPX of the track: one `<trkseg>` per stretch between pauses (P-039). */
 export function toGpx(race: Race): string {
-  const pts = race.track
-    .map((p) => `<trkpt lat="${p.lat.toFixed(6)}" lon="${p.lon.toFixed(6)}"><time>${new Date(p.t).toISOString()}</time></trkpt>`)
-    .join('\n');
+  const segs = trackSegments(race);
+  const pt = (p: TrackPoint) => `<trkpt lat="${p.lat.toFixed(6)}" lon="${p.lon.toFixed(6)}"><time>${new Date(p.t).toISOString()}</time></trkpt>`;
+  const body = (segs.length ? segs : [[]]).map((seg) => `<trkseg>\n${seg.map(pt).join('\n')}\n</trkseg>`).join('');
   const wpts = race.marks.map((m) => `<wpt lat="${m.lat.toFixed(6)}" lon="${m.lon.toFixed(6)}"><name>${esc(m.name ?? '')}</name></wpt>`).join('\n');
   return `<?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.1" creator="Sailing Navigator" xmlns="http://www.topografix.com/GPX/1/1">
 <metadata><name>${esc(race.name)}</name><time>${new Date(race.start).toISOString()}</time></metadata>
 ${wpts}
-<trk><name>${esc(race.name)}</name><trkseg>
-${pts}
-</trkseg></trk>
+<trk><name>${esc(race.name)}</name>${body}</trk>
 </gpx>
 `;
 }
 
+/** CSV of the track; with pauses, a last column `segment` (1, 2, …) tells the stretches apart. */
 export function toCsv(race: Race): string {
   const cols: (keyof TrackPoint)[] = ['t', 'lat', 'lon', 'sog', 'cog', 'tws', 'twa', 'twd', 'bsp', 'targetBsp', 'targetTwa', 'pct', 'sail', 'src'];
   const cell = (v: unknown) => (v === undefined ? '' : typeof v === 'number' ? String(+v.toFixed(5)) : `"${String(v).replace(/"/g, '""')}"`);
-  const head = ['time', ...cols.slice(1)].join(',');
-  const rows = race.track.map((p) => [new Date(p.t).toISOString(), ...cols.slice(1).map((c) => cell(p[c]))].join(','));
+  const segs = trackSegments(race);
+  const withSeg = segs.length > 1;
+  const head = ['time', ...cols.slice(1), ...(withSeg ? ['segment'] : [])].join(',');
+  const rows = (withSeg ? segs : [race.track]).flatMap((seg, i) =>
+    seg.map((p) => [new Date(p.t).toISOString(), ...cols.slice(1).map((c) => cell(p[c])), ...(withSeg ? [String(i + 1)] : [])].join(',')),
+  );
   return [head, ...rows].join('\n') + '\n';
 }

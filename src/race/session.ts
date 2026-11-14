@@ -1,6 +1,7 @@
-import type { Race, SessionKind } from './types';
+import type { Race, SessionKind, TrainingGoal } from './types';
 import { RECORD_BEFORE_MS } from './gaps';
 import { sailed } from './analysis';
+import { activeSpans, closePausesAt, pausedMs, trackSegments } from './pauses';
 
 /**
  * Sessions ("έξοδοι", P-033): a race, a training sail or a cruise. They share the
@@ -56,7 +57,10 @@ export function canSwitchKind(from: SessionKind, to: SessionKind, withBoat = tru
 /** Patch that switches a running session's kind; undefined when not allowed. The track goes on. */
 export function switchKind(r: Race, to: SessionKind, now: number): Partial<Race> | undefined {
   if (!canSwitchKind(kindOf(r), to, hasOwnBoat(r))) return undefined;
-  return { kind: to, kindLog: [...(r.kindLog ?? []), { kind: to, at: now }] };
+  const p: Partial<Race> = { kind: to, kindLog: [...(r.kindLog ?? []), { kind: to, at: now }] };
+  // Training finds its manoeuvres live from here on.
+  if (to === 'training' && !r.manoeuvres) p.manoeuvres = [];
+  return p;
 }
 
 /**
@@ -73,7 +77,8 @@ export const isCancelled = (r: Pick<Race, 'kind' | 'status' | 'start' | 'finish'
 export function finishNow(r: Race, now: number): Race {
   const own = r.entries.find((e) => e.own);
   const results = kindOf(r) === 'race' && own && now > r.start ? { ...(r.results ?? {}), [own.id]: (now - r.start) / 1000 } : r.results;
-  return { ...r, status: 'finished', finish: now, results, updatedAt: now };
+  // Ending inside a pause closes it at the end (P-039 AC 18).
+  return { ...r, status: 'finished', finish: now, results, pauses: closePausesAt(r.pauses, now), updatedAt: now };
 }
 
 /**
@@ -88,6 +93,9 @@ export function finishAt(r: Race, at: number, now: number): Race {
     finish,
     track: r.track.filter((p) => p.t <= finish),
     fixes: r.fixes.filter((f) => f.t <= finish),
+    pauses: closePausesAt(r.pauses, finish),
+    laps: r.laps?.filter((l, i) => i === 0 || l.t <= finish),
+    manoeuvres: r.manoeuvres?.filter((m) => m.t <= finish),
     updatedAt: now,
   };
 }
@@ -98,28 +106,45 @@ export function reopen(before: Race, now: number): Race {
 }
 
 export interface SessionStats {
+  /** Without the pauses. */
   durationSec: number;
+  /** Without any distance over a pause. */
   distanceNm: number;
   /** Mean speed over ground, kt. */
   avgKt?: number;
+  /** Time paused (P-039). */
+  pausedSec: number;
 }
 
-/** Duration, distance and mean speed of a session (Φ1 summary for training and cruise). */
+/** Duration, distance and mean speed of a session (Φ1 summary for training and cruise), without the pauses. */
 export function sessionStats(r: Race): SessionStats {
   const track = [...r.track].sort((a, b) => a.t - b.t);
   const end = r.finish ?? track[track.length - 1]?.t ?? r.start;
-  const durationSec = Math.max(0, (end - r.start) / 1000);
-  const distanceNm = sailed(track);
+  const activeMs = activeSpans(r, end).reduce((s, x) => s + x.to - x.from, 0);
+  const durationSec = Math.max(0, activeMs / 1000);
+  const distanceNm = trackSegments(r).reduce((d, seg) => d + sailed(seg), 0);
   const avgKt = durationSec > 60 ? distanceNm / (durationSec / 3600) : undefined;
-  return { durationSec, distanceNm, avgKt };
+  return { durationSec, distanceNm, avgKt, pausedSec: pausedMs(r, end) / 1000 };
 }
 
 /** A new training or cruise session that starts recording now. */
 export function newSession(
   kind: Exclude<SessionKind, 'race'>,
-  o: { id: string; now: number; entries: Race['entries']; scoringOptionId?: string; course?: { id?: string; name?: string; marks: Race['marks'] } },
+  o: {
+    id: string;
+    now: number;
+    entries: Race['entries'];
+    scoringOptionId?: string;
+    course?: { id?: string; name?: string; marks: Race['marks'] };
+    /** Training: «Τι δουλεύουμε» and the crew share switch of the setup. */
+    goal?: TrainingGoal;
+    crewShared?: boolean;
+    crewId?: string;
+  },
 ): Race {
+  const training = kind === 'training';
   return {
+    ...(training ? { goal: o.goal ?? 'free', manoeuvres: [], ...(o.crewShared ? { crewShared: true, crewId: o.crewId } : {}) } : {}),
     id: o.id,
     name: KIND_INFO[kind].name,
     kind,

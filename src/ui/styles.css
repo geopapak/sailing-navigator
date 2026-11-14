@@ -2621,3 +2621,95 @@ ol.how li {
 @media (max-width: 400px) {
   :root[data-size='xl'] .bl-mini.train > div:last-child { grid-column: 1 / -1; }
 }
+
+/* Training v1 and the pause (P-035, P-039), as in design/session-home-2026-11. */
+.strip-btn {
+  min-height: 44px;
+  margin-left: auto;
+  flex-shrink: 0;
+  padding: 0 10px;
+  border: 2px solid currentColor;
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.race-strip.quiet .strip-btn { min-height: 40px; }
+.pause-card { display: grid; gap: 8px; border: 3px solid var(--fair); }
+.pause-card > b { font-size: 1.5rem; }
+:root[data-theme='night'] .pause-card { border-color: var(--fg); }
+.lap-btn {
+  display: block;
+  width: 100%;
+  min-height: 84px;
+  margin-top: 10px;
+  border: 3px solid var(--accent);
+  border-radius: 14px;
+  background: var(--bg);
+  color: var(--accent);
+  font: inherit;
+  font-size: 1.45rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+:root[data-theme='dark'] .lap-btn { color: var(--fg); }
+:root[data-theme='night'] .lap-btn { color: var(--fg); border-color: var(--fg); }
+.lap-btn:disabled { opacity: 0.45; cursor: default; }
+.lap-list { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.g2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+.g2 .btn { min-width: 0; white-space: normal; }
+.cd-row { margin: 8px 0; }
+.seg.goals button { flex: 1 1 40%; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; white-space: normal; line-height: 1.15; padding: 6px; }
+.seg.goals .goal-sub { display: block; font-weight: 600; }
+.tbl-wrap { max-width: 100%; overflow-x: auto; }
+.tbl-wrap.tall { max-height: 60vh; overflow-y: auto; }
+.tbl { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin: 4px 0 8px; font-variant-numeric: tabular-nums; }
+.tbl th, .tbl td { text-align: left; padding: 6px 4px; border-top: 1px solid var(--line); vertical-align: top; }
+.tbl th { font-size: 0.8rem; color: var(--muted); font-weight: 700; }
+.tbl tr.best td, .tbl tbody.best td { font-weight: 900; }
+.laps-tbl { table-layout: fixed; }
+.laps-tbl th:nth-child(1), .laps-tbl td:nth-child(1) { width: 3.2em; }
+.laps-tbl th:nth-child(2), .laps-tbl td:nth-child(2) { width: 4.4em; }
+.laps-tbl th:nth-child(3), .laps-tbl td:nth-child(3) { width: 4.6em; }
+.laps-tbl td.note { overflow-wrap: break-word; }
+/* Stacked tables (training summary): the wide column moves to its own full-width row under
+   each row when the card is narrow in em (320 px with «Μεγάλα» / «Πολύ μεγάλα»), so nothing
+   scrolls sideways and notes wrap on whole words. Normal text at 320 px keeps all columns. */
+.tbl-wrap.cq { container-type: inline-size; }
+.tbl.stack tr.sub { display: none; }
+.tbl.stack tr.sub td { border-top: 0; padding-top: 0; font-weight: inherit; }
+@container (max-width: 15em) {
+  .tbl.stack .wide { display: none; }
+  .tbl.stack tr.sub { display: table-row; }
+  .laps-tbl.stack { table-layout: auto; }
+  .laps-tbl.stack th, .laps-tbl.stack td { width: auto !important; }
+}
+.pct-track { position: relative; }
+.pct-track .disc {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: 6px;
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+/* By kind of line too, so Night (red only) reads: solid > 95%, dashed 90–95%, dotted < 90%. */
+.tp { fill: none; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+.tp.g { stroke: var(--good); }
+.tp.f { stroke: var(--fair); stroke-dasharray: 8 4; stroke-linecap: butt; }
+.tp.b { stroke: var(--bad); stroke-dasharray: 1 6; stroke-width: 5; }
+.tp.n { stroke: var(--muted); stroke-width: 1.5; opacity: 0.7; }
+.pct-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-weight: 700; margin: 0 0 8px; }
+.pct-legend i { display: inline-block; width: 20px; height: 0; border-top: 3px solid; vertical-align: middle; margin-right: 4px; }
+.pct-legend i.g { border-color: var(--good); }
+.pct-legend i.f { border-color: var(--fair); border-top-style: dashed; }
+.pct-legend i.b { border-color: var(--bad); border-top-style: dotted; border-top-width: 4px; }
+.shared-training > * + * { margin-top: 8px; }
