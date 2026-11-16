@@ -2437,7 +2437,7 @@ ol.how li {
 .msg { font-size: 0.9rem; font-weight: 700; padding: 8px 10px; border-radius: 8px; margin: 0 0 10px; border-left: 6px solid var(--good); background: var(--card); }
 .msg.warn { border-left-color: var(--fair); }
 .msg.bad { border-left-color: var(--bad); }
-.undo-row { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+.undo-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; justify-content: space-between; }
 .undo-row .btn { flex-shrink: 0; }
 
 /* Hubs (Σκάφη, Ρυθμίσεις). */
