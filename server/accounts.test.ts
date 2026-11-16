@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { describe, expect, it, vi, afterEach } from 'vitest';
 import worker, { type Env } from './worker';
-import type { D1Database, D1PreparedStatement } from './accounts';
+import { TERMS_VERSION, type D1Database, type D1PreparedStatement } from './accounts';
 
 /** D1 on top of Node's built-in SQLite, with the real migration. */
 function fakeD1(): D1Database {
@@ -150,7 +150,7 @@ describe('accounts', () => {
     const me = await ok<{ user: { termsOk: boolean } }>(call(env, 'GET', '/me', undefined, r.token));
     expect(me.user.termsOk).toBe(false);
     await ok(call(env, 'POST', '/me/terms', { version: 99 }, r.token), 409);
-    const acc = await ok<{ user: { termsOk: boolean } }>(call(env, 'POST', '/me/terms', { version: 3 }, r.token));
+    const acc = await ok<{ user: { termsOk: boolean } }>(call(env, 'POST', '/me/terms', { version: TERMS_VERSION }, r.token));
     expect(acc.user.termsOk).toBe(true);
   });
 

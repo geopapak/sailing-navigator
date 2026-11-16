@@ -330,7 +330,7 @@ export function PlanView() {
           ) : (
             <div className="full">
               <NumberStepper label="TWS" unit="kt" value={plan.tws} onChange={(v) => setPlan({ tws: v ?? 0 })} small={1} big={3} min={0} max={50} />
-              <NumberStepper label="TWD" unit="° αληθ." value={plan.twd} onChange={(v) => setPlan({ twd: v ?? 0 })} small={5} big={20} wrap />
+              <NumberStepper label="TWD" unit="°T" value={plan.twd} onChange={(v) => setPlan({ twd: v ?? 0 })} small={5} big={20} wrap />
             </div>
           )}
           <details className="full">
@@ -453,7 +453,7 @@ function RouteSummary({ route, boat, scoringOptionId, onScoring }: { route: Rout
           <div>
             <div className="tile-label">Απόσταση</div>
             <div className="big-num">{route.rhumbNm.toFixed(1)} NM</div>
-            <div className="muted small">πλεύση {route.sailedNm.toFixed(1)} NM</div>
+            <div className="muted small">πλέουμε {route.sailedNm.toFixed(1)} NM</div>
           </div>
         </div>
         <label className="stack">
@@ -497,7 +497,7 @@ function LegCard({ leg, index, boat }: { leg: LegResult; index: number; boat: Bo
         <span>ETA {fmtTime(leg.end)}</span>
         <span>{leg.rhumbNm.toFixed(1)} NM</span>
         <span>
-          {leg.avgTws.toFixed(0)} kt (max {leg.maxTws.toFixed(0)}) από {leg.avgTwd.toFixed(0)}°
+          {leg.avgTws.toFixed(0)} kt (έως {leg.maxTws.toFixed(0)}) από {leg.avgTwd.toFixed(0)}°
         </span>
         <span>{modes.join(' · ')}</span>
         <span>

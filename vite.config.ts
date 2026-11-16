@@ -89,9 +89,9 @@ export default defineConfig(({ mode }) => {
         registerType: 'prompt',
         includeAssets: ['icon.svg'],
         manifest: {
-          name: staging ? 'Sailing Navigator TEST' : 'Navigator — ιστιοπλοΐα ORC',
+          name: staging ? 'Sailing Navigator TEST' : 'Sailing Navigator — ιστιοπλοΐα ORC',
           short_name: staging ? 'Navigator TEST' : 'Navigator',
-          description: 'Targets, VMG, πανιά και διορθωμένος χρόνος ORC',
+          description: 'Στόχοι ταχύτητας, VMG, πανιά και διορθωμένος χρόνος ORC',
           lang: 'el',
           theme_color: '#0b2a4a',
           background_color: '#ffffff',

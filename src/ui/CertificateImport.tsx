@@ -46,7 +46,7 @@ export function CertificateImport({ isOwn, onCancel, onRead }: { isOwn: boolean;
   const read = async () => {
     if (!file) return;
     if (navigator.onLine === false) {
-      setError('Χρειάζεται internet για την ανάγνωση.');
+      setError('Χωρίς ίντερνετ: η ανάγνωση θέλει σύνδεση.');
       return;
     }
     setReading(true);
@@ -59,7 +59,7 @@ export function CertificateImport({ isOwn, onCancel, onRead }: { isOwn: boolean;
       if (cancelled.current) return;
       onRead(extractToBoat(r.extract, isOwn), checkExtract(r.extract));
     } catch (e) {
-      if (!cancelled.current) setError(e instanceof ApiError || e instanceof Error ? e.message : 'Αποτυχία ανάγνωσης.');
+      if (!cancelled.current) setError(e instanceof ApiError || e instanceof Error ? e.message : 'Το πιστοποιητικό δεν διαβάστηκε. Δοκίμασε ξανά.');
     } finally {
       setReading(false);
     }
@@ -145,7 +145,7 @@ export function CertificateImport({ isOwn, onCancel, onRead }: { isOwn: boolean;
       <ol className="cert-how small">
         <li>Το AI διαβάζει στοιχεία σκάφους, polars και τις επιλογές βαθμολογίας.</li>
         <li>Ελέγχεις τα στοιχεία· ό,τι είναι αμφίβολο σημειώνεται κίτρινο.</li>
-        <li>Αποθηκεύεις. Το αρχείο δεν κρατιέται στον server.</li>
+        <li>Αποθηκεύεις. Το αρχείο δεν κρατιέται πουθενά.</li>
       </ol>
       {left !== null && left !== undefined && (
         <p className="small cert-quota">

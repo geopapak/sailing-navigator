@@ -109,10 +109,10 @@ export function splitName(name: string): { place: string; detail?: string } {
   return i < 0 ? { place: name } : { place: name.slice(0, i), detail: name.slice(i + 3) };
 }
 
-/** «Βόλτα · Αίγινα» or «Βόλτα». */
+/** «Αναψυχή · Αίγινα» or «Αναψυχή». */
 export function cruiseTitle(r: Pick<Race, 'dest' | 'courseName' | 'marks'>): string {
   const n = destName(r);
-  return n ? `Βόλτα · ${splitName(n).place}` : 'Βόλτα';
+  return n ? `Αναψυχή · ${splitName(n).place}` : 'Αναψυχή';
 }
 
 /** Title of any session in lists and summaries: the cruise names its destination. */

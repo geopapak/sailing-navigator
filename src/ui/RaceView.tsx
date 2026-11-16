@@ -447,8 +447,8 @@ export function RaceSetup({ id, onDone, onCancel }: { id?: string; onDone: (star
 // ---- Live -------------------------------------------------------------------
 
 const ordinal = (n: number) => `${n}ος`;
-const ago = (sec?: number) => (sec === undefined ? '' : sec < 90 ? 'τώρα' : sec < 3600 ? `πριν ${Math.round(sec / 60)}′` : `πριν ${Math.floor(sec / 3600)} ώρ.`);
-const FIX_LABEL = { own: 'GPS', ais: 'AIS', aisstream: 'AIS (internet)', manual: 'χειροκίνητα', mark: 'σημαδούρα' } as const;
+const ago = (sec?: number) => (sec === undefined ? '' : sec < 90 ? 'τώρα' : sec < 3600 ? `πριν από ${Math.round(sec / 60)}′` : `πριν από ${Math.floor(sec / 3600)} ώρ.`);
+const FIX_LABEL = { own: 'GPS', ais: 'AIS', aisstream: 'AIS μέσω ίντερνετ', manual: 'χειροκίνητα', mark: 'σημαδούρα' } as const;
 const WIND_LABEL = { instruments: 'όργανα', live: 'Live', forecast: 'πρόγνωση' } as const;
 
 function useClock(ms = 1000) {
@@ -568,10 +568,10 @@ export function RaceLive({
           </tbody>
         </table>
         <p className="muted small">
-          {wind ? `Άνεμος για την εκτίμηση: ${wind.tws.toFixed(0)} kt / ${Math.round(wind.twd)}° (${WIND_LABEL[wind.source]}). ` : 'Χωρίς άνεμο: βάλε TWS/TWD στο Live ή φέρε πρόγνωση στον Χάρτη. '}
-          {ais.status === 'ok' && `AIS internet: ${ais.message}, ${ago((now - (ais.at ?? now)) / 1000)}. `}
+          {wind ? `Άνεμος για την εκτίμηση: ${wind.tws.toFixed(0)} kt / ${Math.round(wind.twd)}° (${WIND_LABEL[wind.source]}). ` : 'Χωρίς άνεμο: βάλε TWS/TWD στο Live ή πάτα «Λήψη πρόγνωσης» στον Χάρτη. '}
+          {ais.status === 'ok' && `AIS μέσω ίντερνετ: ${ais.message}, ${ago((now - (ais.at ?? now)) / 1000)}. `}
           {ais.status === 'nokey' && `${ais.message} `}
-          {ais.status === 'error' && `AIS internet: ${ais.message} `}
+          {ais.status === 'error' && `AIS μέσω ίντερνετ: ${ais.message} `}
         </p>
         <details>
           <summary className="muted small">Πώς υπολογίζεται</summary>
@@ -698,7 +698,7 @@ export function OpponentPosition({ entryId, onDone }: { entryId?: string; onDone
               onDone();
             }}
           >
-            Πέρασε τώρα την «{mark.name}»
+            Πέρασε τώρα: «{mark.name}»
           </button>
         </section>
       )}
@@ -713,7 +713,7 @@ export function OpponentPosition({ entryId, onDone }: { entryId?: string; onDone
               onDone();
             }}
           >
-            Τερμάτισε τώρα ο {e.name}
+            Τερμάτισε τώρα: {e.name}
           </button>
         </section>
       )}

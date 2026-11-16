@@ -26,23 +26,23 @@ async function sail(app: AppFixture, steps: number, from: number) {
   return from + steps * 0.0006;
 }
 
-test('βόλτα: «Πού πάμε;» → Live με προορισμό → αλλαγή → παύση → χάρτης → τέλος → σύνοψη', async ({ app, context }) => {
+test('αναψυχή: «Πού πάμε;» → Live με προορισμό → αλλαγή → παύση → χάρτης → τέλος → σύνοψη', async ({ app, context }) => {
   test.setTimeout(90_000);
   await context.grantPermissions(['geolocation']);
   await app.open();
   await app.signIn();
   await app.page.getByRole('button', { name: 'Παράλειψη όλων' }).click();
 
-  // Setup: «Βόλτα» works without a boat.
-  await app.page.getByRole('button', { name: /^Βόλτα:/ }).click();
+  // Setup: «Αναψυχή» works without a boat.
+  await app.page.getByRole('button', { name: /^Αναψυχή:/ }).click();
   await expect(app.page.getByText('Πού πάμε;', { exact: true })).toBeVisible();
   const saved = app.page.getByRole('button', { name: new RegExp(COURSE.name) });
   await expect(saved).toContainText('αποθηκευμένη');
-  await expect(saved).toContainText(/περίπου \d+,\d νμ · ~.+ με \d+,\d κν/);
+  await expect(saved).toContainText(/περίπου \d+,\d NM · ~.+ με \d+,\d kt/);
   await saved.click();
   await expect(saved).toHaveAttribute('aria-pressed', 'true');
-  await expect(app.page.getByText(/Η βόλτα δεν μοιράζεται\. Ειδοποιήσεις μόνο ασφάλειας: ρηχά και άφιξη\./)).toBeVisible();
-  await app.page.getByRole('button', { name: '● Έναρξη βόλτας' }).click();
+  await expect(app.page.getByText(/Η αναψυχή δεν μοιράζεται\. Ειδοποιήσεις μόνο ασφάλειας: ρηχά και άφιξη\./)).toBeVisible();
+  await app.page.getByRole('button', { name: '● Έναρξη αναψυχής' }).click();
   await expect(app.page.getByTestId('session-end')).toBeVisible();
 
   // Live: the destination tile with the distance left.
@@ -91,14 +91,14 @@ test('βόλτα: «Πού πάμε;» → Live με προορισμό → αλ
 
   // End → summary.
   await app.page.getByTestId('session-end').click();
-  await expect(app.page.getByRole('heading', { name: 'Τέλος βόλτας;' })).toBeVisible();
+  await expect(app.page.getByRole('heading', { name: 'Τέλος αναψυχής;' })).toBeVisible();
   await app.page.getByRole('button', { name: '■ Ναι, τέλος' }).click();
   await expect(app.page.getByTestId('screen-title')).toHaveText('Η έξοδος τελείωσε');
   await expect(app.page.getByTestId('ended-undo')).toBeVisible();
   const stats = app.page.getByTestId('summary-stats');
   for (const l of ['διάρκεια', 'απόσταση', 'μέση ταχύτητα', 'μέγιστη', 'άφιξη', 'ίχνος']) await expect(stats).toContainText(l);
   await expect(stats).toContainText(/κάθε \d+″/);
-  await expect(app.page.getByText('Η βόλτα δεν μοιράζεται. Το ίχνος μένει μόνο σε αυτό το κινητό.')).toBeVisible();
+  await expect(app.page.getByText('Η αναψυχή δεν μοιράζεται. Το ίχνος μένει μόνο σε αυτό το κινητό.')).toBeVisible();
   await expect(app.page.getByText(/^Χωρίς τις παύσεις \(1:0\d\)/)).toBeVisible();
   const gpx = await download(app.page, () => app.page.getByTestId('export-gpx').click());
   expect(gpx.name).toMatch(/\.gpx$/);
@@ -107,7 +107,7 @@ test('βόλτα: «Πού πάμε;» → Live με προορισμό → αλ
   // Past the undo: the cruise is in the history and nothing about it left the phone.
   await app.advance(11_000, 1000);
   await app.page.getByRole('button', { name: 'Στο Ιστορικό' }).click();
-  await expect(app.page.getByTestId('history-item').filter({ hasText: `Βόλτα · ${COURSE.name}` })).toHaveCount(1);
+  await expect(app.page.getByTestId('history-item').filter({ hasText: `Αναψυχή · ${COURSE.name}` })).toHaveCount(1);
   expect(app.server.calls('/crews/*', 'PUT')).toEqual([]);
   expect(JSON.stringify(app.server.log)).not.toContain('"cruise"');
 
@@ -119,15 +119,15 @@ test('βόλτα: «Πού πάμε;» → Live με προορισμό → αλ
   expect(lat).toBeGreaterThan(37.9);
 });
 
-test('βόλτα χωρίς προορισμό: το Live λέει «Χωρίς προορισμό» και ο χάρτης «Βάλε προορισμό»', async ({ app, context }) => {
+test('αναψυχή χωρίς προορισμό: το Live λέει «Χωρίς προορισμό» και ο χάρτης «Βάλε προορισμό»', async ({ app, context }) => {
   await context.grantPermissions(['geolocation']);
   await app.open();
   await app.signIn();
   await app.page.getByRole('button', { name: 'Παράλειψη όλων' }).click();
-  await app.page.getByRole('button', { name: /^Βόλτα:/ }).click();
+  await app.page.getByRole('button', { name: /^Αναψυχή:/ }).click();
   await expect(app.page.getByRole('button', { name: 'Χωρίς προορισμό' })).toHaveAttribute('aria-pressed', 'true');
   await expect(app.page.getByText(/\(άφιξη μόνο με προορισμό\)/)).toBeVisible();
-  await app.page.getByRole('button', { name: '● Έναρξη βόλτας' }).click();
+  await app.page.getByRole('button', { name: '● Έναρξη αναψυχής' }).click();
   await expect(tile(app)).toContainText('Χωρίς προορισμό');
   await expect(tile(app).getByRole('button', { name: 'Βάλε' })).toBeVisible();
   await app.tab('Χάρτης');

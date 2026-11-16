@@ -368,7 +368,7 @@ export function LiveView() {
               <Label text="Πανί" />
               {result && !outlook?.recommended && sails.length <= 1 ? (
                 <button type="button" className="missing" onClick={(e) => (e.stopPropagation(), openTab('boats'))}>
-                  Δεν έχεις πανιά — Πρόσθεσε στα Σκάφη
+                  Δεν έχεις πανιά. Πρόσθεσε στα «Σκάφη».
                 </button>
               ) : (
                 <>
@@ -424,7 +424,7 @@ export function LiveView() {
         {s.windInput === 'twa' ? (
           <>
             <NumberStepper hint="γωνία ανέμου" label="TWA" unit="°" value={s.twa} onChange={(v) => setManual('twa', { twa: v })} small={1} big={5} min={0} max={180} />
-            <div className="seg" role="group" aria-label="Ποδαρικό">
+            <div className="seg" role="group" aria-label="Μούρες (δεξιές/αριστερές)">
               <button className={`stbd ${s.side === 'stbd' ? 'on' : ''}`} onClick={() => setManual('twa', { side: 'stbd' })}>
                 Δεξιές{!simple && ' (stbd)'}
               </button>
@@ -436,7 +436,7 @@ export function LiveView() {
         ) : (
           <>
             <NumberStepper
-              label={`TWD${settings.manualMagnetic ? ' (μαγν.)' : ''}`}
+              label={`TWD${settings.manualMagnetic ? ' (°M)' : ''}`}
               hint="από πού φυσάει"
               unit="°"
               value={s.twd}
@@ -445,17 +445,17 @@ export function LiveView() {
               big={10}
               wrap
             />
-            <div className="seg" role="group" aria-label="Πηγή πορείας">
+            <div className="seg" role="group" aria-label="Πηγή πλώρης">
               <button className={s.headingSource === 'gps' ? 'on' : ''} onClick={() => set({ headingSource: 'gps' })}>
-                Πορεία από GPS
+                Πορεία GPS (COG)
               </button>
               <button className={s.headingSource === 'manual' ? 'on' : ''} onClick={() => set({ headingSource: 'manual' })}>
-                Πορεία χειροκίνητα
+                Πλώρη χειροκίνητα
               </button>
             </div>
             {s.headingSource === 'manual' && (
               <NumberStepper
-                label={`Πορεία${settings.manualMagnetic ? ' (πυξίδα)' : ''}`}
+                label={`Πλώρη${settings.manualMagnetic ? ' (°M)' : ''}`}
                 unit="°"
                 value={s.heading}
                 onChange={(v) => set({ heading: v })}
@@ -525,7 +525,7 @@ export function LiveView() {
 
       <section className="card">
         <button className="link" onClick={() => set({ showPolar: !s.showPolar })}>
-          {s.showPolar ? '▾' : '▸'} Polar διάγραμμα
+          {s.showPolar ? '▾' : '▸'} Διάγραμμα polar
         </button>
         {s.showPolar && result && (
           <PolarChart

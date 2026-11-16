@@ -5,7 +5,7 @@ import { DEFAULT_SERVER } from './settings';
 import { ApiError, accountApi, type AdminUser } from '../sync/api';
 import { PrivacyText, TermsText, useServerConfig } from './legal';
 
-const errText = (e: unknown) => (e instanceof ApiError || e instanceof Error ? e.message : 'Αποτυχία.');
+const errText = (e: unknown) => (e instanceof ApiError || e instanceof Error ? e.message : 'Κάτι πήγε στραβά. Δοκίμασε ξανά.');
 const fmtDate = (ms: number) => new Date(ms).toLocaleDateString('el-GR');
 
 function download(name: string, text: string) {
@@ -68,7 +68,7 @@ export function AccountCard() {
           </li>
           <li>
             <span>Αναγνώσεις πιστοποιητικών</span>
-            <b>{pdf?.left === null || pdf?.left === undefined ? 'χωρίς όριο' : `${pdf.left} από 3 έμειναν`}</b>
+            <b>{pdf?.left === null || pdf?.left === undefined ? 'χωρίς όριο' : `απομένουν ${pdf.left} από 3`}</b>
           </li>
         </ul>
         <button className="btn" disabled={syncStatus.busy} onClick={() => sync().then(refreshAccount)}>
@@ -162,13 +162,13 @@ export function AccountCard() {
         <details>
           <summary className="danger-text">Διαγραφή λογαριασμού</summary>
           <p className="small">
-            Σβήνονται οριστικά ο λογαριασμός, τα σκάφη και οι διαδρομές από τον server. Δεν αναιρείται. Κατέβασε πρώτα τα
+            Σβήνονται οριστικά ο λογαριασμός, τα σκάφη και οι διαδρομές από την υπηρεσία της εφαρμογής. Δεν αναιρείται. Κατέβασε πρώτα τα
             δεδομένα σου αν τα θες. Τα δεδομένα σε αυτή τη συσκευή μένουν.
           </p>
           <button
             className="btn danger"
             onClick={async () => {
-              if (!(await askConfirm('Οριστική διαγραφή του λογαριασμού και των δεδομένων του στο cloud; Δεν αναιρείται.', { ok: 'Διαγραφή λογαριασμού', danger: true }))) return;
+              if (!(await askConfirm('Οριστική διαγραφή του λογαριασμού και των δεδομένων του στην υπηρεσία; Δεν αναιρείται.', { ok: 'Διαγραφή λογαριασμού', danger: true }))) return;
               try {
                 await accountApi.deleteAccount(server, settings.authToken);
                 await signOut();

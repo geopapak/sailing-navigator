@@ -154,15 +154,15 @@ function apiError(e: unknown, cors: Record<string, string>): Response {
   if (e instanceof Anthropic.BadRequestError && /credit balance/i.test(e.message))
     return json({ error: 'Δεν υπάρχει υπόλοιπο στον λογαριασμό Claude API (Plans & Billing στο Claude Console).' }, 502, cors);
   if (e instanceof Anthropic.AuthenticationError) return json({ error: 'Άκυρο κλειδί Claude API στον server.' }, 500, cors);
-  if (e instanceof Anthropic.RateLimitError) return json({ error: 'Πολλά αιτήματα. Δοκίμασε σε λίγο.' }, 429, cors);
-  if (e instanceof Anthropic.APIConnectionTimeoutError) return json({ error: 'Το μοντέλο άργησε. Δοκίμασε ξανά.' }, 504, cors);
-  if (e instanceof Anthropic.APIError) return json({ error: `Σφάλμα Claude API (${e.status ?? '—'}).` }, 502, cors);
-  return json({ error: 'Απρόσμενο σφάλμα στον server.' }, 500, cors);
+  if (e instanceof Anthropic.RateLimitError) return json({ error: 'Πολλές ερωτήσεις μαζί. Δοκίμασε ξανά σε λίγο.' }, 429, cors);
+  if (e instanceof Anthropic.APIConnectionTimeoutError) return json({ error: 'Ο σύμβουλος άργησε να απαντήσει. Δοκίμασε ξανά.' }, 504, cors);
+  if (e instanceof Anthropic.APIError) return json({ error: `Ο σύμβουλος δεν απάντησε (κωδικός ${e.status ?? '—'}). Δοκίμασε ξανά.` }, 502, cors);
+  return json({ error: 'Κάτι πήγε στραβά στην υπηρεσία. Δοκίμασε ξανά.' }, 500, cors);
 }
 
 async function readJson(req: Request, limit: number): Promise<{ ok: true; body: unknown } | { ok: false; status: number; error: string }> {
   const raw = await req.text();
-  if (raw.length > limit) return { ok: false, status: 413, error: 'Πολύ μεγάλο αίτημα.' };
+  if (raw.length > limit) return { ok: false, status: 413, error: 'Πολύ μεγάλο για να σταλεί.' };
   try {
     return { ok: true, body: JSON.parse(raw) };
   } catch {
@@ -415,7 +415,7 @@ async function handle(req: Request, env: Env): Promise<Response> {
     } catch (e) {
       if (e instanceof HttpError) return json({ error: e.message }, e.status, cors);
       log('error', { where: 'server', path, error: e instanceof Error ? `${e.constructor.name}: ${e.message}` : String(e) });
-      return json({ error: 'Απρόσμενο σφάλμα στον server.' }, 500, cors);
+      return json({ error: 'Κάτι πήγε στραβά στην υπηρεσία. Δοκίμασε ξανά.' }, 500, cors);
     }
   }
 }
@@ -451,9 +451,9 @@ async function advice(req: Request, env: Env, cors: Record<string, string>): Pro
     try {
       reply = JSON.parse(text);
     } catch {
-      return json({ error: 'Μη αναγνώσιμη απάντηση από το μοντέλο.' }, 502, cors);
+      return json({ error: 'Η απάντηση του συμβούλου δεν διαβάστηκε. Δοκίμασε ξανά.' }, 502, cors);
     }
-    if (!isReply(reply)) return json({ error: 'Μη αναμενόμενη μορφή απάντησης.' }, 502, cors);
+    if (!isReply(reply)) return json({ error: 'Ο σύμβουλος απάντησε σε άγνωστη μορφή. Δοκίμασε ξανά.' }, 502, cors);
     reply.actions = reply.actions.slice(0, 4);
     const fallback = (res.usage.iterations ?? []).some((it) => it.type === 'fallback_message');
     log('ai', {

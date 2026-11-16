@@ -58,7 +58,7 @@ export function AdvisorCard({
       setStored({ res, at: Date.now(), question: q?.trim() || undefined });
       setQuestion('');
     } catch (e) {
-      setError(e instanceof AdvisorError ? e.message : 'Απρόσμενο σφάλμα.');
+      setError(e instanceof AdvisorError ? e.message : 'Κάτι πήγε στραβά. Δοκίμασε ξανά.');
     } finally {
       setBusy(false);
     }
@@ -71,7 +71,7 @@ export function AdvisorCard({
     <section className="card advisor" aria-busy={busy}>
       <div className="advisor-head">
         <h3>✦ {title}</h3>
-        {ageMin !== undefined && <span className="muted small">{ageMin < 1 ? 'μόλις τώρα' : `πριν ${ageMin}′`}</span>}
+        {ageMin !== undefined && <span className="muted small">{ageMin < 1 ? 'μόλις τώρα' : `πριν από ${ageMin}′`}</span>}
       </div>
 
       {!configured ? (
@@ -137,7 +137,7 @@ export function AdvisorCard({
           )}
           {reply.caution && <p className="advisor-caution">⚠ {reply.caution}</p>}
           <p className="muted small">
-            Συμβουλή AI με βάση τα νούμερα της εφαρμογής — η απόφαση είναι του κυβερνήτη.
+            Συμβουλή AI με βάση τα νούμερα της εφαρμογής: η απόφαση είναι του κυβερνήτη.
             {stored.res?.fallback && ' (απάντησε εναλλακτικό μοντέλο)'}
           </p>
         </div>

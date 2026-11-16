@@ -254,7 +254,7 @@ export function DestTile({ onSet }: { onSet: () => void }) {
   const { place, detail } = splitName(c.name);
   const sub = detail ?? (race.session?.dest ? undefined : CT.route);
   return (
-    <button type="button" className="rs-tile dest-tile" data-testid="cruise-dest-tile" onClick={onSet} aria-label={`${c.name}: ${n1(c.leftNm)} νμ. ${CT.change}`}>
+    <button type="button" className="rs-tile dest-tile" data-testid="cruise-dest-tile" onClick={onSet} aria-label={`${c.name}: ${n1(c.leftNm)} ναυτικά μίλια. ${CT.change}`}>
       <span>
         <span className="lab" title={c.name}>
           {place}
@@ -267,7 +267,7 @@ export function DestTile({ onSet }: { onSet: () => void }) {
       </span>
       <span className="val">
         {n1(c.leftNm)}
-        <small> νμ</small>
+        <small> NM</small>
       </span>
     </button>
   );

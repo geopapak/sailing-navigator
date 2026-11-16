@@ -89,13 +89,13 @@ export function NextMarkCard({ observed, fromCog }: { observed?: WindSample; fro
       )}
       {atMark && nextMark < course.marks.length - 1 && (
         <button className="btn primary" onClick={() => nav.setNextMark(nextMark + 1)}>
-          Στη σημαδούρα → επόμενη
+          Γυρίσαμε · επόμενη σημαδούρα
         </button>
       )}
 
       {first && boat && (
         <div className="nm-route">
-          <div className="tile-label">Βέλτιστη πορεία τώρα {ageMin !== undefined && <span className="muted">(πριν {ageMin}′)</span>}</div>
+          <div className="tile-label">Βέλτιστη πορεία τώρα {ageMin !== undefined && <span className="muted">(πριν από {ageMin}′)</span>}</div>
           <div className="nm-val">
             {f0(advHeading!)}
             {unit} · TWA {f0(Math.abs(first.twa))}° {first.twa >= 0 ? 'δεξιές' : 'αριστερές'}

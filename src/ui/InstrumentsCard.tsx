@@ -4,11 +4,11 @@ import { mixedContentProblem } from '../instruments/client';
 import type { InstrumentField, InstrumentSettings, InstrumentSource } from '../instruments/types';
 
 const ROWS: { k: InstrumentField; label: string; fmt: (v: number) => string }[] = [
-  { k: 'tws', label: 'Αληθής άνεμος TWS', fmt: (v) => `${v.toFixed(1)} kt` },
-  { k: 'twa', label: 'Αληθής γωνία TWA', fmt: (v) => `${Math.round(Math.abs(v))}° ${v < 0 ? 'αριστερές' : 'δεξιές'}` },
-  { k: 'twd', label: 'Κατεύθυνση TWD', fmt: (v) => `${Math.round(v).toString().padStart(3, '0')}°` },
-  { k: 'bsp', label: 'Ταχύτητα BSP', fmt: (v) => `${v.toFixed(2)} kt` },
-  { k: 'hdgTrue', label: 'Πλώρη (αληθής)', fmt: (v) => `${Math.round(v)}°` },
+  { k: 'tws', label: 'TWS · ένταση ανέμου', fmt: (v) => `${v.toFixed(1)} kt` },
+  { k: 'twa', label: 'TWA · γωνία ανέμου', fmt: (v) => `${Math.round(Math.abs(v))}° ${v < 0 ? 'αριστερές' : 'δεξιές'}` },
+  { k: 'twd', label: 'TWD · από πού φυσάει', fmt: (v) => `${Math.round(v).toString().padStart(3, '0')}°` },
+  { k: 'bsp', label: 'BSP · ταχύτητα', fmt: (v) => `${v.toFixed(2)} kt` },
+  { k: 'hdgTrue', label: 'HDG · πλώρη (°T)', fmt: (v) => `${Math.round(v)}°` },
   { k: 'sog', label: 'SOG', fmt: (v) => `${v.toFixed(1)} kt` },
   { k: 'lat', label: 'Θέση', fmt: (v) => v.toFixed(4) },
   { k: 'depth', label: 'Βάθος', fmt: (v) => `${v.toFixed(1)} m` },
@@ -29,10 +29,10 @@ export function InstrumentsCard() {
   const warn = cfg.source !== 'simulator' ? mixedContentProblem(cfg.url) : undefined;
   const now = Date.now();
   const statusText = !cfg.enabled
-    ? 'Χωρίς σύνδεση οργάνων — όλα δουλεύουν χειροκίνητα, όπως πάντα.'
+    ? 'Χωρίς όργανα: όλα δουλεύουν με χειροκίνητες τιμές.'
     : inst.live
-      ? `Συνδεδεμένο · τελευταία τιμή πριν ${(inst.ageSec ?? 0).toFixed(1).replace('.', ',')} s`
-      : inst.message ?? (inst.status === 'connecting' ? 'Σύνδεση…' : 'Δεν έρχονται δεδομένα.');
+      ? `Συνδεδεμένο · τελευταία τιμή πριν από ${(inst.ageSec ?? 0).toFixed(1).replace('.', ',')}″`
+      : inst.message ?? (inst.status === 'connecting' ? 'Σύνδεση…' : 'Δεν έρχονται τιμές από τα όργανα.');
 
   return (
     <section className="card form-grid instruments" data-testid="instruments-card">

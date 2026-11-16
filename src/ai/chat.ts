@@ -61,7 +61,7 @@ export const CHAT_LIMITS = { messages: 24, chars: 4000, body: 160 * 1024 };
 export function validateChat(body: unknown): { ok: true; req: ChatRequest } | { ok: false; error: string } {
   const b = body as Partial<ChatRequest> | null;
   if (!b || !Array.isArray(b.messages) || b.messages.length === 0) return { ok: false, error: 'Δεν υπάρχει ερώτηση.' };
-  if (b.messages.length > CHAT_LIMITS.messages) return { ok: false, error: 'Πολύ μεγάλη συζήτηση — ξεκίνα νέα.' };
+  if (b.messages.length > CHAT_LIMITS.messages) return { ok: false, error: 'Η συζήτηση έγινε πολύ μεγάλη. Ξεκίνα νέα.' };
   for (const m of b.messages) {
     if (!m || (m.role !== 'user' && m.role !== 'assistant') || typeof m.text !== 'string' || !m.text.trim()) {
       return { ok: false, error: 'Άκυρο μήνυμα.' };

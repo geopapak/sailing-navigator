@@ -103,7 +103,7 @@ export function CruiseMap() {
   const destLine = c.name && c.pos ? [c.pos, ...c.marks.slice(Math.min(c.next, c.marks.length - 1))] : undefined;
   const here =
     depth.sounder !== undefined
-      ? `${depthNum(depth.sounder)} μ`
+      ? `${depthNum(depth.sounder)} m`
       : depth.chart?.d
         ? CT.depthChart(depthNum(depth.chart.d.depth))
         : '—';
@@ -155,7 +155,7 @@ export function CruiseMap() {
           <div className="next-line">
             <span className="nl-name">{c.name}</span>
             <span>
-              {n1(c.leftNm)} νμ · {c.eta ? `ETA ${hhmm(c.eta.at)}` : fix ? 'ETA —' : CT.noGps}
+              {n1(c.leftNm)} NM · {c.eta ? `ETA ${hhmm(c.eta.at)}` : fix ? 'ETA —' : CT.noGps}
             </span>
           </div>
         ) : (

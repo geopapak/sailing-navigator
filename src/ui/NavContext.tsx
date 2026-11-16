@@ -219,7 +219,7 @@ export function NavProvider({ children }: { children: ReactNode }) {
     } catch (e) {
       setForecastStatus({
         busy: false,
-        error: navigator.onLine === false ? 'Δεν υπάρχει σύνδεση. Χρησιμοποιείται η αποθηκευμένη πρόγνωση.' : (e as Error).message,
+        error: navigator.onLine === false ? 'Χωρίς ίντερνετ: κρατάμε την αποθηκευμένη πρόγνωση.' : (e as Error).message,
       });
     }
   }, [plan.startLocal, plan.model]);
@@ -245,7 +245,7 @@ export function NavProvider({ children }: { children: ReactNode }) {
     } catch (e) {
       setComparisonStatus({
         busy: false,
-        error: navigator.onLine === false ? 'Δεν υπάρχει σύνδεση. Δείχνεται η αποθηκευμένη σύγκριση.' : (e as Error).message,
+        error: navigator.onLine === false ? 'Χωρίς ίντερνετ: δείχνουμε την αποθηκευμένη σύγκριση.' : (e as Error).message,
       });
     }
   }, [plan.startLocal, course, gps.fix, planned, settings]);

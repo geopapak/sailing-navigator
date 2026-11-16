@@ -55,12 +55,12 @@ describe('destination (P-036)', () => {
   it('names, titles and keys', () => {
     const r = { ...newSession('cruise', { id: 'x', now: T0, entries: [] }), ...destPatch({ kind: 'point', point: { name: 'Αίγινα · λιμάνι', ...P(16) } }) };
     expect(destName(r)).toBe('Αίγινα · λιμάνι');
-    expect(cruiseTitle(r)).toBe('Βόλτα · Αίγινα');
+    expect(cruiseTitle(r)).toBe('Αναψυχή · Αίγινα');
     expect(splitName('Αίγινα · λιμάνι')).toEqual({ place: 'Αίγινα', detail: 'λιμάνι' });
     expect(splitName('Σημείο 10:42')).toEqual({ place: 'Σημείο 10:42' });
     const none = newSession('cruise', { id: 'y', now: T0, entries: [] });
     expect(destName(none)).toBeUndefined();
-    expect(cruiseTitle(none)).toBe('Βόλτα');
+    expect(cruiseTitle(none)).toBe('Αναψυχή');
     expect(destKey(none)).toBeUndefined();
     const other = { ...r, ...destPatch({ kind: 'point', point: { name: 'Αγκίστρι', ...P(19) } }) };
     expect(destKey(r)).not.toBe(destKey(other));
@@ -221,7 +221,7 @@ describe('cruise alerts: shallow water and arrival (P-036 AC 7)', () => {
     const st = newEngine();
     expect(step(st, DEFAULT_ALERTS, { ...base, depth: { depth: 7, from: 'sounder' } }, p)).toBeUndefined();
     const a = step(st, DEFAULT_ALERTS, { ...base, now: 2_000, depth: { depth: 4.2, from: 'sounder' } }, p)!;
-    expect(a).toMatchObject({ type: 'shallow', kind: 'now', big: 'ΡΗΧΑ ΜΠΡΟΣΤΑ', sub: 'Βάθος 4,2 μ · ενδεικτικό, όχι για ναυσιπλοΐα' });
+    expect(a).toMatchObject({ type: 'shallow', kind: 'now', big: 'ΡΗΧΑ ΜΠΡΟΣΤΑ', sub: 'Βάθος 4,2 m · ενδεικτικό, όχι για ναυσιπλοΐα' });
     // Still shallow: no second alert.
     expect(step(st, DEFAULT_ALERTS, { ...base, now: 90_000, depth: { depth: 3.8, from: 'sounder' } }, p)).toBeUndefined();
     // Deep again, then shallow: a new stretch, after the 60″ gap.
@@ -232,13 +232,13 @@ describe('cruise alerts: shallow water and arrival (P-036 AC 7)', () => {
   it('chart ahead: depth and distance, always «ενδεικτικό, όχι για ναυσιπλοΐα»', () => {
     const st = newEngine();
     const a = step(st, DEFAULT_ALERTS, { ...base, depth: { depth: 4, from: 'chart', aheadNm: 0.3 } }, p)!;
-    expect(a.sub).toBe('4,0 μ σε 0,3 νμ · ενδεικτικό, όχι για ναυσιπλοΐα');
+    expect(a.sub).toBe('4,0 m σε 0,3 NM · ενδεικτικό, όχι για ναυσιπλοΐα');
   });
 
   it('«ΦΤΑΝΕΙΣ» at 0,5 nm, once per destination', () => {
     const st = newEngine();
     expect(step(st, DEFAULT_ALERTS, { ...base, destNm: 0.8, destKey: 'a' }, p)).toBeUndefined();
-    expect(step(st, DEFAULT_ALERTS, { ...base, now: 2_000, destNm: 0.5, destKey: 'a' }, p)).toMatchObject({ type: 'arrive', big: 'ΦΤΑΝΕΙΣ', sub: 'Προορισμός σε 0,5 νμ' });
+    expect(step(st, DEFAULT_ALERTS, { ...base, now: 2_000, destNm: 0.5, destKey: 'a' }, p)).toMatchObject({ type: 'arrive', big: 'ΦΤΑΝΕΙΣ', sub: 'Προορισμός σε 0,5 NM' });
     expect(step(st, DEFAULT_ALERTS, { ...base, now: 200_000, destNm: 0.2, destKey: 'a' }, p)).toBeUndefined();
     // A new destination arms it again.
     expect(step(st, DEFAULT_ALERTS, { ...base, now: 400_000, destNm: 0.4, destKey: 'b' }, p)?.type).toBe('arrive');

@@ -30,7 +30,7 @@ const END_EVENT = 'session-end';
 /** Opens the «■ Τέλος» sheet from anywhere (e.g. the race's «Τερματισμός» button). */
 export const requestSessionEnd = () => window.dispatchEvent(new Event(END_EVENT));
 const KIND_EVENT = 'session-kind';
-/** Opens the kind sheet from the Live (« ⇄ Γίνε Βόλτα / Προπόνηση», P-034). */
+/** Opens the kind sheet from the Live («⇄ Άλλαξε σε Αναψυχή / Προπόνηση», P-034). */
 export const requestKindSheet = () => window.dispatchEvent(new Event(KIND_EVENT));
 
 export const hms = (ms: number) => {
@@ -176,7 +176,7 @@ export function SessionBar({ onEnded }: { onEnded: (e: Ended) => void }) {
             </>
           ) : (
             <>
-              <h3>{kind === 'race' ? 'Τερματισμός αγώνα;' : kind === 'training' ? 'Τέλος προπόνησης;' : 'Τέλος βόλτας;'}</h3>
+              <h3>{kind === 'race' ? 'Τερματισμός αγώνα;' : kind === 'training' ? 'Τέλος προπόνησης;' : 'Τέλος αναψυχής;'}</h3>
               <p className="small">Σταματά η καταγραφή και οι ειδοποιήσεις. Η οθόνη μπορεί πια να σβήσει. Θα έχεις 10″ για αναίρεση.</p>
             </>
           )}
@@ -257,7 +257,7 @@ function SessionStrip({ r, now, flash, onFlash }: { r: Race; now: number; flash?
     return (
       <div data-testid="session-strip" className="net-strip race-strip bad" role="alert">
         <span className="dot" aria-hidden="true" />
-        <span>Δεν αποθηκεύτηκε η έξοδος. Η καταγραφή συνεχίζει στη μνήμη.</span>
+        <span>Η έξοδος δεν αποθηκεύτηκε ακόμα. Η καταγραφή συνεχίζει.</span>
         <button type="button" className="link" onClick={race.retrySave}>
           Ξανά
         </button>
@@ -306,7 +306,7 @@ function SessionStrip({ r, now, flash, onFlash }: { r: Race; now: number; flash?
     return (
       <div data-testid="session-strip" className="net-strip ok race-strip quiet" role="status">
         <span className="dot" aria-hidden="true" />
-        <span>Η καταγραφή ξεκινά μόνη της στις {hhmm(recordFrom(r))}, 10′ πριν την εκκίνηση.</span>
+        <span>Η καταγραφή ξεκινά μόνη της στις {hhmm(recordFrom(r))}, 10′ πριν από την εκκίνηση.</span>
       </div>
     );
   if (race.waitingGps)
@@ -361,7 +361,7 @@ function KindSheet({ r, onClose, onSwitched }: { r: Race; onClose: () => void; o
     return (
       <SheetFrame label="Τύπος εξόδου" onClose={onClose}>
         <h3>Ο αγώνας μένει αγώνας</h3>
-        <p className="small">Για προπόνηση ή βόλτα, τελείωσε τον αγώνα και ξεκίνα νέα έξοδο. Έτσι δεν χαλάνε οι χρόνοι και η κατάταξη.</p>
+        <p className="small">Για προπόνηση ή αναψυχή, τελείωσε τον αγώνα και ξεκίνα νέα έξοδο. Έτσι δεν χαλάνε οι χρόνοι και η κατάταξη.</p>
         <button type="button" className="btn big-btn wide" onClick={onClose}>
           Εντάξει
         </button>
@@ -374,7 +374,7 @@ function KindSheet({ r, onClose, onSwitched }: { r: Race; onClose: () => void; o
     if (p) {
       // Saved at once: the switch must survive the app being closed right after.
       race.save({ ...r, ...p, updatedAt: Date.now() }).catch(() => undefined);
-      onSwitched(to === 'cruise' ? `Τώρα: Βόλτα · ίχνος κάθε ${cruiseSec}″ · μόνο ειδοποιήσεις ασφάλειας` : 'Τώρα: Προπόνηση · ίχνος κάθε 15″ · στόχοι polar');
+      onSwitched(to === 'cruise' ? `Τώρα: Αναψυχή · ίχνος κάθε ${cruiseSec}″ · μόνο ειδοποιήσεις ασφάλειας` : 'Τώρα: Προπόνηση · ίχνος κάθε 15″ · στόχοι polar');
     }
     onClose();
   };
@@ -392,18 +392,18 @@ function KindSheet({ r, onClose, onSwitched }: { r: Race; onClose: () => void; o
         <span>
           <b>Προπόνηση</b>
           <span className="small muted">
-            {noBoat && kind !== 'training' ? 'Θέλει σκάφος: αυτή η βόλτα ξεκίνησε χωρίς σκάφος.' : 'στόχοι polar, γύροι · ίχνος κάθε 15″'}
+            {noBoat && kind !== 'training' ? 'Θέλει σκάφος: αυτή η έξοδος αναψυχής ξεκίνησε χωρίς σκάφος.' : 'στόχοι polar, γύροι · ίχνος κάθε 15″'}
           </span>
         </span>
       </button>
       <button type="button" className={`opt ${kind === 'cruise' ? 'on' : ''}`} aria-pressed={kind === 'cruise'} onClick={() => pick('cruise')}>
         <span>
-          <b>Βόλτα</b>
+          <b>Αναψυχή</b>
           <span className="small muted">προορισμός, ETA, βάθη · ίχνος κάθε {cruiseSec}″ · μόνο ειδοποιήσεις ασφάλειας</span>
         </span>
       </button>
       {kind === 'training' && r.crewShared && (
-        <p className="msg warn">Το κομμάτι της προπόνησης ως τώρα μένει κοινό με το πλήρωμα (σύνοψη και σημειώσεις). Η βόλτα από εδώ και πέρα δεν μοιράζεται.</p>
+        <p className="msg warn">Το κομμάτι της προπόνησης ως τώρα μένει κοινό με το πλήρωμα (σύνοψη και σημειώσεις). Η αναψυχή από εδώ και πέρα δεν μοιράζεται.</p>
       )}
       <button type="button" className="btn big-btn wide" onClick={onClose}>
         Άκυρο
@@ -528,7 +528,7 @@ function ForgottenSheet({
             {info.The} τρέχει {p.hours} ώρες
           </h3>
           <p className="small">
-            Η τελευταία κίνηση ήταν {yesterday ? `χθες στις ${at}` : `στις ${at}`}. Μάλλον ξέχασες να την κλείσεις. Η διάρκεια κόβεται στην τελευταία
+            Η τελευταία κίνηση ήταν {yesterday ? `χθες στις ${at}` : `στις ${at}`}. Μάλλον ξέχασες να πατήσεις «Τέλος». Η διάρκεια κόβεται στην τελευταία
             κίνηση.
           </p>
         </>

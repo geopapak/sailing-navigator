@@ -27,7 +27,7 @@ const SUGGESTIONS = [
   'Τι κάνω τώρα;',
   'Τι πανί για 16 kt στις 50°;',
   'Πώς θα είναι ο άνεμος στην Αίγινα αύριο 11:00–17:00;',
-  'Εγώ αριστερές, αυτός δεξιές, στη ζώνη της πάνω σημαδούρας. Ποιος έχει δικαίωμα;',
+  'Εγώ με αριστερές, αυτός με δεξιές, στη ζώνη της πάνω σημαδούρας. Ποιος έχει δικαίωμα;',
   'Πώς ρυθμίζω μαΐστρα και τζένοα σε 20 kt με κοντό κύμα;',
   'Πόσο χρόνο δίνουμε στους αντιπάλους για 20 NM;',
 ];
@@ -37,7 +37,7 @@ const TOOL_LABEL: Record<string, string> = {
   ratings_math: 'χρονοδιόρθωση',
   weather_models: 'μοντέλα καιρού',
   distance_bearing: 'αποστάσεις',
-  web_search: 'αναζήτηση web',
+  web_search: 'αναζήτηση στο ίντερνετ',
 };
 
 /** Minimal, safe rendering of the advisor's text: paragraphs, "- " lists, **bold**. */
@@ -179,7 +179,7 @@ export function ChatView() {
       setLog({ entries: log.entries });
       setDraft(q);
       if (typeof navigator !== 'undefined' && navigator.onLine === false) setOnline(false);
-      else setError(e instanceof AdvisorError ? e.message : 'Απρόσμενο σφάλμα.');
+      else setError(e instanceof AdvisorError ? e.message : 'Κάτι πήγε στραβά. Δοκίμασε ξανά.');
     } finally {
       setBusy(false);
     }
@@ -187,7 +187,7 @@ export function ChatView() {
 
   const ago = (ms: number) => {
     const m = Math.round((Date.now() - ms) / 60_000);
-    return m < 1 ? 'τώρα' : `πριν ${m}′`;
+    return m < 1 ? 'τώρα' : `πριν από ${m}′`;
   };
 
   return (
@@ -239,7 +239,7 @@ export function ChatView() {
         {comparison && planned && Math.abs(comparison.start - planned.start) > 3_600_000 && (
           <p className="muted small">Η σύγκριση μοντέλων είναι για άλλη ώρα εκκίνησης από το σχέδιο ({localIso(comparison.start).slice(11, 16)}).</p>
         )}
-        {nav.plan.startLocal && !planned && <p className="muted small">Χωρίς υπολογισμένη διαδρομή — ο σύμβουλος δεν θα ξέρει το σχέδιο.</p>}
+        {nav.plan.startLocal && !planned && <p className="muted small">Χωρίς υπολογισμένη διαδρομή: ο σύμβουλος δεν θα ξέρει το σχέδιο.</p>}
         {waiting && <p className="small">{ADVISOR_WAITING}</p>}
         {!configured && (
           <p className="small">
@@ -322,7 +322,7 @@ export function ChatView() {
           <span>Ρώτα ≈ €0,10</span>
         </button>
       </form>
-      <p className="muted small chat-foot">Συμβουλή AI — η απόφαση είναι του κυβερνήτη. Κόστος περίπου €0,05–0,15 ανά ερώτηση.</p>
+      <p className="muted small chat-foot">Συμβουλή AI: η απόφαση είναι του κυβερνήτη. Κόστος περίπου €0,05–0,15 ανά ερώτηση.</p>
     </div>
   );
 }

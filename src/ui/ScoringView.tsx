@@ -89,7 +89,7 @@ export function ScoringView() {
           </div>
         </label>
         <label>
-          Επιλογή πιστοποιητικού
+          Επιλογή βαθμολογίας
           <select value={s.optionId} onChange={(e) => set({ optionId: e.target.value })}>
             {STANDARD_SCORING_OPTIONS.map((o) => (
               <option key={o.id} value={o.id}>
@@ -100,7 +100,7 @@ export function ScoringView() {
         </label>
         <label>
           Απόσταση (NM){needsDistance ? '' : ' — προαιρετική'}
-          <input inputMode="decimal" value={s.distance} placeholder="π.χ. 18.5" onChange={(e) => set({ distance: e.target.value })} />
+          <input inputMode="decimal" value={s.distance} placeholder="π.χ. 18,5" onChange={(e) => set({ distance: e.target.value })} />
         </label>
         {myOpt && (
           <p className="muted small">
@@ -139,7 +139,7 @@ export function ScoringView() {
               <tr>
                 <th>#</th>
                 <th>Σκάφος</th>
-                <th>Elapsed</th>
+                <th>Πραγματικός</th>
                 <th>Διορθωμένος</th>
                 <th>Διαφορά</th>
               </tr>

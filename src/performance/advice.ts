@@ -58,11 +58,11 @@ export function adviceFor(
     const diff = twa - res.targetTwa; // + = sailing lower than target
     if (bsp !== undefined && pctTarget !== undefined) {
       if (diff < -th.angleTol && pctTarget < 1) {
-        out.push({ id: 'pinch', level: 'warn', text: `Πολύ ψηλά (${r0(twa)}° vs ${r0(res.targetTwa)}°): πέσε ${r0(-diff)}° και χτίσε ταχύτητα.` });
+        out.push({ id: 'pinch', level: 'warn', text: `Πολύ ψηλά (${r0(twa)}° αντί ${r0(res.targetTwa)}°): πέσε ${r0(-diff)}° και χτίσε ταχύτητα.` });
       } else if (diff > th.angleTol && pctTarget >= 1) {
-        out.push({ id: 'low', level: 'warn', text: `Χαμηλά (${r0(twa)}° vs ${r0(res.targetTwa)}°) με ταχύτητα: όρτσαρε ${r0(diff)}°.` });
+        out.push({ id: 'low', level: 'warn', text: `Χαμηλά (${r0(twa)}° αντί ${r0(res.targetTwa)}°) με ταχύτητα: όρτσαρε ${r0(diff)}°.` });
       } else if (pctTarget < th.slow) {
-        out.push({ id: 'slow-up', level: 'warn', text: `Αργός (${r0(pctTarget * 100)}%): πέσε 2–3° για ταχύτητα, άνοιξε λίγο τα πανιά, έλεγξε twist.` });
+        out.push({ id: 'slow-up', level: 'warn', text: `Αργός (${r0(pctTarget * 100)}%): πέσε 2–3° για ταχύτητα, λάσκαρε λίγο τις σκότες, έλεγξε το twist.` });
       } else if (pctTarget > th.fast) {
         out.push({ id: 'fast-up', level: 'info', text: `Πάνω από target (${r0(pctTarget * 100)}%): όρτσαρε 1–2° για καλύτερο VMG.` });
       } else {
@@ -77,9 +77,9 @@ export function adviceFor(
     const diff = twa - res.targetTwa; // + = deeper than target
     if (bsp !== undefined && pctTarget !== undefined) {
       if (diff < -th.angleTol && pctTarget >= 1) {
-        out.push({ id: 'high-down', level: 'warn', text: `Ψηλά (${r0(twa)}° vs ${r0(res.targetTwa)}°) με ταχύτητα: πέσε ${r0(-diff)}°.` });
+        out.push({ id: 'high-down', level: 'warn', text: `Ψηλά (${r0(twa)}° αντί ${r0(res.targetTwa)}°) με ταχύτητα: πέσε ${r0(-diff)}°.` });
       } else if (diff > th.angleTol && pctTarget < 1) {
-        out.push({ id: 'deep-down', level: 'warn', text: `Πολύ βαθιά (${r0(twa)}° vs ${r0(res.targetTwa)}°): όρτσαρε ${r0(diff)}° για πίεση στα πανιά.` });
+        out.push({ id: 'deep-down', level: 'warn', text: `Πολύ βαθιά (${r0(twa)}° αντί ${r0(res.targetTwa)}°): όρτσαρε ${r0(diff)}° για πίεση στα πανιά.` });
       } else if (pctTarget < th.slow) {
         out.push({ id: 'slow-down', level: 'warn', text: `Αργός (${r0(pctTarget * 100)}%): όρτσαρε λίγο για να χτίσεις φαινόμενο άνεμο.` });
       } else if (pctTarget > th.fast) {

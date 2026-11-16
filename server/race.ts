@@ -33,9 +33,9 @@ export async function readEntryList(
   try {
     x = JSON.parse(res.content.map((b) => (b.type === 'text' ? b.text : '')).join(''));
   } catch {
-    throw new HttpError(502, 'Μη αναγνώσιμη απάντηση από το AI. Δοκίμασε ξανά.');
+    throw new HttpError(502, 'Η απάντηση του AI δεν διαβάστηκε. Δοκίμασε ξανά.');
   }
-  if (!isEntryListExtract(x)) throw new HttpError(502, 'Μη αναμενόμενη απάντηση από το AI.');
+  if (!isEntryListExtract(x)) throw new HttpError(502, 'Το AI απάντησε σε άγνωστη μορφή. Δοκίμασε ξανά.');
   if (!x.isEntryList) throw new HttpError(422, 'Δεν μοιάζει με λίστα συμμετοχών.');
   return {
     event: x.event,

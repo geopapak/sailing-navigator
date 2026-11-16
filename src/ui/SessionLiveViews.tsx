@@ -25,7 +25,7 @@ const Ind = ({ on }: { on: boolean }) => (on ? <span className="ind">{LIVE_TEXT.
 /**
  * Training Live per «Τι δουλεύουμε» (P-034 AC 4–6, P-035 AC 5–9): the goal's big
  * number first, then % of target / wind angle / speed, the mini row, «⏱ Γύρος» with
- * undo and notes, the laps, the polar panel and «⇄ Γίνε Βόλτα».
+ * undo and notes, the laps, the polar panel and «⇄ Άλλαξε σε Αναψυχή».
  */
 export function TrainingLive() {
   const { activeBoat } = useApp();
@@ -95,7 +95,7 @@ export function TrainingLive() {
         </span>
         {r && (
           <span className="sub">
-            {LIVE_TEXT.target} {f1(r.targetBsp)} κν
+            {LIVE_TEXT.target} {f1(r.targetBsp)} kt
           </span>
         )}
         {nb.bsp === undefined && <span className="sub fair">{LIVE_TEXT.waitingSpeed}</span>}
@@ -107,7 +107,7 @@ export function TrainingLive() {
       ) : (
         <span className="val">
           {f1(nb.bsp)}
-          <small> κν</small>
+          <small> kt</small>
         </span>
       )}
     </div>
@@ -121,12 +121,12 @@ export function TrainingLive() {
           {TT.vmgAb} <Ind on={ind} />
         </span>
         <span className="sub">
-          {LIVE_TEXT.target} {f1(r?.targetVmg)} κν · % {vmgPct ?? '—'}
+          {LIVE_TEXT.target} {f1(r?.targetVmg)} kt · % {vmgPct ?? '—'}
         </span>
       </span>
       <span className="val">
         {f1(r?.vmg)}
-        <small> κν</small>
+        <small> kt</small>
       </span>
     </div>
   );
@@ -155,13 +155,13 @@ export function TrainingLive() {
           ) : (
             <div>
               <b>{f1(r?.vmg)}</b>
-              <span className="small muted">VMG κν</span>
+              <span className="small muted">VMG kt</span>
             </div>
           )}
           <div>
             <b>{f1(r?.tws)}</b>
             <span className="small muted">
-              TWS κν{nb.windManual ? ` ${LIVE_TEXT.manualShort}` : ''}
+              TWS kt{nb.windManual ? ` ${LIVE_TEXT.manualShort}` : ''}
             </span>
           </div>
           <div>
@@ -237,7 +237,7 @@ function RecoveryTile({ kind, now }: { kind: 'tack' | 'gybe'; now: number }) {
           {TT.last(w)} <Ind on={ind} />
         </span>
         <span className="sub">
-          {st.count} {many} · μέσος {t(st.avgRecoverSec)} · καλύτερη {t(st.bestRecoverSec)}
+          {st.count} {many} · μέση {t(st.avgRecoverSec)} · καλύτερη {t(st.bestRecoverSec)}
         </span>
       </span>
       {pending ? (
@@ -345,7 +345,7 @@ export function PauseCard() {
 /**
  * Cruise Live (P-034 AC 7–8, P-036 AC 3–4): speed over ground with course, the
  * destination with distance left and ETA (or «Χωρίς προορισμό» · «Βάλε»), depth
- * (sounder, or the chart: indicative, not for navigation), weather and «⇄ Γίνε Προπόνηση».
+ * (sounder, or the chart: indicative, not for navigation), weather and «⇄ Άλλαξε σε Προπόνηση».
  */
 export function CruiseLive() {
   const { settings } = useApp();
@@ -371,7 +371,7 @@ export function CruiseLive() {
           </span>
           <span className="val">
             {f1(fix?.sog)}
-            <small> κν</small>
+            <small> kt</small>
           </span>
         </div>
         <DestTile onSet={() => setSheet(true)} />
@@ -383,7 +383,7 @@ export function CruiseLive() {
           </span>
           <span className="val">
             {depth === undefined ? '—' : `${sounder === undefined ? '~' : ''}${depthNum(depth)}`}
-            <small> μ</small>
+            <small> m</small>
           </span>
         </div>
       </section>
@@ -427,11 +427,11 @@ function CruiseWeather({ online }: { online: boolean }) {
             <b>
               {Math.round(w.tws)} · {Math.round(w.twd)}°
             </b>
-            <span className="small muted">άνεμος κν</span>
+            <span className="small muted">άνεμος kt</span>
           </div>
           <div>
             <b>{w.gust === undefined ? '—' : Math.round(w.gust)}</b>
-            <span className="small muted">ριπές κν</span>
+            <span className="small muted">ριπές kt</span>
           </div>
           <div>
             <b>{change ? hhmm(change.t) : '—'}</b>

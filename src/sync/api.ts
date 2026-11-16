@@ -43,7 +43,7 @@ const base = (url: string) => url.trim().replace(/\/+$/, '');
 
 export async function api<T>(server: string, path: string, opts: { method?: string; body?: unknown; token?: string; timeoutMs?: number } = {}): Promise<T> {
   if (!server.trim()) throw new ApiError(0, 'Δεν έχει οριστεί server στις Ρυθμίσεις.');
-  if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new ApiError(0, 'Χωρίς σύνδεση στο internet.');
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new ApiError(0, 'Χωρίς ίντερνετ. Δοκίμασε ξανά μόλις επιστρέψει.');
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), opts.timeoutMs ?? 20_000);
   let res: Response;

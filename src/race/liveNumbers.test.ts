@@ -25,10 +25,10 @@ describe('in-session Live numbers (P-034)', () => {
   it('hint under the %: on target, or open up / come up', () => {
     expect(trainingHint(undefined, undefined)).toBe('περιμένει ταχύτητα');
     expect(trainingHint(97, { mode: 'upwind', twa: 41, targetTwa: 41 })).toBe('στον στόχο');
-    expect(trainingHint(91, { mode: 'upwind', twa: 38, targetTwa: 41 })).toBe('λίγο κάτω: άνοιξε 3°');
-    expect(trainingHint(91, { mode: 'upwind', twa: 41, targetTwa: 41 })).toBe('λίγο κάτω: άνοιξε 2°');
-    expect(trainingHint(91, { mode: 'downwind', twa: 150, targetTwa: 145 })).toBe('λίγο κάτω: ανέβα 5°');
-    expect(trainingHint(91, { mode: 'downwind', twa: 145, targetTwa: 145 })).toBe('λίγο κάτω: ανέβα 3°');
+    expect(trainingHint(91, { mode: 'upwind', twa: 38, targetTwa: 41 })).toBe('λίγο κάτω: πέσε 3°');
+    expect(trainingHint(91, { mode: 'upwind', twa: 41, targetTwa: 41 })).toBe('λίγο κάτω: πέσε 2°');
+    expect(trainingHint(91, { mode: 'downwind', twa: 150, targetTwa: 145 })).toBe('λίγο κάτω: όρτσαρε 5°');
+    expect(trainingHint(91, { mode: 'downwind', twa: 145, targetTwa: 145 })).toBe('λίγο κάτω: όρτσαρε 3°');
   });
 
   it('chart depth at most once every 60″ and only online', () => {

@@ -51,13 +51,13 @@ export function RaceScreen() {
   if (lay) {
     if (lay.overstood) [nextVal, nextSub] = ['ΤΩΡΑ', 'πέρασες τη layline'];
     else if (al.layInSec !== undefined) [nextVal, nextSub] = [mmss(al.layInSec), `στη layline ${laySide}`];
-    else if (lay.leg === 'reach') nextSub = 'φτάνεις τη σημαδούρα χωρίς άλλη';
+    else if (lay.leg === 'reach') nextSub = 'φτάνεις τη σημαδούρα χωρίς μανούβρα';
     else nextSub = 'η layline δεν είναι μπροστά';
   }
   const idle = !al.banner && lay && !lay.overstood && al.layInSec !== undefined ? `${LIVE_TEXT.next}: ${man} στη layline ${laySide} σε ${mmss(al.layInSec)}` : undefined;
 
   const mark = sm.mark;
-  const markLine = mark && fix ? `${sm.isFinish ? `${LIVE_TEXT.finish} · ${mark.name}` : `${LIVE_TEXT.markShort(sm.index)} · ${mark.name}`} · ${f1(distanceNm(fix, mark))} νμ` : undefined;
+  const markLine = mark && fix ? `${sm.isFinish ? `${LIVE_TEXT.finish} · ${mark.name}` : `${LIVE_TEXT.markShort(sm.index)} · ${mark.name}`} · ${f1(distanceNm(fix, mark))} NM` : undefined;
 
   // «2ος · +0:42»: behind the boat ahead; first: ahead of the second (negative).
   const own = race.rows.find((x) => x.own);
@@ -90,7 +90,7 @@ export function RaceScreen() {
       <div className="rs-tile">
         <span>
           <span className="lab">{LIVE_TEXT.speed}</span>
-          <span className="ab">{bspFrom === 'SOG' ? LIVE_TEXT.sogFromGps : 'BSP'} · κν</span>
+          <span className="ab">{bspFrom === 'SOG' ? LIVE_TEXT.sogFromGps : 'BSP'} · kt</span>
           {pct !== undefined && (
             <span className={`sub ${pct >= 95 ? 'good' : 'fair'}`}>
               {LIVE_TEXT.target} {f1(target!)} · {pct}%

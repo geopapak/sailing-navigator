@@ -63,7 +63,7 @@ export function SettingsView() {
             checked={settings.manualMagnetic}
             onChange={(e) => updateSettings({ manualMagnetic: e.target.checked })}
           />
-          Οι χειροκίνητες τιμές TWD και πορείας είναι μαγνητικές (πυξίδα)
+          Οι χειροκίνητες τιμές TWD και πλώρης είναι μαγνητικές (°M)
         </label>
         <label>
           Μαγνητική απόκλιση (°, ανατολική +)
@@ -99,7 +99,7 @@ export function SettingsView() {
               try {
                 setCheck(await checkAdvisor(advisorConfig(settings)));
               } catch (e) {
-                setCheck(e instanceof AdvisorError ? e.message : 'Αποτυχία ελέγχου.');
+                setCheck(e instanceof AdvisorError ? e.message : 'Ο έλεγχος απέτυχε. Δοκίμασε ξανά.');
               } finally {
                 setChecking(false);
               }
@@ -114,9 +114,9 @@ export function SettingsView() {
       <section className="card">
         <h3>Σχετικά</h3>
         <p className="small">
-          Οι υπολογισμοί γίνονται τοπικά από τα polars του πιστοποιητικού ORC. Η εφαρμογή λειτουργεί χωρίς σύνδεση αφού
-          φορτωθεί μία φορά. Τα δεδομένα αποθηκεύονται στη συσκευή και, αν είσαι συνδεδεμένος, συγχρονίζονται με τον
-          λογαριασμό σου. Χωρίς λογαριασμό, μεταφορά γίνεται με Export/Import από την καρτέλα «Σκάφη».
+          Οι υπολογισμοί γίνονται στο κινητό, από τα polars του πιστοποιητικού ORC. Μετά το πρώτο άνοιγμα η εφαρμογή
+          δουλεύει και χωρίς ίντερνετ. Τα δεδομένα μένουν στη συσκευή και, αν είσαι συνδεδεμένος, περνούν και στον
+          λογαριασμό σου. Χωρίς λογαριασμό, τα σκάφη τα μεταφέρεις με «Εξαγωγή» και «Έχω αρχείο σκάφους» στην καρτέλα «Σκάφη».
         </p>
         <p className="muted small" data-testid="app-version">Έκδοση {__APP_VERSION__}</p>
       </section>

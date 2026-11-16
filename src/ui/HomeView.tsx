@@ -65,7 +65,7 @@ export function HomeView({
       {noBoat && (
         <section className="card">
           <h3>Καλώς ήρθες</h3>
-          <p className="small">Για Αγώνα και Προπόνηση χρειάζεται το σκάφος σου, από το πιστοποιητικό ORC. Για Βόλτα μπορείς να ξεκινήσεις και χωρίς.</p>
+          <p className="small">Για Αγώνα και Προπόνηση χρειάζεται το σκάφος σου, από το πιστοποιητικό ORC. Για Αναψυχή μπορείς να ξεκινήσεις και χωρίς.</p>
           <button type="button" className="btn primary big-btn wide" onClick={() => startNewBoat()}>
             ＋ Πρόσθεσε το σκάφος σου
           </button>
@@ -139,7 +139,7 @@ export function HomeView({
           <p>
             <b>Δεν έχεις εξόδους ακόμα</b>
           </p>
-          <p className="small muted">Διάλεξε πάνω Αγώνα, Προπόνηση ή Βόλτα. Η πρώτη σου έξοδος θα φανεί εδώ.</p>
+          <p className="small muted">Διάλεξε πάνω Αγώνα, Προπόνηση ή Αναψυχή. Η πρώτη σου έξοδος θα φανεί εδώ.</p>
         </section>
       ) : (
         done.slice(0, 3).map((r) => <SessionCard key={r.id} r={r} fresh={r.id === race.freshId} onOpen={() => onOpen(r)} />)
@@ -165,7 +165,7 @@ function BasicLive() {
         </span>
         <span className="val">
           {n1(v.bsp ?? fix?.sog)}
-          <small> κν</small>
+          <small> kt</small>
         </span>
       </div>
       <div className="bl-tile">
@@ -175,7 +175,7 @@ function BasicLive() {
         </span>
         <span className="val">
           {n1(v.tws)}
-          <small> κν</small>
+          <small> kt</small>
         </span>
       </div>
       <div className="bl-mini">
@@ -188,7 +188,7 @@ function BasicLive() {
           <span className="small muted">TWA</span>
         </div>
         <div>
-          <b>{v.depth === undefined ? '—' : `${n1(v.depth)} μ`}</b>
+          <b>{v.depth === undefined ? '—' : `${n1(v.depth)} m`}</b>
           <span className="small muted">βάθος</span>
         </div>
       </div>
@@ -285,7 +285,7 @@ export function SessionSetup({ kind, onStarted }: { kind: 'training' | 'cruise';
       await race.save(r);
       onStarted();
     } catch {
-      setErr('Δεν αποθηκεύτηκε η έξοδος.');
+      setErr('Η έξοδος δεν αποθηκεύτηκε. Δοκίμασε ξανά.');
     } finally {
       setBusy(false);
     }
@@ -354,7 +354,7 @@ export function SessionSetup({ kind, onStarted }: { kind: 'training' | 'cruise';
           )}
           <div className="settings-sub">Διαδρομή (προαιρετικό)</div>
           <select aria-label="Διαδρομή (προαιρετικό)" value={courseId} onChange={(e) => setCourseId(e.target.value)}>
-            <option value="">Χωρίς · ελεύθερα</option>
+            <option value="">Χωρίς διαδρομή</option>
             {nav.courses.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -422,20 +422,20 @@ function WeatherCard() {
       <br />
       {w ? (
         <span className="small">
-          {Math.round(w.tws)} κν από {Math.round(w.twd)}°{w.gust !== undefined ? `, ριπές ${Math.round(w.gust)}` : ''}
+          {Math.round(w.tws)} kt από {Math.round(w.twd)}°{w.gust !== undefined ? `, ριπές ${Math.round(w.gust)}` : ''}
         </span>
       ) : (
         <span className="small muted">Δεν υπάρχει πρόγνωση για σήμερα.</span>
       )}
       {f && (
         <p className="small muted">
-          Πρόγνωση από {hhmm(f.fetchedAt)}
+          Πρόγνωση των {hhmm(f.fetchedAt)}
           {online ? '' : ' (χωρίς ίντερνετ)'}
         </p>
       )}
       {nav.forecastStatus.error && <p className="small warn-text">{nav.forecastStatus.error}</p>}
       <button type="button" className="btn" disabled={nav.forecastStatus.busy} onClick={() => nav.loadForecast()}>
-        {nav.forecastStatus.busy ? 'Φόρτωση…' : f ? 'Ανανέωση πρόγνωσης' : 'Φέρε πρόγνωση'}
+        {nav.forecastStatus.busy ? 'Φόρτωση…' : f ? 'Ανανέωση πρόγνωσης' : 'Λήψη πρόγνωσης'}
       </button>
     </section>
   );

@@ -37,7 +37,7 @@ export function InstrumentBar({
           <b>{inst.status === 'off' ? 'Όργανα: ανενεργά' : 'Χάθηκε η σύνδεση με τα όργανα'}</b>
           <span>
             Συνεχίζεις χειροκίνητα από τις τελευταίες τιμές.{' '}
-            {inst.message ?? (inst.status === 'connecting' ? 'Προσπαθώ να συνδεθώ…' : '')}{' '}
+            {inst.message ?? (inst.status === 'connecting' ? 'Σύνδεση…' : '')}{' '}
             <button type="button" className="link inline" onClick={() => openTab('settings')}>
               Ρυθμίσεις
             </button>
@@ -56,7 +56,7 @@ export function InstrumentBar({
               </button>
             );
           })}
-          <p className="muted small">ΟΡΓΑΝΑ = έρχεται από το σκάφος. Πάτα για να το κλειδώσεις χειροκίνητα (ή αλλάζεις την τιμή με +/−), ξανά για αυτόματο.</p>
+          <p className="muted small">ΟΡΓΑΝΑ: η τιμή έρχεται από το σκάφος. Πάτα για χειροκίνητη τιμή (ή άλλαξέ τη με +/−). Πάτα ξανά για να γυρίσεις στα όργανα.</p>
         </div>
       )}
     </section>

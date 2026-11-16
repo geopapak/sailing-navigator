@@ -46,7 +46,7 @@ export function useCrews() {
 }
 
 const shareResult = (r: 'shared' | 'copied' | 'failed', what: string) =>
-  r === 'copied' ? showAlert(`${what} αντιγράφηκε. Επικόλλησέ το στο WhatsApp ή όπου θέλεις.`) : r === 'failed' ? showAlert('Δεν έγινε κοινοποίηση.') : undefined;
+  r === 'copied' ? showAlert(`${what} αντιγράφηκε. Επικόλλησέ το στο WhatsApp ή όπου θέλεις.`) : r === 'failed' ? showAlert('Δεν στάλθηκε. Δοκίμασε ξανά.') : undefined;
 
 /** Athlete card number with its own small save button. */
 function CardField({ value, onSave, label }: { value: string | null; onSave: (v: string) => Promise<void>; label: string }) {
@@ -90,7 +90,7 @@ export function CrewCard({ boats }: { boats: BoatProfile[] }) {
     try {
       const { crew } = await crewApi.ensure(c.server, c.token, { boatId: b.id, boatName: b.name, sailNo: b.sailNumber });
       const inv = await crewApi.invite(c.server, c.token, crew.id, 'crew');
-      const r = await shareText(`Πλήρωμα ${b.name}`, `Έλα στο πλήρωμα του ${b.name} στο Sailing Navigator. Ο σύνδεσμος ισχύει μία φορά, για 7 μέρες.`, inviteLink(inv.token));
+      const r = await shareText(`Πλήρωμα ${b.name}`, `Έλα στο πλήρωμα του σκάφους «${b.name}» στο Sailing Navigator. Ο σύνδεσμος ισχύει μία φορά, για 7 μέρες.`, inviteLink(inv.token));
       await shareResult(r, 'Ο σύνδεσμος');
       await c.refresh();
     } catch (e) {
@@ -131,7 +131,7 @@ export function CrewCard({ boats }: { boats: BoatProfile[] }) {
                     <button
                       className="btn small-btn danger"
                       onClick={async () => {
-                        if (!(await askConfirm(`Να βγει ${m.name} από το πλήρωμα; Δεν θα βλέπει πια τους αγώνες σου.`, { ok: 'Αφαίρεση', danger: true }))) return;
+                        if (!(await askConfirm(`Αφαίρεση του μέλους «${m.name}» από το πλήρωμα; Δεν θα βλέπει πια τους αγώνες σου.`, { ok: 'Αφαίρεση', danger: true }))) return;
                         await crewApi.remove(c.server, c.token, crew!.id, m.userId).catch((e) => showAlert((e as Error).message));
                         await c.refresh();
                       }}
@@ -185,7 +185,7 @@ export function CrewCard({ boats }: { boats: BoatProfile[] }) {
                 <button
                   className="btn small-btn"
                   onClick={async () => {
-                    if (!(await askConfirm(`Να φύγεις από το πλήρωμα του ${m.boatName};`, { ok: 'Αποχώρηση', danger: true }))) return;
+                    if (!(await askConfirm(`Να φύγεις από το πλήρωμα του σκάφους «${m.boatName}»;`, { ok: 'Αποχώρηση', danger: true }))) return;
                     await crewApi.remove(c.server, c.token, m.id, 'me').catch((e) => showAlert((e as Error).message));
                     await c.refresh();
                   }}
@@ -325,7 +325,7 @@ export function RaceCrew({ race, boat, onChange }: { race: Race; boat?: BoatProf
       const inv = await crewApi.invite(c.server, c.token, crewId, 'guest', race.id);
       const r = await shareText(
         race.name,
-        `Είσαι καλεσμένος στο ${boat.name} για τον αγώνα «${race.name}» (${when(race.start)}). Ο σύνδεσμος ισχύει μία φορά.`,
+        `Είσαι καλεσμένος στο σκάφος «${boat.name}» για τον αγώνα «${race.name}» (${when(race.start)}). Ο σύνδεσμος ισχύει μία φορά.`,
         inviteLink(inv.token),
       );
       await shareResult(r, 'Ο σύνδεσμος');
@@ -430,7 +430,7 @@ export function InviteScreen({ token, onDone }: { token: string; onDone: () => v
       {p && (
         <>
           <p>
-            {p.owner} σε καλεί στο <b>{p.boatName}</b>
+            {p.owner} σε καλεί στο σκάφος <b>{p.boatName}</b>
             {p.kind === 'guest' ? (
               <>
                 {' '}
@@ -454,7 +454,7 @@ export function InviteScreen({ token, onDone }: { token: string; onDone: () => v
                 setBusy(true);
                 try {
                   await crewApi.accept(server, settings.authToken, token, card.trim() || undefined);
-                  await showAlert(`Είσαι στο πλήρωμα του ${p.boatName}.`);
+                  await showAlert(`Είσαι στο πλήρωμα του σκάφους «${p.boatName}».`);
                   close();
                 } catch (e) {
                   setErr((e as Error).message);

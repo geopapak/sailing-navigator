@@ -321,8 +321,8 @@ export function step(st: EngineState, s: AlertSettings, x: Situation, p: AlertPr
         big: 'ΡΗΧΑ ΜΠΡΟΣΤΑ',
         sub:
           x.depth.from === 'sounder' || x.depth.aheadNm === undefined
-            ? `Βάθος ${m} μ · ενδεικτικό, όχι για ναυσιπλοΐα`
-            : `${m} μ σε ${nm1(x.depth.aheadNm)} νμ · ενδεικτικό, όχι για ναυσιπλοΐα`,
+            ? `Βάθος ${m} m · ενδεικτικό, όχι για ναυσιπλοΐα`
+            : `${m} m σε ${nm1(x.depth.aheadNm)} NM · ενδεικτικό, όχι για ναυσιπλοΐα`,
         say: 'Ρηχά μπροστά.',
         at: x.now,
       });
@@ -333,7 +333,7 @@ export function step(st: EngineState, s: AlertSettings, x: Situation, p: AlertPr
   if (x.destKey && x.destNm !== undefined && x.destNm <= ARRIVE_ALERT_NM) {
     const key = `arrive-${x.destKey}`;
     if (has('arrive') && !st.fired.has(key))
-      out.push({ key, type: 'arrive', kind: 'info', big: 'ΦΤΑΝΕΙΣ', sub: 'Προορισμός σε 0,5 νμ', say: 'Φτάνεις στον προορισμό.', at: x.now });
+      out.push({ key, type: 'arrive', kind: 'info', big: 'ΦΤΑΝΕΙΣ', sub: 'Προορισμός σε 0,5 NM', say: 'Φτάνεις στον προορισμό.', at: x.now });
   }
 
   // Most urgent first. Race: the rest are dropped (and marked as done); "now" and the mark
@@ -365,7 +365,7 @@ export function step(st: EngineState, s: AlertSettings, x: Situation, p: AlertPr
 
 /** «ΕΚΚΙΝΗΣΗ ΣΕ 1′» of the start practice countdown (training «Εκκινήσεις»). */
 export function startAlert(now: number): Alert {
-  return { key: `start-${now}`, type: 'start', kind: 'warn', big: 'ΕΚΚΙΝΗΣΗ ΣΕ 1′', sub: 'Αντίστροφη μέτρηση άσκησης', say: 'Εκκίνηση σε ένα λεπτό.', at: now };
+  return { key: `start-${now}`, type: 'start', kind: 'warn', big: 'ΕΚΚΙΝΗΣΗ σε 1′', sub: 'Αντίστροφη μέτρηση άσκησης', say: 'Εκκίνηση σε ένα λεπτό.', at: now };
 }
 
 export const isMuted = (st: EngineState, now: number) => now < st.muteUntil;

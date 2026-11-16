@@ -195,7 +195,7 @@ export function ModelCompareCard() {
         {nav.comparisonStatus.busy ? 'Λήψη μοντέλων…' : c ? '↻ Ανανέωση σύγκρισης' : 'Σύγκριση μοντέλων'}
       </button>
       {nav.comparisonStatus.error && <p className="warn-text">{nav.comparisonStatus.error}</p>}
-      {stale && <p className="muted small">Η σύγκριση είναι για άλλο σημείο εκκίνησης — πάτα ανανέωση.</p>}
+      {stale && <p className="muted small">Η σύγκριση είναι για άλλο σημείο εκκίνησης: πάτα «↻ Ανανέωση σύγκρισης».</p>}
 
       {c && atStart && ag && (
         <>
