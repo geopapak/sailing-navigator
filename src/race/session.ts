@@ -17,7 +17,7 @@ export const KIND_INFO: Record<
 > = {
   race: { name: 'Αγώνας', upper: 'ΑΓΩΝΑΣ', plural: 'Αγώνες', desc: 'Διαδρομή, εκκίνηση, αντίπαλοι, διορθωμένος χρόνος', the: 'ο αγώνας', The: 'Ο αγώνας' },
   training: { name: 'Προπόνηση', upper: 'ΠΡΟΠΟΝΗΣΗ', plural: 'Προπονήσεις', desc: 'Στόχοι polar, γύροι, ανάλυση μετά', the: 'η προπόνηση', The: 'Η προπόνηση' },
-  cruise: { name: 'Βόλτα', upper: 'ΒΟΛΤΑ', plural: 'Βόλτες', desc: 'Προορισμός, ETA, βάθη, καιρός', the: 'η βόλτα', The: 'Η βόλτα' },
+  cruise: { name: 'Αναψυχή', upper: 'ΑΝΑΨΥΧΗ', plural: 'Αναψυχή', desc: 'Προορισμός, ETA, βάθη, καιρός', the: 'η έξοδος αναψυχής', The: 'Η έξοδος αναψυχής' },
 };
 
 export const SESSION_KINDS: SessionKind[] = ['race', 'training', 'cruise'];

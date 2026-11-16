@@ -160,7 +160,7 @@ export function RaceAnalysisView({ id, onBack, backLabel = 'Αγώνες' }: { i
       <OpponentResults race={race} a={a} onSave={save} />
 
       <section className="card">
-        <h3>Export</h3>
+        <h3>Εξαγωγή</h3>
         <div className="btn-row">
           <button className="btn" data-testid="export-gpx" disabled={!race.track.length} onClick={() => download(`${fileName(race)}.gpx`, toGpx(race), 'application/gpx+xml')}>
             GPX
@@ -339,7 +339,7 @@ function PctTimeline({ race, a }: { race: Race; a: RaceAnalysis }) {
         </text>
       </svg>
       <figcaption className="muted small" aria-live="polite">
-        {h ? `${sinceStart(race, h.t)} · ${pctTxt(h.pct)}` : 'Σύρε το δάχτυλο πάνω στη γραμμή για να δεις τιμές.'}
+        {h ? `${sinceStart(race, h.t)} · ${pctTxt(h.pct)}` : 'Σύρε το δάχτυλο στη γραμμή για να δεις τιμές.'}
       </figcaption>
     </figure>
   );

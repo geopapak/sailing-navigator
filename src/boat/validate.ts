@@ -39,7 +39,7 @@ export function validateBoat(b: BoatProfile): string[] {
   const errs: string[] = [];
   if (!b.name.trim()) errs.push('Το όνομα σκάφους είναι υποχρεωτικό.');
   if (!(b.performanceFactor > 0.5 && b.performanceFactor <= 1.2))
-    errs.push('Ο συντελεστής απόδοσης πρέπει να είναι μεταξύ 0.5 και 1.2.');
+    errs.push('Ο συντελεστής απόδοσης πρέπει να είναι από 50% έως 120%.');
   if (b.polar) errs.push(...validatePolar(b.polar));
   const ids = new Set(b.sails.map((s) => s.id));
   for (const r of b.sailRules) if (!ids.has(r.sailId)) errs.push(`Κανόνας για άγνωστο πανί: ${r.sailId}.`);

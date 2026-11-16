@@ -43,7 +43,7 @@ export function KnowledgeView() {
           Νέα σημείωση
         </button>
       </div>
-      <p className="muted small">Ό,τι έχετε μάθει στη θάλασσα. Ο σύμβουλος τις λαμβάνει υπόψη όταν ταιριάζουν ο άνεμος και το σημείο, και λέει ότι προέρχονται από εσάς.</p>
+      <p className="muted small">Σημειώσεις για ό,τι έχετε μάθει στη θάλασσα. Ο σύμβουλος τις λαμβάνει υπόψη όταν ταιριάζουν ο άνεμος και το σημείο, και λέει ότι προέρχονται από εσάς.</p>
       <div className="chips">
         <button className={`chip ${filter === 'all' ? 'on' : ''}`} onClick={() => setFilter('all')}>
           Όλες

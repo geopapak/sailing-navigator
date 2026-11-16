@@ -63,7 +63,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         });
         await reload();
       } catch (e) {
-        setError(`Αποτυχία τοπικής αποθήκευσης: ${(e as Error).message}`);
+        setError(`Δεν αποθηκεύτηκε στο κινητό: ${(e as Error).message}`);
       } finally {
         setReady(true);
       }

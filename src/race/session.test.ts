@@ -74,7 +74,7 @@ describe('kind defaults', () => {
     expect(t.entries).toHaveLength(1);
     expect(t.marks).toHaveLength(1);
     const c = newSession('cruise', { id: 'y', now: T0, entries: [] });
-    expect(c).toMatchObject({ kind: 'cruise', name: 'Βόλτα', entries: [], marks: [], track: [], fixes: [] });
+    expect(c).toMatchObject({ kind: 'cruise', name: 'Αναψυχή', entries: [], marks: [], track: [], fixes: [] });
   });
 });
 

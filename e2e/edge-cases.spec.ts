@@ -112,12 +112,12 @@ test.describe('κενό ιστορικό', () => {
     await app.open();
     await app.signIn();
     await app.page.getByRole('button', { name: 'Παράλειψη όλων' }).click();
-    await expect(app.page.getByText('Διάλεξε πάνω Αγώνα, Προπόνηση ή Βόλτα. Η πρώτη σου έξοδος θα φανεί εδώ.')).toBeVisible();
+    await expect(app.page.getByText('Διάλεξε πάνω Αγώνα, Προπόνηση ή Αναψυχή. Η πρώτη σου έξοδος θα φανεί εδώ.')).toBeVisible();
 
     await app.tab('Ιστορικό');
     await expect(app.page.getByTestId('screen-title')).toHaveText('Οι έξοδοί μου');
     await expect(app.page.getByText('Δεν έχεις εξόδους ακόμα')).toBeVisible();
-    await expect(app.page.getByText('Κάθε αγώνας, προπόνηση ή βόλτα που τελειώνεις μπαίνει εδώ, με ίχνος και σύνοψη.')).toBeVisible();
+    await expect(app.page.getByText('Κάθε αγώνας, προπόνηση ή έξοδος αναψυχής που τελειώνεις μπαίνει εδώ, με ίχνος και σύνοψη.')).toBeVisible();
     await expect(app.page.getByTestId('history-item')).toHaveCount(0);
     await app.page.getByRole('button', { name: 'Νέα έξοδος', exact: true }).click();
     await expect(home(app)).toBeVisible();

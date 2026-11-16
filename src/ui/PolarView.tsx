@@ -7,7 +7,7 @@ import { recommendSail } from '../performance/sails';
 export function PolarView() {
   const { activeBoat: boat } = useApp();
   const [tws, setTws] = useState(10);
-  if (!boat?.polar) return <p className="card">Το σκάφος δεν έχει polars. Πρόσθεσέ τα από Σκάφη → Επεξεργασία ή από το πιστοποιητικό ORC.</p>;
+  if (!boat?.polar) return <p className="card">Το σκάφος δεν έχει polars. Πρόσθεσέ τα από «Σκάφη» → «Επεξεργασία» ή από το πιστοποιητικό ORC.</p>;
   const p = boat.polar;
   const f = boat.performanceFactor || 1;
 
@@ -35,7 +35,7 @@ export function PolarView() {
               <th>Πρίμα °</th>
               <th>BSP</th>
               <th>VMG</th>
-              <th>Πανί όρτσα</th>
+              <th>Πανί όρτσας</th>
               <th>Πανί πρίμα</th>
             </tr>
           </thead>

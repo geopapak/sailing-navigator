@@ -16,8 +16,8 @@ interface Props {
 const KIND_LABEL: Record<SailKind, string> = {
   main: 'Μαΐστρα',
   headsail: 'Πανί πλώρης (τζένοα/φλόκος)',
-  spinnaker: 'Μπαλόνι (spinnaker)',
-  reaching: 'Ανοιχτών (Code 0 κ.λπ.)',
+  spinnaker: 'Μπαλόνι (συμμετρικό/ασύμμετρο)',
+  reaching: 'Πανί ανοιχτών (Code 0, reacher)',
   other: 'Άλλο',
 };
 
@@ -81,13 +81,13 @@ export function BoatEditor({ initial, isNew, onSave, onCancel }: Props) {
 
   const polarRows: { key: string; label: string; values: number[] }[] = p
     ? [
-        { key: 'beatAngle', label: 'Beat °', values: p.beatAngle },
-        { key: 'beatVMG', label: 'Beat VMG', values: p.beatVMG },
+        { key: 'beatAngle', label: 'Όρτσα °', values: p.beatAngle },
+        { key: 'beatVMG', label: 'VMG όρτσας', values: p.beatVMG },
         ...Object.keys(p.speeds)
           .sort((x, y) => Number(x) - Number(y))
           .map((a) => ({ key: `twa:${a}`, label: `${a}°`, values: p.speeds[a] })),
-        { key: 'runVMG', label: 'Run VMG', values: p.runVMG },
-        { key: 'gybeAngle', label: 'Gybe °', values: p.gybeAngle },
+        { key: 'runVMG', label: 'VMG πρίμα', values: p.runVMG },
+        { key: 'gybeAngle', label: 'Πρίμα °', values: p.gybeAngle },
       ]
     : [];
 
@@ -110,11 +110,11 @@ export function BoatEditor({ initial, isNew, onSave, onCancel }: Props) {
           <input value={b.design ?? ''} onChange={(e) => set({ design: e.target.value || undefined })} />
         </label>
         <label>
-          GPH
+          GPH (s/NM)
           <NumField value={b.gph} onChange={(v) => set({ gph: v })} />
         </label>
         <label>
-          CDL
+          CDL (μήκος για κλάσεις)
           <NumField value={b.cdl} onChange={(v) => set({ cdl: v })} />
         </label>
         <label>
@@ -367,7 +367,7 @@ export function BoatEditor({ initial, isNew, onSave, onCancel }: Props) {
                     setPolar(JSON.parse(polarJson));
                     setPolarJson(undefined);
                   } catch {
-                    setErrors(['Μη έγκυρο JSON στα polars.']);
+                    setErrors(['Τα polars δεν διαβάστηκαν: έλεγξε το JSON.']);
                   }
                 }}
               >

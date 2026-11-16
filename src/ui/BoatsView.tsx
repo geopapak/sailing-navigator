@@ -132,7 +132,7 @@ export function BoatsView() {
         </span>
         <span>
           <b>Έχω αρχείο σκάφους από άλλο κινητό</b>
-          <span className="small">Αρχείο που έβγαλες με «Export» (από σένα ή το πλήρωμα)</span>
+          <span className="small">Αρχείο που έβγαλες με «Εξαγωγή» (εσύ ή το πλήρωμα)</span>
         </span>
       </button>
       <button className="add-opt" onClick={() => setEditing({ boat: blankBoat(!hasOwn), isNew: true })}>
@@ -200,7 +200,7 @@ export function BoatsView() {
                 Αντίγραφο
               </button>
               <button className="btn" onClick={() => download(`${b.id}.json`, JSON.stringify(b, null, 2))}>
-                Export
+                Εξαγωγή
               </button>
               <button
                 className="btn danger"

@@ -21,7 +21,7 @@ export class AdvisorError extends Error {}
 const base = (url: string) => url.trim().replace(/\/+$/, '');
 
 async function call(cfg: AdvisorConfig, path: string, init: RequestInit, timeoutMs: number): Promise<Response> {
-  if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new AdvisorError('Χωρίς σύνδεση στο internet. Ο σύμβουλος AI θέλει δίκτυο.');
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new AdvisorError('Χωρίς ίντερνετ: ο σύμβουλος AI δεν απαντά τώρα.');
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), timeoutMs);
   try {
@@ -37,7 +37,7 @@ async function call(cfg: AdvisorConfig, path: string, init: RequestInit, timeout
     });
   } catch (e) {
     if ((e as Error).name === 'AbortError') throw new AdvisorError('Ο σύμβουλος δεν απάντησε εγκαίρως. Δοκίμασε ξανά.');
-    throw new AdvisorError('Δεν απαντά η υπηρεσία της εφαρμογής. Έλεγξε τη σύνδεση στο internet.');
+    throw new AdvisorError('Δεν απαντά η υπηρεσία της εφαρμογής. Έλεγξε το ίντερνετ.');
   } finally {
     clearTimeout(timer);
   }
@@ -46,7 +46,7 @@ async function call(cfg: AdvisorConfig, path: string, init: RequestInit, timeout
 export async function askAdvisor(cfg: AdvisorConfig, ctx: AdvisorContext): Promise<AdvisorResponse> {
   const res = await call(cfg, '/advice', { method: 'POST', body: JSON.stringify(ctx) }, 70_000);
   const data = (await res.json().catch(() => ({}))) as Partial<AdvisorResponse> & { error?: string };
-  if (!res.ok || !data.reply) throw new AdvisorError(data.error ?? `Σφάλμα server (${res.status}).`);
+  if (!res.ok || !data.reply) throw new AdvisorError(data.error ?? `Ο σύμβουλος δεν απάντησε (κωδικός ${res.status}). Δοκίμασε ξανά.`);
   return data as AdvisorResponse;
 }
 
@@ -59,7 +59,7 @@ export async function checkAdvisor(cfg: AdvisorConfig): Promise<string> {
     user?: { ai: { allowed: boolean; used: number; limit: number } };
   };
   if (!res.ok || !data.ok) return `Ο server απάντησε με σφάλμα (${res.status}).`;
-  if (!data.configured) return 'Ο server λειτουργεί αλλά δεν έχει κλειδί Claude API.';
+  if (!data.configured) return 'Ο server λειτουργεί, αλλά δεν έχει κλειδί Claude API.';
   if (data.codeOk) return 'OK — ο σύμβουλος είναι έτοιμος (κωδικός ιδιοκτήτη).';
   if (data.user) {
     if (!data.user.ai.allowed) return 'Συνδεδεμένος, αλλά ο σύμβουλος AI δεν έχει εγκριθεί ακόμα για τον λογαριασμό σου.';
@@ -74,7 +74,7 @@ export async function fetchWindySeries(cfg: AdvisorConfig, lat: number, lon: num
   const res = await call(cfg, '/windy', { method: 'POST', body: JSON.stringify({ lat, lon }) }, 20_000);
   const data = (await res.json().catch(() => ({}))) as { series?: import('../weather/compare').ModelSeries[]; error?: string };
   if (res.status === 501) throw new AdvisorError('τα μοντέλα Windy δεν έχουν ενεργοποιηθεί ακόμα.');
-  if (!res.ok) throw new AdvisorError(data.error ?? `Windy: σφάλμα server (${res.status}).`);
+  if (!res.ok) throw new AdvisorError(data.error ?? `Το Windy δεν απάντησε (κωδικός ${res.status}).`);
   return data.series ?? [];
 }
 
@@ -82,6 +82,6 @@ export async function fetchWindySeries(cfg: AdvisorConfig, lat: number, lon: num
 export async function askChat(cfg: AdvisorConfig, req: import('./chat').ChatRequest): Promise<import('./chat').ChatResponse> {
   const res = await call(cfg, '/chat', { method: 'POST', body: JSON.stringify(req) }, 110_000);
   const data = (await res.json().catch(() => ({}))) as Partial<import('./chat').ChatResponse> & { error?: string };
-  if (!res.ok || typeof data.text !== 'string') throw new AdvisorError(data.error ?? `Σφάλμα server (${res.status}).`);
+  if (!res.ok || typeof data.text !== 'string') throw new AdvisorError(data.error ?? `Ο σύμβουλος δεν απάντησε (κωδικός ${res.status}). Δοκίμασε ξανά.`);
   return data as import('./chat').ChatResponse;
 }

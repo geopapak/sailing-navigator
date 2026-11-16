@@ -155,7 +155,19 @@ export async function noHorizontalOverflow(page: Page) {
   return page.evaluate(() => {
     const w = document.documentElement.clientWidth;
     const out: string[] = [];
-    if (document.documentElement.scrollWidth > w) out.push(`scrollWidth ${document.documentElement.scrollWidth} > ${w}`);
+    if (document.documentElement.scrollWidth > w) {
+      out.push(`scrollWidth ${document.documentElement.scrollWidth} > ${w}`);
+      // Name the innermost elements that stick out, so a CI failure says what to fix.
+      const wide = [...document.querySelectorAll<HTMLElement>('body *')].filter((el) => {
+        const r = el.getBoundingClientRect();
+        return r.width > 0 && r.right > w + 1;
+      });
+      for (const el of wide.filter((el) => !wide.some((o) => o !== el && el.contains(o))).slice(0, 5)) {
+        const r = el.getBoundingClientRect();
+        const cls = typeof el.className === 'string' && el.className ? `.${el.className.trim().split(/\s+/).join('.')}` : '';
+        out.push(`${el.tagName.toLowerCase()}${cls} «${(el.textContent ?? '').trim().slice(0, 40)}» δεξιά ${Math.round(r.right)}`);
+      }
+    }
     for (const el of document.querySelectorAll<HTMLElement>('.tabbar button, .sbar button, .net-strip button, .sticky-actions button')) {
       const r = el.getBoundingClientRect();
       if (r.width && (r.left < -1 || r.right > w + 1)) out.push(`${el.textContent?.trim()} έξω από την οθόνη (${Math.round(r.left)}–${Math.round(r.right)})`);

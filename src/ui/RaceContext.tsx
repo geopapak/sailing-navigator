@@ -311,7 +311,7 @@ export function RaceProvider({ children }: { children: ReactNode }) {
       } catch (e) {
         if (stop) return;
         if (e instanceof ApiError && e.status === 501) {
-          setAis({ status: 'nokey', message: 'Οι θέσεις AIS μέσω internet δεν έχουν ενεργοποιηθεί ακόμα.' });
+          setAis({ status: 'nokey', message: 'Οι θέσεις AIS μέσω ίντερνετ δεν έχουν ενεργοποιηθεί ακόμα.' });
           stop = true;
         } else setAis({ status: 'error', message: (e as Error).message });
       }

@@ -73,7 +73,7 @@ export interface CallLog {
   body?: unknown;
 }
 
-const CONFIG: ServerConfig = { termsVersion: 3, controller: { name: 'Υπεύθυνος δοκιμών', email: 'privacy@example.test' } };
+const CONFIG: ServerConfig = { termsVersion: 4, controller: { name: 'Υπεύθυνος δοκιμών', email: 'privacy@example.test' } };
 
 const err = (status: number, error: string): FakeResponse => ({ status, json: { error } });
 const mode = (m: Mode, ok: () => FakeResponse, texts: Partial<Record<Mode, string>> = {}): FakeResponse => {

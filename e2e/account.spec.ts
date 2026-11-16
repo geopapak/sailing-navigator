@@ -74,7 +74,7 @@ test('«Διαγραφή λογαριασμού»: «Άκυρο» δεν σβή�
 
   await app.page.getByRole('button', { name: 'Διαγραφή λογαριασμού', exact: true }).click();
   const confirm = app.page.getByRole('alertdialog');
-  await expect(confirm).toContainText('Οριστική διαγραφή του λογαριασμού και των δεδομένων του στο cloud; Δεν αναιρείται.');
+  await expect(confirm).toContainText('Οριστική διαγραφή του λογαριασμού και των δεδομένων του στην υπηρεσία; Δεν αναιρείται.');
   await confirm.getByRole('button', { name: 'Άκυρο' }).click();
   await expect(confirm).toHaveCount(0);
   expect(app.server.calls('/me', 'DELETE')).toHaveLength(0);

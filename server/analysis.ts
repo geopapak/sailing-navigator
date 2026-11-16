@@ -90,9 +90,9 @@ export async function raceLessons(
   try {
     x = JSON.parse(res.content.map((b) => (b.type === 'text' ? b.text : '')).join(''));
   } catch {
-    throw new HttpError(502, 'Μη αναγνώσιμη απάντηση από το AI.');
+    throw new HttpError(502, 'Η απάντηση του AI δεν διαβάστηκε. Δοκίμασε ξανά.');
   }
-  if (!Array.isArray(x.lessons)) throw new HttpError(502, 'Μη αναμενόμενη απάντηση από το AI.');
+  if (!Array.isArray(x.lessons)) throw new HttpError(502, 'Το AI απάντησε σε άγνωστη μορφή. Δοκίμασε ξανά.');
   const lessons = x.lessons
     .filter((l) => typeof l?.text === 'string' && l.text.trim())
     .slice(0, 8)

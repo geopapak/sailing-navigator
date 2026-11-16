@@ -286,7 +286,7 @@ export function MapView(p: Props) {
     box.append(main, note);
     popup.current = new Popup({ closeButton: true, maxWidth: '240px' }).setLngLat([lon, lat]).setDOMContent(box).addTo(map);
     if (navigator.onLine === false) {
-      main.textContent = 'Το βάθος θέλει σύνδεση';
+      main.textContent = 'Χωρίς ίντερνετ: δεν φαίνεται το βάθος';
       return;
     }
     const ctl = new AbortController();
@@ -297,7 +297,7 @@ export function MapView(p: Props) {
         main.textContent = d ? formatDepth(d) : 'Ξηρά ή χωρίς στοιχεία βάθους';
       })
       .catch(() => {
-        if (depthReq.current === ctl) main.textContent = 'Δεν βρέθηκε βάθος (σύνδεση;)';
+        if (depthReq.current === ctl) main.textContent = 'Δεν βρέθηκε βάθος. Έλεγξε το ίντερνετ.';
       })
       .finally(() => window.clearTimeout(timer));
   }
@@ -460,14 +460,14 @@ export function MapView(p: Props) {
       {base === 'loading' && <div className="map-status">Φόρτωση χάρτη…</div>}
       {(base === 'fallback' || base === 'slow') && (
         <div className="map-status warn" role="status">
-          {base === 'fallback' ? 'Χωρίς σύνδεση: μόνο ακτογραμμή.' : 'Ο χάρτης αργεί (αργή σύνδεση).'}
+          {base === 'fallback' ? 'Χωρίς ίντερνετ: μόνο ακτογραμμή.' : 'Ο χάρτης αργεί: αργό ίντερνετ.'}
           <button type="button" onClick={() => setAttempt((a) => a + 1)}>
             Ξανά
           </button>
         </div>
       )}
       {p.chart === 'nautical' && p.showDepth && ready && base !== 'fallback' && (
-        <div className="depth-legend" aria-label="Βάθη σε μέτρα (ενδεικτικά)">
+        <div className="depth-legend" aria-label="Βάθη σε μέτρα, ενδεικτικά, όχι για ναυσιπλοΐα">
           {['0–5', '5–10', '10–20', '>20'].map((label, i) => (
             <span key={label}>
               <i style={{ background: i < 3 ? CHART_THEMES[theme].depth[i] : CHART_THEMES[theme].water }} />

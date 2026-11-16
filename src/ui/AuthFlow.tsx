@@ -5,7 +5,7 @@ import { ApiError, accountApi } from '../sync/api';
 import { PrivacyText, TERMS_VERSION, TermsText, useServerConfig } from './legal';
 import { TestBadge } from './TestBadge';
 
-const errText = (e: unknown) => (e instanceof ApiError || e instanceof Error ? e.message : 'Αποτυχία. Δοκίμασε ξανά.');
+const errText = (e: unknown) => (e instanceof ApiError || e instanceof Error ? e.message : 'Κάτι πήγε στραβά. Δοκίμασε ξανά.');
 
 function Logo() {
   return (
@@ -109,7 +109,7 @@ export function AuthFlow() {
               <path d="M8 12.5l2.5 2.5L16 9.5" />
             </svg>
             <h2>Το αίτημα στάλθηκε</h2>
-            <p>Το αίτημά σου στάλθηκε. Ο διαχειριστής της εφαρμογής θα σου δώσει προσωρινό κωδικό, συνήθως την ίδια μέρα, από τηλέφωνο ή μήνυμα. <b>Δεν θα έρθει email.</b> Αν βιάζεσαι, πες το στον υπεύθυνο του σκάφους ή του ομίλου σου.</p>
+            <p>Ο διαχειριστής της εφαρμογής θα σου δώσει προσωρινό κωδικό, συνήθως την ίδια μέρα, από τηλέφωνο ή μήνυμα. <b>Δεν θα έρθει email.</b> Αν βιάζεσαι, πες το στον υπεύθυνο του σκάφους ή του ομίλου σου.</p>
             <p>Με τον προσωρινό κωδικό συνδέεσαι και βάζεις αμέσως δικό σου.</p>
             <button className="btn primary auth-cta" onClick={() => go('login')}>
               Πίσω στη σύνδεση
@@ -351,8 +351,8 @@ export function AcceptTermsScreen() {
       <p>Για να συνεχίσεις να χρησιμοποιείς την εφαρμογή, διάβασε και αποδέξου τους όρους. Τι άλλαξε:</p>
       <ul className="auth-list">
         <li>Σημειώσεις τοπικής γνώσης: όσες βάζεις «Πλήρωμα» τις βλέπουν όσοι έχουν το ίδιο σκάφος, με το μικρό σου όνομα.</li>
-        <li>Αναζήτηση σκαφών στο ORC και θέσεις αντιπάλων από AIS (aisstream.io) μέσω του server.</li>
-        <li>Η πορεία των αγώνων σου μένει μόνο στη συσκευή σου.</li>
+        <li>Αναζήτηση σκαφών στο ORC και θέσεις αντιπάλων από AIS (aisstream.io) μέσω της υπηρεσίας της εφαρμογής.</li>
+        <li>Το ίχνος των αγώνων σου μένει μόνο στη συσκευή σου.</li>
       </ul>
       <div className="consents">
         <label className="consent">

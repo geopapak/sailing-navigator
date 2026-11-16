@@ -38,15 +38,15 @@ export function PolarTrimPanel() {
               <div className="bl-mini">
                 <div>
                   <b>{f1(r.beat.bsp)}</b>
-                  <span className="small muted">όρτσα κν · {Math.round(r.beat.angle)}°</span>
+                  <span className="small muted">όρτσα kt ·{Math.round(r.beat.angle)}°</span>
                 </div>
                 <div>
                   <b>{reach === undefined ? '—' : f1(reach)}</b>
-                  <span className="small muted">ανοιχτά κν · {REACH_TWA}°</span>
+                  <span className="small muted">ανοιχτά kt ·{REACH_TWA}°</span>
                 </div>
                 <div>
                   <b>{f1(r.run.bsp)}</b>
-                  <span className="small muted">πρίμα κν · {Math.round(r.run.angle)}°</span>
+                  <span className="small muted">πρίμα kt ·{Math.round(r.run.angle)}°</span>
                 </div>
               </div>
               <p className="small">

@@ -16,7 +16,7 @@ type MediaType = (typeof TYPES)[number];
 export function validateCertificateBody(body: Record<string, unknown>): { data: string; mediaType: MediaType } {
   const data = typeof body.data === 'string' ? body.data : '';
   const mediaType = body.mediaType as MediaType;
-  if (!TYPES.includes(mediaType)) throw new HttpError(400, 'Δέχομαι PDF ή φωτογραφία (JPG/PNG).');
+  if (!TYPES.includes(mediaType)) throw new HttpError(400, 'Ανέβασε PDF ή φωτογραφία (JPG/PNG).');
   if (!data || !/^[A-Za-z0-9+/]+=*$/.test(data.slice(0, 1000))) throw new HttpError(400, 'Άκυρο αρχείο.');
   if (data.length > MAX_CERT_BASE64) throw new HttpError(413, 'Το αρχείο είναι πάνω από 10 MB.');
   return { data, mediaType };
@@ -43,9 +43,9 @@ export async function readCertificate(client: Anthropic, file: { data: string; m
   try {
     x = JSON.parse(text);
   } catch {
-    throw new HttpError(502, 'Μη αναγνώσιμη απάντηση από το AI. Δοκίμασε ξανά.');
+    throw new HttpError(502, 'Η απάντηση του AI δεν διαβάστηκε. Δοκίμασε ξανά.');
   }
-  if (!isExtract(x)) throw new HttpError(502, 'Μη αναμενόμενη απάντηση από το AI.');
+  if (!isExtract(x)) throw new HttpError(502, 'Το AI απάντησε σε άγνωστη μορφή. Δοκίμασε ξανά.');
   if (!x.isCertificate) throw new HttpError(422, 'Δεν μοιάζει με πιστοποιητικό ORC. Έλεγξε το αρχείο.');
   return {
     extract: x,

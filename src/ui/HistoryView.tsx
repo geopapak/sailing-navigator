@@ -53,7 +53,7 @@ export function SessionCard({ r, fresh, onOpen }: { r: Race; fresh?: boolean; on
       const t = trainingSummary(r);
       return { dist: s.distanceNm, dur: s.durationSec, m: t.avgPct !== null ? `${t.avgPct}% του στόχου` : 'χωρίς στόχους' };
     }
-    return { dist: s.distanceNm, dur: s.durationSec, m: s.avgKt !== undefined ? `μέση ${n1(s.avgKt)} κν` : 'χωρίς ίχνος' };
+    return { dist: s.distanceNm, dur: s.durationSec, m: s.avgKt !== undefined ? `μέση ${n1(s.avgKt)} kt` : 'χωρίς ίχνος' };
   }, [r, kind]);
   return (
     <button type="button" data-testid="history-item" className={`hist-card ${fresh ? 'fresh' : ''}`} onClick={onOpen}>
@@ -67,7 +67,7 @@ export function SessionCard({ r, fresh, onOpen }: { r: Race; fresh?: boolean; on
         </b>
         <span className="s">
           {KIND_INFO[kind].name} · {dayStr(r.start)}
-          {line2.dur !== undefined ? ` · ${durTxt(line2.dur)}` : ''} · {n1(line2.dist)} νμ
+          {line2.dur !== undefined ? ` · ${durTxt(line2.dur)}` : ''} · {n1(line2.dist)} NM
           {sharedTraining(r) ? TT.sharedTag : ''}
         </span>
         <span className="m">{line2.m}</span>
@@ -122,7 +122,7 @@ export function HistoryView({ onHome, openId }: { onHome: () => void; openId?: s
           <p>
             <b>Δεν έχεις εξόδους ακόμα</b>
           </p>
-          <p className="small muted">Κάθε αγώνας, προπόνηση ή βόλτα που τελειώνεις μπαίνει εδώ, με ίχνος και σύνοψη.</p>
+          <p className="small muted">Κάθε αγώνας, προπόνηση ή έξοδος αναψυχής που τελειώνεις μπαίνει εδώ, με ίχνος και σύνοψη.</p>
           <button type="button" className="btn primary big-btn wide" onClick={onHome}>
             Νέα έξοδος
           </button>
@@ -135,7 +135,7 @@ export function HistoryView({ onHome, openId }: { onHome: () => void; openId?: s
                 ['all', 'Όλες'],
                 ['race', 'Αγώνες'],
                 ['training', 'Προπονήσεις'],
-                ['cruise', 'Βόλτες'],
+                ['cruise', 'Αναψυχή'],
               ] as const
             ).map(([v, l]) => (
               <button key={v} type="button" className={filter === v ? 'on' : ''} aria-pressed={filter === v} onClick={() => setFilter(v)}>
@@ -172,16 +172,16 @@ function OtherSummary({ r, onAnalysis }: { r: Race; onAnalysis?: () => void }) {
   const stats = useMemo(() => {
     const s = sessionStats(r);
     // Cancelled / postponed race: no time, corrected time or position.
-    if (cancelled) return [[`${n1(s.distanceNm)} νμ`, 'απόσταση']];
+    if (cancelled) return [[`${n1(s.distanceNm)} NM`, 'απόσταση']];
     if (kind !== 'race') {
       // Cruise (P-036 AC 9–10): top speed is the best 30″ mean; arrival within 0,1 nm.
       const max = maxSog30(r.track);
       const arr = r.arrivedAt ?? arrivalTime(r.track, r.marks);
       return [
         [formatDuration(s.durationSec), CT.duration],
-        [`${n1(s.distanceNm)} νμ`, CT.distance],
-        [s.avgKt !== undefined ? `${n1(s.avgKt)} κν` : '—', CT.avg],
-        [max !== undefined ? `${n1(max)} κν` : '—', CT.max],
+        [`${n1(s.distanceNm)} NM`, CT.distance],
+        [s.avgKt !== undefined ? `${n1(s.avgKt)} kt` : '—', CT.avg],
+        [max !== undefined ? `${n1(max)} kt` : '—', CT.max],
         [arr !== undefined ? hhmm(arr) : '—', CT.arrival],
         [`κάθε ${trackIntervalSec(r.track, settings.cruiseTrackSec)}″`, CT.track],
       ];
@@ -192,8 +192,8 @@ function OtherSummary({ r, onAnalysis }: { r: Race; onAnalysis?: () => void }) {
       [formatDuration(a.durationSec), 'χρόνος'],
       [own?.corrected !== undefined ? formatDuration(own.corrected) : '—', 'διορθωμένος'],
       [a.rank ? `${a.rank}ος` : '—', 'εκτίμηση θέσης'],
-      [`${n1(a.sailedNm)} νμ`, 'απόσταση'],
-      [a.avgPct !== undefined ? `${Math.round(a.avgPct * 100)}%` : '—', 'μέσος όρος στόχου'],
+      [`${n1(a.sailedNm)} NM`, 'απόσταση'],
+      [a.avgPct !== undefined ? `${Math.round(a.avgPct * 100)}%` : '—', 'μέσος % του στόχου'],
       [String(a.tacks), 'αναστροφές'],
     ];
   }, [r, kind, cancelled, settings.cruiseTrackSec]);
@@ -221,7 +221,7 @@ function OtherSummary({ r, onAnalysis }: { r: Race; onAnalysis?: () => void }) {
           </div>
         ))}
       </div>
-      {cancelled && <p className="small">Ακύρωση / αναβολή: ο αγώνας έκλεισε πριν την εκκίνηση, χωρίς αποτέλεσμα.</p>}
+      {cancelled && <p className="small">Ακύρωση / αναβολή: ο αγώνας έκλεισε πριν από την εκκίνηση, χωρίς αποτέλεσμα.</p>}
       {kind !== 'race' && sessionStats(r).pausedSec > 0 && (
         <p className="small muted">{(kind === 'cruise' ? CT.noPauses : TT.noPauses)(mss(sessionStats(r).pausedSec))}</p>
       )}

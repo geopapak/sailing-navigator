@@ -129,7 +129,7 @@ function PctCard({ s }: { s: TrainingSummary }) {
               <tr>
                 <th />
                 {bands.map((b) => (
-                  <th key={b}>{b} κν</th>
+                  <th key={b}>{b} kt</th>
                 ))}
               </tr>
             </thead>
@@ -428,8 +428,8 @@ export function TrainingSummaryView({ r }: { r: Race }) {
   const ind = s.indicative;
   const stats: [string, string][] = [
     [formatDuration(s.durationSec), 'διάρκεια'],
-    [s.distanceNm === null ? '—' : `${n1(s.distanceNm)} νμ`, 'απόσταση'],
-    [s.twsMin === null || s.twsMax === null ? '—' : s.twsMin === s.twsMax ? `${s.twsMin} κν` : `${s.twsMin}–${s.twsMax} κν`, 'εύρος TWS'],
+    [s.distanceNm === null ? '—' : `${n1(s.distanceNm)} NM`, 'απόσταση'],
+    [s.twsMin === null || s.twsMax === null ? '—' : s.twsMin === s.twsMax ? `${s.twsMin} kt` : `${s.twsMin}–${s.twsMax} kt`, 'εύρος TWS'],
     [pctTxt(s.avgPct), 'μέσος % του στόχου'],
   ];
   return (
@@ -494,8 +494,8 @@ export function SharedTrainingView({ s, goal, note, owner }: { s: TrainingSummar
   return (
     <div className="shared-training">
       <p className="small">
-        {formatDuration(s.durationSec)} · {s.distanceNm === null ? '—' : `${n1(s.distanceNm)} νμ`}
-        {s.twsMin !== null && s.twsMax !== null ? ` · ${s.twsMin}–${s.twsMax} κν` : ''} · {pctTxt(s.avgPct)} του στόχου <Ind on={s.indicative} />
+        {formatDuration(s.durationSec)} · {s.distanceNm === null ? '—' : `${n1(s.distanceNm)} NM`}
+        {s.twsMin !== null && s.twsMax !== null ? ` · ${s.twsMin}–${s.twsMax} kt` : ''} · {pctTxt(s.avgPct)} του στόχου <Ind on={s.indicative} />
       </p>
       <p className="small muted">
         {TT.worked}: <b>{goalName(goal)}</b>

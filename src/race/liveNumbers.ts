@@ -39,8 +39,8 @@ export function trainingHint(pct: number | undefined, r: Pick<LiveResult, 'mode'
   if (pct === undefined || !r) return 'περιμένει ταχύτητα';
   if (pct > 95) return 'στον στόχο';
   const diff = r.targetTwa === undefined ? 0 : r.twa - r.targetTwa;
-  if (r.mode === 'upwind') return `λίγο κάτω: άνοιξε ${Math.max(2, Math.round(-diff))}°`;
-  if (r.mode === 'downwind') return `λίγο κάτω: ανέβα ${Math.max(3, Math.round(diff))}°`;
+  if (r.mode === 'upwind') return `λίγο κάτω: πέσε ${Math.max(2, Math.round(-diff))}°`;
+  if (r.mode === 'downwind') return `λίγο κάτω: όρτσαρε ${Math.max(3, Math.round(diff))}°`;
   return 'λίγο κάτω: έλεγξε το τριμάρισμα';
 }
 

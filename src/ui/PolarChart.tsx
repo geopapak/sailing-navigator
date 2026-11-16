@@ -82,7 +82,7 @@ export function PolarChart({ boat, twsList, tws, point, showSails = true, compac
 
   return (
     <div className={`polar ${compact ? 'compact' : ''}`}>
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Polar διάγραμμα">
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Διάγραμμα polar">
         {rings.map((v) => (
           <g key={v}>
             <path d={arc(sc(v), 0, 180)} className="grid" fill="none" />

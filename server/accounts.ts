@@ -69,7 +69,7 @@ export interface PublicUser {
 }
 
 /** Bump when the Terms or Privacy policy change: everyone accepts again. */
-export const TERMS_VERSION = 3;
+export const TERMS_VERSION = 4;
 /** Free certificate readings for users not (yet) approved for AI. */
 export const FREE_PDF_READS = 3;
 

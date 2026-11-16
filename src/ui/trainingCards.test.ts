@@ -35,7 +35,7 @@ describe('training summary cards', () => {
     expect(tacks.indexOf('Μανούβρες')).toBeLessThan(tacks.indexOf('Γύροι'));
     expect(tacks).toContain('2 ★');
     expect(tacks).toContain('μέση 0:21 · καλύτερη 0:14');
-    expect(tacks).toContain('8–12 κν');
+    expect(tacks).toContain('8–12 kt');
     expect(tacks).toContain('Δεν μετράνε τα 25″ μετά από κάθε μανούβρα.');
     const free = html(createElement(TrainingCards, { s: base, goal: 'free' }));
     expect(free.indexOf('Γύροι')).toBeLessThan(free.indexOf('% του στόχου ανά πλεύση'));
