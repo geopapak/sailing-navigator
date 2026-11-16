@@ -280,6 +280,9 @@ h3 {
 }
 .seg button {
   flex: 1;
+  /* Long words at «Πολύ μεγάλα» on 320 px must wrap, not push the page sideways. */
+  min-width: 0;
+  overflow-wrap: anywhere;
   min-height: 48px;
   border: 0;
   background: var(--bg);
@@ -741,6 +744,8 @@ details > summary {
   font-weight: 700;
   min-height: 36px;
   display: flex;
+  flex-wrap: wrap;
+  column-gap: 0.3em;
   align-items: center;
 }
 .toggles {
@@ -1374,6 +1379,8 @@ td.mc-poor { color: var(--bad); font-weight: 700; }
 .rows { list-style: none; margin: 0 0 10px; padding: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
 .rows li { display: flex; justify-content: space-between; align-items: center; gap: 10px; min-height: 48px; padding: 0 12px; border-bottom: 1px solid var(--line); }
 .rows li:last-child { border-bottom: 0; }
+.rows li { flex-wrap: wrap; }
+.rows li > * { min-width: 0; overflow-wrap: anywhere; }
 .rows li:has(.row-btn) { padding: 0; }
 .row-btn { width: 100%; min-height: 48px; display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 12px; background: none; border: 0; font: inherit; color: var(--fg); text-align: left; cursor: pointer; }
 .block { display: block; }

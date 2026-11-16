@@ -87,7 +87,7 @@ async function walk(app: AppFixture, theme: Theme, size: 'n' | 'xl') {
 }
 
 test('54–55 @narrow-only: «Νύχτα» και «Πολύ μεγάλα» στα 320 px, χωρίς οριζόντια κύλιση', async ({ app }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(process.env.CI ? 180_000 : 90_000); // CI chromium-320 timed out at 90″ (16″ locally)
   await walk(app, 'night', 'xl');
 });
 

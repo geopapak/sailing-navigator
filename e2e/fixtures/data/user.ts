@@ -15,7 +15,7 @@ export const USER: PublicUser = {
   termsOk: true,
   termsAt: 1_763_000_000_000,
   mustChangePassword: false,
-  pdf: { used: 0, left: 5 },
+  pdf: { used: 0, left: 3 },
 };
 
 export const TOKEN = 'e2e-token-0001';
