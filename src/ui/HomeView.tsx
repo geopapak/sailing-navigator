@@ -22,7 +22,10 @@ import { UpdateCard } from './AppUpdater';
 import { dayStr, hhmm } from './SessionBar';
 import { selectableSails } from '../performance/sails';
 import { gridField } from '../weather/field';
-import { KIND_INFO, SESSION_KINDS, newSession } from '../race/session';
+import { KIND_INFO, SESSION_KINDS, newSession, trackEveryMs } from '../race/session';
+import { destPatch, type CruiseDest } from '../race/cruise';
+import { DestPicker, useRecents } from './CruiseViews';
+import { CRUISE_TEXT as CT } from './sessionText';
 import type { Race, SessionKind } from '../race/types';
 
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
@@ -249,6 +252,11 @@ export function SessionSetup({ kind, onStarted }: { kind: 'training' | 'cruise';
   const [sail, setSail] = useState(getLiveSail);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string>();
+  // Cruise (P-036): «Πού πάμε;».
+  const [dest, setDest] = useState<CruiseDest>({ kind: 'none' });
+  // While «Πάτα στον χάρτη» is open its own buttons are the actions: no sticky start over them.
+  const [picking, setPicking] = useState(false);
+  const [, addRecent] = useRecents();
   const boat = withBoat ? activeBoat : undefined;
   const sails = boat ? selectableSails(boat) : [];
   // «Μοιράσου με το πλήρωμα» needs an account and the owner's crew of this boat (AC 2).
@@ -259,7 +267,7 @@ export function SessionSetup({ kind, onStarted }: { kind: 'training' | 'cruise';
   const start = async () => {
     if (race.session) return; // one session at a time (AC 20)
     const course = nav.courses.find((c) => c.id === courseId);
-    const r = newSession(kind, {
+    const r0 = newSession(kind, {
       id: uid(),
       now: Date.now(),
       entries: boat ? [{ id: 'own', name: boat.name, sailNo: boat.sailNumber, own: true, source: 'own', boat: entryBoat(boat) }] : [],
@@ -268,6 +276,8 @@ export function SessionSetup({ kind, onStarted }: { kind: 'training' | 'cruise';
       crewShared: kind === 'training' && canShare && shareOn,
       crewId: crew?.id,
     });
+    const r = kind === 'cruise' ? { ...r0, ...destPatch(dest) } : r0;
+    if (kind === 'cruise' && dest.kind === 'point') addRecent(dest.point);
     setBusy(true);
     setErr(undefined);
     try {
@@ -283,6 +293,12 @@ export function SessionSetup({ kind, onStarted }: { kind: 'training' | 'cruise';
 
   return (
     <div className="session-setup">
+      {kind === 'cruise' && (
+        <>
+          <div className="settings-sub">{CT.whereTo}</div>
+          <DestPicker value={dest} onPick={setDest} onMapOpen={setPicking} />
+        </>
+      )}
       <section className="card">
         <div className="row between">
           <span>
@@ -369,7 +385,7 @@ export function SessionSetup({ kind, onStarted }: { kind: 'training' | 'cruise';
       {kind === 'cruise' && (
         <>
           <WeatherCard />
-          <p className="small muted">Ίχνος κάθε 30″, μένει μόνο στο κινητό. Η βόλτα δεν μοιράζεται.</p>
+          <p className="small muted">{CT.setupNote(trackEveryMs('cruise', settings.cruiseTrackSec) / 1000, dest.kind !== 'none')}</p>
         </>
       )}
 
@@ -381,11 +397,13 @@ export function SessionSetup({ kind, onStarted }: { kind: 'training' | 'cruise';
           </button>
         </p>
       )}
-      <div className="btn-row sticky-actions">
-        <button type="button" className="btn primary big-btn wide" disabled={busy || !!race.session || (kind === 'training' && !boat)} onClick={start}>
-          {kind === 'training' ? '● Έναρξη προπόνησης' : '● Έναρξη βόλτας'}
-        </button>
-      </div>
+      {!(kind === 'cruise' && picking) && (
+        <div className="btn-row sticky-actions">
+          <button type="button" className="btn primary big-btn wide" disabled={busy || !!race.session || (kind === 'training' && !boat)} onClick={start}>
+            {kind === 'training' ? '● Έναρξη προπόνησης' : CT.start}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

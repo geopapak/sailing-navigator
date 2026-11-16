@@ -80,7 +80,7 @@ export function UpdateCard() {
   if (session || s.dismissed || (phase !== 'waiting' && phase !== 'deferred')) return null;
   const text = phase === 'waiting' ? UPDATE_TEXT.available : UPDATE_TEXT.heldOutside;
   return (
-    <section className="card update-card" role="status">
+    <section className="card update-card" data-testid="update-card" role="status">
       <span className="update-badge" aria-hidden="true">
         ↻
       </span>
@@ -89,7 +89,7 @@ export function UpdateCard() {
         <span aria-hidden="true">✕</span>
       </button>
       {phase === 'waiting' && (
-        <button type="button" className="btn small-btn update-now" onClick={() => void updateNow(session)}>
+        <button type="button" className="btn small-btn update-now" data-testid="update-now" onClick={() => void updateNow(session)}>
           {UPDATE_TEXT.now}
         </button>
       )}

@@ -70,7 +70,7 @@ function LapsCard({ s }: { s: TrainingSummary }) {
       ) : (
         <>
           <div className="tbl-wrap tall cq">
-            <table className="tbl laps-tbl stack">
+            <table className="tbl laps-tbl stack" data-testid="laps-table">
               <thead>
                 <tr>
                   <th>#</th>
@@ -383,7 +383,7 @@ function LessonsCard({ r }: { r: Race }) {
     return (
       <section className="card">
         <h3>{TT.lessons}</h3>
-        <ul className="lessons">
+        <ul className="lessons" data-testid="lessons">
           {r.analysis.lessons.map((l, i) => (
             <li key={i}>
               {l.text}
@@ -396,7 +396,7 @@ function LessonsCard({ r }: { r: Race }) {
     );
   return (
     <>
-      <button type="button" className="btn big-btn wide" disabled={busy || !account} onClick={ask}>
+      <button type="button" className="btn big-btn wide" data-testid="lessons-ask" disabled={busy || !account} onClick={ask}>
         {busy ? 'Ο σύμβουλος γράφει…' : TT.lessons}
       </button>
       {!account && <p className="small muted">Χρειάζεται σύνδεση στον λογαριασμό.</p>}
@@ -409,7 +409,7 @@ function LessonsCard({ r }: { r: Race }) {
         </p>
       )}
       {err && (
-        <p className="errors">
+        <p className="errors" data-testid="lessons-error">
           {err}{' '}
           <button type="button" className="link" disabled={busy} onClick={ask}>
             Ξανά
@@ -449,7 +449,7 @@ export function TrainingSummaryView({ r }: { r: Race }) {
             </span>
           </span>
         </div>
-        <div className="stats">
+        <div className="stats" data-testid="summary-stats">
           {stats.map(([v, l]) => (
             <div key={l}>
               <b>{v}</b>
@@ -472,10 +472,10 @@ export function TrainingSummaryView({ r }: { r: Race }) {
             <h3>{TT.trackCard}</h3>
             <ColouredTrack r={r} />
             <div className="g2">
-              <button type="button" className="btn" disabled={!r.track.length} onClick={() => download(`${fileName(r)}.gpx`, toGpx(r), 'application/gpx+xml')}>
+              <button type="button" className="btn" data-testid="export-gpx" disabled={!r.track.length} onClick={() => download(`${fileName(r)}.gpx`, toGpx(r), 'application/gpx+xml')}>
                 GPX
               </button>
-              <button type="button" className="btn" disabled={!r.track.length} onClick={() => download(`${fileName(r)}.csv`, toCsv(r), 'text/csv')}>
+              <button type="button" className="btn" data-testid="export-csv" disabled={!r.track.length} onClick={() => download(`${fileName(r)}.csv`, toCsv(r), 'text/csv')}>
                 CSV
               </button>
             </div>

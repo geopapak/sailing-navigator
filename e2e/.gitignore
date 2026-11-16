@@ -1,0 +1,2 @@
+# Playwright output (reports, traces, builds for the E2E tests)
+.out/

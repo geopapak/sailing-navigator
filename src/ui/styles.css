@@ -10,6 +10,7 @@
   --accent-fg: #ffffff;
   --good: #047857;
   --fair: #b45309;
+  --dest-line: #a21caf;
   --bad: #b91c1c;
   --stbd: #047857;
   --port: #b91c1c;
@@ -29,6 +30,7 @@
   --accent-fg: #0b1220;
   --good: #34d399;
   --fair: #fbbf24;
+  --dest-line: #e879f9;
   --bad: #f87171;
   --stbd: #34d399;
   --port: #f87171;
@@ -48,6 +50,7 @@
   --accent-fg: #000000;
   --good: #ff6b5e;
   --fair: #d1342a;
+  --dest-line: #d1342a;
   --bad: #ff3b30;
   --stbd: #ff6b5e;
   --port: #d8372c;
@@ -1508,7 +1511,9 @@ legend { font-weight: 600; margin-bottom: 6px; }
   position: absolute;
   left: 50%;
   top: 10px;
-  white-space: nowrap;
+  /* One line when it fits; wraps inside a narrow map with big text (320 px, «Πολύ μεγάλα»). */
+  width: max-content;
+  white-space: normal;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
@@ -1523,6 +1528,8 @@ legend { font-weight: 600; margin-bottom: 6px; }
   z-index: 2;
 }
 .map-status.warn { pointer-events: auto; }
+/* Cruise maps: the status goes under «Ενδεικτικό, όχι για ναυσιπλοΐα», never over it. */
+.map-wrap:has(.map-disc) .map-status { top: auto; bottom: 64px; }
 .map-status button {
   border: 1px solid #fff;
   background: none;
@@ -2713,3 +2720,57 @@ ol.how li {
 .pct-legend i.f { border-color: var(--fair); border-top-style: dashed; }
 .pct-legend i.b { border-color: var(--bad); border-top-style: dotted; border-top-width: 4px; }
 .shared-training > * + * { margin-top: 8px; }
+/* Cruise v1 (P-036): destination tile, «Πού πάμε;», cruise map. */
+button.rs-tile {
+  width: 100%;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.rs-tile.dest-tile .lab,
+.rs-tile.dest-tile .ab { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rs-tile.no-dest .btn { flex-shrink: 0; }
+.dest-picker .opt { min-height: 56px; }
+.dest-picker .g2,
+.g2.fit { grid-template-columns: repeat(auto-fit, minmax(min(100%, 9em), 1fr)); }
+.dest-picker .g2 .opt { justify-content: center; text-align: center; margin-bottom: 0; }
+.dest-picker .g2 { margin-bottom: 10px; }
+.dest-opt { display: flex; flex-direction: column; min-width: 0; overflow-wrap: anywhere; }
+.tag-saved { display: inline-block; font-size: 0.72rem; font-weight: 700; padding: 0 6px; border-radius: 6px; border: 1px solid currentColor; margin-left: 6px; vertical-align: 2px; color: var(--muted); white-space: nowrap; }
+.map-pick > * + * { margin-top: 10px; }
+.map-disc {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  max-width: calc(100% - 70px);
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 0.72rem;
+  font-weight: 800;
+  pointer-events: none;
+}
+.cruise-legend i.trk { border-color: var(--accent); }
+.cruise-legend i.dst { border-color: var(--dest-line); border-top-style: dashed; }
+/* Night is red only: the destination line differs from the 5 m line by its dashes and width. */
+:root[data-theme='night'] .cruise-legend i.dst { border-top-width: 4px; }
+.cruise-legend i.shl { border-color: var(--fair); border-top-style: dotted; border-top-width: 4px; }
+.next-line {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  font-weight: 700;
+}
+.next-line > span { min-width: 0; }
+.next-line > span:last-child { margin-left: auto; text-align: right; }
+.next-line .nl-name { overflow-wrap: anywhere; }
+.cruise-map .plan-panel > * + * { margin-top: 6px; }

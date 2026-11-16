@@ -592,7 +592,7 @@ export function RaceLive({
       </div>
       {recording && (
         <p className="muted small rec">
-          <span className="rec-dot" aria-hidden="true" /> Καταγραφή αγώνα σε εξέλιξη · {r.track.length} σημεία
+          <span className="rec-dot" aria-hidden="true" /> Καταγραφή αγώνα σε εξέλιξη · <span data-testid="race-points">{r.track.length} σημεία</span>
         </p>
       )}
     </div>

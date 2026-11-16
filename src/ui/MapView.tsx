@@ -21,7 +21,11 @@ import {
   depthTiles,
   fetchDepth,
   formatDepth,
+  DEPTH_ATTRIBUTION,
   nauticalStyle,
+  DEST_COLOR,
+  DEST_WIDTH,
+  shallowTiles,
   themePaint,
   type ChartKind,
   type VectorTileJson,
@@ -100,6 +104,14 @@ interface Props {
   laylines?: LaylineResult;
   /** The running session's track (P-034). */
   track?: LatLon[];
+  /** Cruise (P-036): dashed line «προς προορισμό», from the boat through the marks left. */
+  destLine?: LatLon[];
+  /** Text over the map while adding (default: a new mark); empty: none. */
+  addHint?: string;
+  /** A point to keep in view with the marks when fitting (e.g. the boat). */
+  fitWith?: LatLon;
+  /** Cruise: the dotted 5 m depth line from EMODnet («ρηχά (5 μ)»). */
+  shallowLine?: boolean;
   simPos?: LatLon;
   fitKey?: string;
   /** Extra controls drawn over the map (buttons, legend). */
@@ -209,7 +221,10 @@ export function MapView(p: Props) {
           });
           map.addLayer({ id: 'seamarks', type: 'raster', source: 'seamarks', minzoom: 9 });
         }
-        for (const id of ['course', 'iso', 'planned', 'live', 'lay', 'track', 'boat', 'sim', 'wind']) map.addSource(id, { type: 'geojson', data: EMPTY });
+        for (const id of ['course', 'iso', 'planned', 'live', 'lay', 'track', 'dest', 'boat', 'sim', 'wind']) map.addSource(id, { type: 'geojson', data: EMPTY });
+        // Cruise: the 5 m line, drawn by EMODnet (indicative, not for navigation).
+        map.addSource('shallow', { type: 'raster', tiles: [shallowTiles(themeRef.current)], tileSize: 256, attribution: DEPTH_ATTRIBUTION });
+        map.addLayer({ id: 'shallow', type: 'raster', source: 'shallow', minzoom: 8, layout: { visibility: propsRef.current.shallowLine ? 'visible' : 'none' } });
         if (!map.hasImage('nav-wind-arrow')) map.addImage('nav-wind-arrow', arrowImage(), { sdf: true });
         map.addLayer({
           id: 'wind',
@@ -237,6 +252,12 @@ export function MapView(p: Props) {
         // Laylines: starboard green, port red (as the navigation lights), dashed, as an indication.
         map.addLayer({ id: 'lay', type: 'line', source: 'lay', paint: { 'line-color': ['get', 'color'], 'line-width': 2, 'line-dasharray': [3, 2], 'line-opacity': 0.9 } });
         map.addLayer({ id: 'track', type: 'line', source: 'track', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#0b6bcb', 'line-width': 3, 'line-opacity': 0.85 } });
+        map.addLayer({
+          id: 'dest',
+          type: 'line',
+          source: 'dest',
+          paint: { 'line-color': DEST_COLOR[themeRef.current], 'line-width': DEST_WIDTH[themeRef.current], 'line-dasharray': [3, 2] },
+        });
         map.addLayer({ id: 'sim', type: 'circle', source: 'sim', paint: { 'circle-radius': 7, 'circle-color': '#f59e0b', 'circle-stroke-color': '#000', 'circle-stroke-width': 2 } });
         map.addLayer({ id: 'boat', type: 'circle', source: 'boat', paint: { 'circle-radius': 8, 'circle-color': '#e11d48', 'circle-stroke-color': '#fff', 'circle-stroke-width': 3 } });
         setReady(true);
@@ -362,6 +383,24 @@ export function MapView(p: Props) {
     );
   }, [ready, p.laylines]);
 
+  // Cruise: line to the destination and the 5 m line, coloured per theme (dim red at night).
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+    const pts = p.destLine ?? [];
+    set('dest', pts.length > 1 ? { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates: pts.map((q) => [q.lon, q.lat]) }, properties: {} }] } : EMPTY);
+    if (map.getLayer('dest')) {
+      map.setPaintProperty('dest', 'line-color', DEST_COLOR[theme]);
+      map.setPaintProperty('dest', 'line-width', DEST_WIDTH[theme]);
+    }
+  }, [ready, p.destLine, theme]);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map || !map.getLayer('shallow')) return;
+    map.setLayoutProperty('shallow', 'visibility', p.shallowLine ? 'visible' : 'none');
+    (map.getSource('shallow') as RasterTileSource | undefined)?.setTiles([shallowTiles(theme)]);
+  }, [ready, p.shallowLine, theme]);
+
   // Session track: blue, red at night (night is black and red only).
   useEffect(() => {
     const map = mapRef.current;
@@ -399,9 +438,10 @@ export function MapView(p: Props) {
   useEffect(() => {
     const map = mapRef.current;
     if (!ready || !map || p.marks.length === 0) return;
-    const lons = p.marks.map((m) => m.lon);
-    const lats = p.marks.map((m) => m.lat);
-    if (p.marks.length === 1) map.easeTo({ center: [lons[0], lats[0]], zoom: Math.max(map.getZoom(), 11) });
+    const pts: LatLon[] = p.fitWith ? [...p.marks, p.fitWith] : p.marks;
+    const lons = pts.map((m) => m.lon);
+    const lats = pts.map((m) => m.lat);
+    if (pts.length === 1) map.easeTo({ center: [lons[0], lats[0]], zoom: Math.max(map.getZoom(), 11) });
     else
       map.fitBounds(
         [
@@ -416,7 +456,7 @@ export function MapView(p: Props) {
   return (
     <div className={`map-wrap ${p.addMode ? 'adding' : ''}`}>
       <div ref={el} className="map" />
-      {p.addMode && <div className="map-hint">Άγγιξε τον χάρτη για νέα σημαδούρα</div>}
+      {p.addMode && p.addHint !== '' && <div className="map-hint">{p.addHint ?? 'Άγγιξε τον χάρτη για νέα σημαδούρα'}</div>}
       {base === 'loading' && <div className="map-status">Φόρτωση χάρτη…</div>}
       {(base === 'fallback' || base === 'slow') && (
         <div className="map-status warn" role="status">

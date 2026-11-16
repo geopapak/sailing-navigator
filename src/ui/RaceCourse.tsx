@@ -59,7 +59,7 @@ export function CoursePicker({ value, onChange, onNew, onEdit }: { value: RaceCo
   return (
     <div className="course-picker">
       {raceOnly && (
-        <button type="button" className="course-card on" onClick={onEdit} aria-pressed="true">
+        <button type="button" data-testid="course-card" className="course-card on" onClick={onEdit} aria-pressed="true">
           <CourseSketch marks={value.marks} />
           <span>
             <strong>{value.courseName || 'Διαδρομή αγώνα'} ✓</strong>
@@ -70,7 +70,7 @@ export function CoursePicker({ value, onChange, onNew, onEdit }: { value: RaceCo
       {courses.map(({ c, used }) => {
         const on = value.courseId === c.id;
         return (
-          <button type="button" key={c.id} className={`course-card ${on ? 'on' : ''}`} aria-pressed={on} onClick={() => pick(c)}>
+          <button type="button" key={c.id} data-testid="course-card" className={`course-card ${on ? 'on' : ''}`} aria-pressed={on} onClick={() => pick(c)}>
             <CourseSketch marks={c.marks} />
             <span>
               <strong>

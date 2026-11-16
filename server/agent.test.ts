@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import worker, { type Env } from './worker';
-import { makeTools } from './agent';
+import { CRUISE_SYSTEM, SYSTEM_BLOCKS, makeTools, systemFor } from './agent';
 import { TRE_IRENE } from '../src/boat/treIrene';
 import type { ChatContext } from '../src/ai/chat';
 
@@ -95,6 +95,40 @@ describe('/chat endpoint', () => {
     const second = bodies[1] as { messages: { role: string; content: { type: string; content?: string }[] }[] };
     const result = second.messages.at(-1)!.content.find((c) => c.type === 'tool_result')!;
     expect(String(result.content)).toContain('"beat"');
+  });
+
+  it('adds the cruise instruction after the cached system blocks', async () => {
+    const systems: { cache_control?: unknown; text: string }[][] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        systems.push(JSON.parse(await new Request(input, init).text()).system);
+        return new Response(JSON.stringify(msg([{ type: 'text', text: 'ΟΚ' }])), { status: 200, headers: { 'content-type': 'application/json' } });
+      }),
+    );
+    const ask = (session?: unknown) =>
+      worker.fetch(post('/chat', { messages: [{ role: 'user', text: 'Βάθος στον όρμο;' }], context: { ...ctx, session } }), env);
+    expect((await ask({ kind: 'cruise', label: 'Βόλτα' })).status).toBe(200);
+    expect((await ask({ kind: 'race', label: 'Αγώνας' })).status).toBe(200);
+    expect((await ask()).status).toBe(200);
+
+    const [cruise, race, none] = systems;
+    // Same stable, cached prefix in every mode.
+    expect(cruise.slice(0, SYSTEM_BLOCKS.length)).toEqual(race);
+    expect(race).toEqual(none);
+    expect(cruise[SYSTEM_BLOCKS.length - 1].cache_control).toEqual({ type: 'ephemeral' });
+    // The cruise addition is last, uncached, and carries the disclaimer.
+    expect(cruise).toHaveLength(SYSTEM_BLOCKS.length + 1);
+    expect(cruise.at(-1)!.cache_control).toBeUndefined();
+    expect(cruise.at(-1)!.text).toContain('«Ενδεικτικά, όχι για ναυσιπλοΐα.»');
+    expect(JSON.stringify(race)).not.toContain('Ενδεικτικά, όχι για ναυσιπλοΐα');
+  });
+
+  it('only treats an exact cruise kind as cruise', () => {
+    expect(systemFor(undefined)).toBe(SYSTEM_BLOCKS);
+    expect(systemFor({ ...ctx, session: { kind: 'training', label: 'x' } })).toBe(SYSTEM_BLOCKS);
+    expect(systemFor({ ...ctx, session: { kind: 'Cruise', label: 'x' } } as unknown as ChatContext)).toBe(SYSTEM_BLOCKS);
+    expect(systemFor({ ...ctx, session: { kind: 'cruise', label: 'x' } }).at(-1)!.text).toBe(CRUISE_SYSTEM);
   });
 
   it('validates the conversation', async () => {
