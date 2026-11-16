@@ -27,6 +27,7 @@ import { TestBadge } from './TestBadge';
 
 // The map (MapLibre) is large: load it only when the tab is opened.
 const PlanView = lazy(() => import('./PlanView').then((m) => ({ default: m.PlanView })));
+const CruiseMap = lazy(() => import('./CruiseMap').then((m) => ({ default: m.CruiseMap })));
 
 /** Outside a session (P-033). */
 const TABS_OUT: { id: AppTab; label: string; icon: IconName }[] = [
@@ -171,7 +172,7 @@ function Shell() {
           ) : (
             <span className="top-gap" />
           )}
-          <b className="top-title">{title}</b>
+          <b className="top-title" data-testid="screen-title">{title}</b>
           <TestBadge />
           {tab === 'home' && !screen && (
             <select
@@ -228,7 +229,7 @@ function Shell() {
                   ) : (
                     <SessionLive />
                   ))}
-                {tab === 'session:map' && <PlanView />}
+                {tab === 'session:map' && (race.kind === 'cruise' ? <CruiseMap /> : <PlanView />)}
                 {tab === 'session:chat' && <ChatView />}
               </>
             ) : setup ? (
@@ -319,7 +320,7 @@ function NetStrip({ where }: { where: 'home' | 'session' | 'other' }) {
   }, []);
   if (online && !back) return null;
   return (
-    <div className={`net-strip ${online ? 'ok' : ''}`} role="status">
+    <div data-testid="net-strip" className={`net-strip ${online ? 'ok' : ''}`} role="status">
       <span className="dot" aria-hidden="true" />
       <span>
         {online
@@ -340,7 +341,7 @@ function InstrumentPill() {
   const inst = useInstruments();
   if (!settings.instruments?.enabled) return null;
   return (
-    <button type="button" className={`inst-pill ${inst.live ? 'ok' : 'bad'}`} onClick={() => onOpenSettings()} aria-label={inst.live ? 'Όργανα: συνδεδεμένα' : 'Όργανα: χωρίς σύνδεση'}>
+    <button type="button" data-testid="inst-pill" className={`inst-pill ${inst.live ? 'ok' : 'bad'}`} onClick={() => onOpenSettings()} aria-label={inst.live ? 'Όργανα: συνδεδεμένα' : 'Όργανα: χωρίς σύνδεση'}>
       <span className="dot" aria-hidden="true" />
       <span className="inst-text">{inst.live ? 'Όργανα' : 'Όργανα ✕'}</span>
     </button>

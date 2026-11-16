@@ -131,3 +131,19 @@ export function useStoredState<T>(key: string, initial: T): [T, (v: T | ((p: T) 
   }, [key, v]);
   return [v, setV];
 }
+
+/** Online / offline, kept up to date by the browser events. */
+export function useOnline(): boolean {
+  const [online, setOnline] = useState(() => typeof navigator === 'undefined' || navigator.onLine !== false);
+  useEffect(() => {
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener('online', on);
+    window.addEventListener('offline', off);
+    return () => {
+      window.removeEventListener('online', on);
+      window.removeEventListener('offline', off);
+    };
+  }, []);
+  return online;
+}

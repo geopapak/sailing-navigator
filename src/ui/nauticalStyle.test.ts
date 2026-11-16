@@ -43,3 +43,16 @@ describe('depth on tap', () => {
     expect(formatDepth({ depth: 95.49, min: 95.1, max: 95.6 })).toBe('Βάθος ≈ 95 m');
   });
 });
+
+describe('5 m line (P-036)', () => {
+  it('asks EMODnet for a dotted −5 m contour of the depth grid, per theme', async () => {
+    const { shallowSld, shallowTiles, SHALLOW_COLOR } = await import('./nauticalStyle');
+    const sld = shallowSld('#d1342a');
+    expect(sld).toContain('ras:Contour');
+    expect(sld).toContain('<ogc:Literal>-5</ogc:Literal>');
+    expect(sld).toContain('stroke-dasharray');
+    expect(sld).toContain('#d1342a');
+    expect(shallowTiles('night')).toMatch(/^https:\/\/ows\.emodnet-bathymetry\.eu\/wms\?/);
+    expect(SHALLOW_COLOR.night).toBe('#d1342a');
+  });
+});

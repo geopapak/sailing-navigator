@@ -1,0 +1,78 @@
+# End-to-end tests with Playwright (P-045, docs/product/specs/e2e-tests.md).
+# Warn-only for now: a red E2E shows on the commit/PR but does NOT block the deploy
+# (pages.yml does not depend on it). Later the owner makes the job «E2E» a required check.
+# Do not rename the job: branch protection will require a check named exactly «E2E».
+# Safety: read-only token, no secrets, `pull_request` (never `pull_request_target`),
+# tests only on the `build:e2e` builds with fake servers (no live site, no real accounts, no AI).
+name: E2E
+
+on:
+  push:
+    paths-ignore:
+      - 'docs/**'
+      - 'design/**'
+      - '**/*.md'
+  pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - 'design/**'
+      - '**/*.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Playwright version
+        id: pw
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: Cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-chromium-webkit
+      - name: Install browsers
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium webkit
+      - name: Install browser system packages
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium webkit
+      - name: E2E tests
+        run: npm run e2e
+      - name: Job summary
+        if: always()
+        run: node e2e/summary.mjs e2e/.out/results.json
+      - name: Upload HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-report-${{ github.run_id }}
+          path: e2e/.out/report
+          retention-days: 7
+          if-no-files-found: ignore
+      - name: Upload screenshots and traces of the failures
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-failures-${{ github.run_id }}
+          path: e2e/.out/test-results
+          retention-days: 7
+          if-no-files-found: ignore

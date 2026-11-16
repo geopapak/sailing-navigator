@@ -136,16 +136,20 @@ export function AuthFlow() {
               return;
             }
             run(async () => {
-              const r = await accountApi.register(server, {
-                email: f.email,
-                password: f.password,
-                name: f.name,
-                acceptTerms: f.terms,
-                acceptPrivacy: f.privacy,
-                marketing: f.marketing,
-              });
-              setF({ ...f, password: '' });
-              await signedIn(r.token, r.user);
+              try {
+                const r = await accountApi.register(server, {
+                  email: f.email,
+                  password: f.password,
+                  name: f.name,
+                  acceptTerms: f.terms,
+                  acceptPrivacy: f.privacy,
+                  marketing: f.marketing,
+                });
+                await signedIn(r.token, r.user);
+              } finally {
+                // Never leave the password in the field, also after a failed sign-up (e.g. 409).
+                setF((x) => ({ ...x, password: '' }));
+              }
             });
           }}
         >

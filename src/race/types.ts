@@ -130,5 +130,13 @@ export interface Race {
   crewSharePending?: boolean;
   /** Crew the training is shared with (the owner's crew of the boat). */
   crewId?: string;
+  /** Cruise (P-036): a destination picked on the map (the marks are then `[dest]`). */
+  dest?: { name: string; lat: number; lon: number };
+  /** Cruise: when we came within 0,1 nm of the destination. */
+  arrivedAt?: number;
+  /** Cruise: the destination (`destKey`) the boat has been > 0,6 nm from since it was set: «ΦΤΑΝΕΙΣ» is armed. */
+  arriveArmed?: string;
+  /** Cruise: the destination (`destKey`) whose «ΦΤΑΝΕΙΣ» was shown (once, also after a reload). */
+  arriveFired?: string;
   updatedAt: number;
 }

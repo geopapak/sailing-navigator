@@ -15,6 +15,9 @@ import type { Race, SessionKind } from '../race/types';
 import { TrainingSummaryView } from './TrainingSummary';
 import { TRAINING_TEXT as TT } from './sessionText';
 import { kindSpans, mss, trainingSummary } from '../race/training';
+import { arrivalTime, maxSog30, sessionTitle, trackIntervalSec } from '../race/cruise';
+import { useApp } from './AppContext';
+import { CRUISE_TEXT as CT } from './sessionText';
 
 /** A shared training, or a cruise whose training part is shared (P-035 AC 27, 29). */
 const sharedTraining = (r: Race) => !!r.crewShared && (kindOf(r) === 'training' || (!!r.finish && kindSpans(r, r.finish).some((k) => k.kind === 'training')));
@@ -33,8 +36,8 @@ function download(name: string, text: string, type: string) {
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
-const gpxName = (r: Race) => `${(r.name || KIND_INFO[kindOf(r)].name).replace(/[^\p{L}\p{N}]+/gu, '_').replace(/^_|_$/g, '') || 'session'}_${new Date(r.start).toISOString().slice(0, 10)}.gpx`;
-export const exportGpx = (r: Race) => download(gpxName(r), toGpx(r), 'application/gpx+xml');
+const gpxName = (r: Race) => `${(sessionTitle(r) || KIND_INFO[kindOf(r)].name).replace(/[^\p{L}\p{N}]+/gu, '_').replace(/^_|_$/g, '') || 'session'}_${new Date(r.start).toISOString().slice(0, 10)}.gpx`;
+export const exportGpx = (r: Race) => download(gpxName(r), toGpx(r, sessionTitle(r) || r.name), 'application/gpx+xml');
 
 /** One line per finished session: kind · day · duration · nm, then the kind's own number (AC 28). */
 export function SessionCard({ r, fresh, onOpen }: { r: Race; fresh?: boolean; onOpen: () => void }) {
@@ -53,13 +56,13 @@ export function SessionCard({ r, fresh, onOpen }: { r: Race; fresh?: boolean; on
     return { dist: s.distanceNm, dur: s.durationSec, m: s.avgKt !== undefined ? `μέση ${n1(s.avgKt)} κν` : 'χωρίς ίχνος' };
   }, [r, kind]);
   return (
-    <button type="button" className={`hist-card ${fresh ? 'fresh' : ''}`} onClick={onOpen}>
+    <button type="button" data-testid="history-item" className={`hist-card ${fresh ? 'fresh' : ''}`} onClick={onOpen}>
       <span className="ic">
         <Icon name={kind} />
       </span>
       <span className="body">
         <b>
-          {r.name || KIND_INFO[kind].name}
+          {sessionTitle(r) || KIND_INFO[kind].name}
           {fresh && <span className="pill-new">νέα</span>}
         </b>
         <span className="s">
@@ -163,6 +166,7 @@ export function SessionSummary({ r, onAnalysis }: { r: Race; onAnalysis?: () => 
 }
 
 function OtherSummary({ r, onAnalysis }: { r: Race; onAnalysis?: () => void }) {
+  const { settings } = useApp();
   const kind = kindOf(r);
   const cancelled = isCancelled(r);
   const stats = useMemo(() => {
@@ -170,10 +174,16 @@ function OtherSummary({ r, onAnalysis }: { r: Race; onAnalysis?: () => void }) {
     // Cancelled / postponed race: no time, corrected time or position.
     if (cancelled) return [[`${n1(s.distanceNm)} νμ`, 'απόσταση']];
     if (kind !== 'race') {
+      // Cruise (P-036 AC 9–10): top speed is the best 30″ mean; arrival within 0,1 nm.
+      const max = maxSog30(r.track);
+      const arr = r.arrivedAt ?? arrivalTime(r.track, r.marks);
       return [
-        [formatDuration(s.durationSec), 'διάρκεια'],
-        [`${n1(s.distanceNm)} νμ`, 'απόσταση'],
-        [s.avgKt !== undefined ? `${n1(s.avgKt)} κν` : '—', 'μέση ταχύτητα'],
+        [formatDuration(s.durationSec), CT.duration],
+        [`${n1(s.distanceNm)} νμ`, CT.distance],
+        [s.avgKt !== undefined ? `${n1(s.avgKt)} κν` : '—', CT.avg],
+        [max !== undefined ? `${n1(max)} κν` : '—', CT.max],
+        [arr !== undefined ? hhmm(arr) : '—', CT.arrival],
+        [`κάθε ${trackIntervalSec(r.track, settings.cruiseTrackSec)}″`, CT.track],
       ];
     }
     const a = analyseRace(r);
@@ -186,7 +196,7 @@ function OtherSummary({ r, onAnalysis }: { r: Race; onAnalysis?: () => void }) {
       [a.avgPct !== undefined ? `${Math.round(a.avgPct * 100)}%` : '—', 'μέσος όρος στόχου'],
       [String(a.tacks), 'αναστροφές'],
     ];
-  }, [r, kind, cancelled]);
+  }, [r, kind, cancelled, settings.cruiseTrackSec]);
   const own = r.entries.find((e) => e.own);
   return (
     <section className="card session-summary">
@@ -195,7 +205,7 @@ function OtherSummary({ r, onAnalysis }: { r: Race; onAnalysis?: () => void }) {
           <Icon name={kind} />
         </span>
         <span>
-          <b>{r.name || KIND_INFO[kind].name}</b>
+          <b>{sessionTitle(r) || KIND_INFO[kind].name}</b>
           <br />
           <span className="small muted">
             {KIND_INFO[kind].name} · {dayStr(r.start)} · {hhmm(r.start)}
@@ -203,7 +213,7 @@ function OtherSummary({ r, onAnalysis }: { r: Race; onAnalysis?: () => void }) {
           </span>
         </span>
       </div>
-      <div className="stats">
+      <div className="stats" data-testid="summary-stats">
         {stats.map(([v, l]) => (
           <div key={l}>
             <b>{v}</b>
@@ -212,7 +222,9 @@ function OtherSummary({ r, onAnalysis }: { r: Race; onAnalysis?: () => void }) {
         ))}
       </div>
       {cancelled && <p className="small">Ακύρωση / αναβολή: ο αγώνας έκλεισε πριν την εκκίνηση, χωρίς αποτέλεσμα.</p>}
-      {kind !== 'race' && sessionStats(r).pausedSec > 0 && <p className="small muted">{TT.noPauses(mss(sessionStats(r).pausedSec))}</p>}
+      {kind !== 'race' && sessionStats(r).pausedSec > 0 && (
+        <p className="small muted">{(kind === 'cruise' ? CT.noPauses : TT.noPauses)(mss(sessionStats(r).pausedSec))}</p>
+      )}
       {kind === 'cruise' && sharedTraining(r) && (
         <p className="small muted">{TT.sharedPart(hhmm(trainingSummary(r, { kindOnly: 'training' }).trainingUntil ?? r.finish ?? r.start))}</p>
       )}
@@ -228,10 +240,11 @@ function OtherSummary({ r, onAnalysis }: { r: Race; onAnalysis?: () => void }) {
         )
       ) : (
         <>
-          <button type="button" className="btn big-btn wide" disabled={!r.track.length} onClick={() => exportGpx(r)}>
-            Εξαγωγή GPX
+          {!sharedTraining(r) && <p className="small muted">{CT.private}</p>}
+          <button type="button" className="btn big-btn wide" data-testid="export-gpx" disabled={!r.track.length} onClick={() => exportGpx(r)}>
+            {CT.gpx}
           </button>
-          <p className="small muted">Το ίχνος μένει μόνο σε αυτό το κινητό. Το GPX βγαίνει μόνο όταν το πατήσεις.</p>
+          <p className="small muted">Το GPX βγαίνει μόνο όταν το πατήσεις.</p>
         </>
       )}
     </section>
@@ -269,7 +282,7 @@ export function EndedScreen({ ended, onUndone, onHistory }: { ended: Ended; onUn
       {left > 0 && (
         <div className="msg undo-row" role="status">
           <span>Η έξοδος έκλεισε.</span>
-          <button type="button" className="btn" onClick={undo}>
+          <button type="button" className="btn" data-testid="ended-undo" onClick={undo}>
             ↶ Αναίρεση ({left}″)
           </button>
         </div>

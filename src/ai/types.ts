@@ -53,6 +53,17 @@ export interface NavSnapshot {
   };
   /** Isochrone route from here, if the crew re-routed recently. */
   route?: RouteSnapshot & { computedMinAgo?: number };
+  /** Cruise (P-036): the Live numbers of the cruise (indicative, not for navigation). */
+  cruise?: {
+    destination?: string;
+    /** Distance left along the route (nm). */
+    distanceNm?: number;
+    /** Local time, ISO with offset. */
+    eta?: string;
+    paused?: boolean;
+    depthM?: number;
+    depthFrom?: 'sounder' | 'chart';
+  };
 }
 
 export interface LegSnapshot {

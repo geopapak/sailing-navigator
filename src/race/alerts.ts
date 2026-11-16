@@ -1,4 +1,5 @@
 import type { SessionKind } from './types';
+import { ARRIVE_ALERT_NM, shallowStretch, type DepthReading } from './cruise';
 
 /**
  * Manoeuvre alerts during a session (P-023, per kind since P-034), code only, no AI.
@@ -6,7 +7,8 @@ import type { SessionKind } from './types';
  * - training: wind shift (7/10/15°), GPS lost, layline "now" only, below 90% of target
  *   (off by default, instruments only); at least 60″ between two alerts, except the layline
  *   "now" (10″, dropped after 15″ of waiting); beep only;
- * - cruise: none yet (shallow water and arrival come in Φ4).
+ * - cruise (P-036): safety only — shallow water ahead and arrival, at least 60″ apart,
+ *   except «ΡΗΧΑ ΜΠΡΟΣΤΑ», which never waits; never a manoeuvre alert.
  * The engine is pure: give it the situation every few seconds and the kind's
  * profile, it returns at most one alert to show. Everything is a suggestion; the skipper decides.
  */
@@ -61,7 +63,7 @@ export interface TrainingAlerts {
 
 export const DEFAULT_TRAINING_ALERTS: TrainingAlerts = { shift: true, shiftDeg: 10, gps: true, below90: false, layNow: true, startCountdown: true };
 
-/** Cruise safety alerts (used from Φ4). */
+/** Cruise safety alerts (P-036). */
 export interface CruiseAlerts {
   shallow: boolean;
   arrive: boolean;
@@ -130,8 +132,12 @@ export function profileFor(kind: SessionKind, s: KindAlertSettings): AlertProfil
     if (t.below90) types.push('below');
     return { kind, types, shiftDeg: t.shiftDeg, layLeads: [6], minGapSec: TRAINING_GAP_SEC, strictGap: true, voice: false };
   }
-  // Cruise: shallow water and arrival come in Φ4; no manoeuvre alerts ever.
-  return { kind, types: [], shiftDeg: Infinity, layLeads: [], minGapSec: TRAINING_GAP_SEC, strictGap: true, voice: false };
+  // Cruise: safety only (shallow water, arrival); no manoeuvre alerts ever.
+  const c = { ...DEFAULT_CRUISE_ALERTS, ...(s.cruiseAlerts ?? {}) };
+  const types: AlertType[] = [];
+  if (c.shallow) types.push('shallow');
+  if (c.arrive) types.push('arrive');
+  return { kind, types, shiftDeg: Infinity, layLeads: [], minGapSec: TRAINING_GAP_SEC, strictGap: true, voice: true };
 }
 
 /** How to sound an alert under a profile: a profile without voice turns «Μπιπ + φωνή» into a beep. */
@@ -172,6 +178,12 @@ export interface Situation {
   pct15?: number;
   /** Wind and speed come from the boat's instruments («κάτω από 90%» needs them). */
   instruments?: boolean;
+  /** Cruise: latest depth for «ΡΗΧΑ ΜΠΡΟΣΤΑ» (sounder now, or the chart sample ahead). */
+  depth?: DepthReading;
+  /** Cruise: distance left to the destination along the route (nm) … */
+  destNm?: number;
+  /** … and which destination it is («ΦΤΑΝΕΙΣ» once per destination). */
+  destKey?: string;
 }
 
 export interface EngineState {
@@ -185,6 +197,8 @@ export interface EngineState {
   belowSince?: number;
   /** First time a held-back alert was due (training layline "now"). */
   heldSince: Map<string, number>;
+  /** Cruise: since when the depth has been below 5 m (one alert per shallow stretch). */
+  shallowSince?: number;
 }
 
 export const newEngine = (): EngineState => ({ fired: new Set(), last: -Infinity, muteUntil: 0, heldSince: new Map() });
@@ -294,13 +308,42 @@ export function step(st: EngineState, s: AlertSettings, x: Situation, p: AlertPr
       });
   } else st.belowSince = undefined;
 
+  // 6. Cruise: shallow water ahead, once per shallow stretch (sounder, else the chart ahead).
+  st.shallowSince = shallowStretch(st.shallowSince, x.depth, x.now);
+  if (st.shallowSince !== undefined && x.depth) {
+    const key = `shallow-${st.shallowSince}`;
+    if (has('shallow') && !st.fired.has(key)) {
+      const m = depthText(x.depth.depth);
+      out.push({
+        key,
+        type: 'shallow',
+        kind: 'now',
+        big: 'ΡΗΧΑ ΜΠΡΟΣΤΑ',
+        sub:
+          x.depth.from === 'sounder' || x.depth.aheadNm === undefined
+            ? `Βάθος ${m} μ · ενδεικτικό, όχι για ναυσιπλοΐα`
+            : `${m} μ σε ${nm1(x.depth.aheadNm)} νμ · ενδεικτικό, όχι για ναυσιπλοΐα`,
+        say: 'Ρηχά μπροστά.',
+        at: x.now,
+      });
+    }
+  }
+
+  // 7. Cruise: arrival, once per destination.
+  if (x.destKey && x.destNm !== undefined && x.destNm <= ARRIVE_ALERT_NM) {
+    const key = `arrive-${x.destKey}`;
+    if (has('arrive') && !st.fired.has(key))
+      out.push({ key, type: 'arrive', kind: 'info', big: 'ΦΤΑΝΕΙΣ', sub: 'Προορισμός σε 0,5 νμ', say: 'Φτάνεις στον προορισμό.', at: x.now });
+  }
+
   // Most urgent first. Race: the rest are dropped (and marked as done); "now" and the mark
   // pass the gap. Strict (training): no exception, and a held-back alert may come later.
   const order: AlertKind[] = ['now', 'warn', 'info'];
   out.sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind));
   let shown: Alert | undefined;
   for (const a of out) {
-    const always = !p.strictGap && (a.kind === 'now' || a.type === 'mark');
+    // Safety first (P-036): «ΡΗΧΑ ΜΠΡΟΣΤΑ» never waits for the gap (it re-arms on its own at 6 m).
+    const always = a.type === 'shallow' || (!p.strictGap && (a.kind === 'now' || a.type === 'mark'));
     // Strict (training): the layline "now" needs only a short gap, and is dropped once stale.
     const layNow = p.strictGap && a.type === 'lay' && a.kind === 'now';
     if (layNow) {
@@ -327,6 +370,10 @@ export function startAlert(now: number): Alert {
 
 export const isMuted = (st: EngineState, now: number) => now < st.muteUntil;
 export const MUTE_MS = 5 * 60_000;
+
+const nm1 = (x: number) => x.toFixed(1).replace('.', ',');
+/** Depth as said on the band: one decimal below 10 m. */
+const depthText = (m: number) => (m < 10 ? nm1(m) : String(Math.round(m)));
 
 function cap(s: string) {
   return s.charAt(0).toUpperCase() + s.slice(1);

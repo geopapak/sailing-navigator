@@ -3,7 +3,7 @@ import { useApp } from './AppContext';
 import { advisorConfig, checkAdvisor, AdvisorError } from '../ai/client';
 import { AccountCard } from './AccountCard';
 import { InstrumentsCard } from './InstrumentsCard';
-import { AlertsCard } from './AlertsCard';
+import { AlertsCard, TrackCards } from './AlertsCard';
 import { DEFAULT_SERVER } from './settings';
 import { NumField } from './NumberStepper';
 import { AppearancePickers } from './Appearance';
@@ -51,6 +51,7 @@ export function SettingsView() {
       <AccountCard />
       <InstrumentsCard />
       <AlertsCard />
+      <TrackCards />
       <details className="card">
         <summary>
           <b>Για προχωρημένους</b> <span className="small muted">— μαγνητική απόκλιση, server</span>
@@ -117,7 +118,7 @@ export function SettingsView() {
           φορτωθεί μία φορά. Τα δεδομένα αποθηκεύονται στη συσκευή και, αν είσαι συνδεδεμένος, συγχρονίζονται με τον
           λογαριασμό σου. Χωρίς λογαριασμό, μεταφορά γίνεται με Export/Import από την καρτέλα «Σκάφη».
         </p>
-        <p className="muted small">Έκδοση {__APP_VERSION__}</p>
+        <p className="muted small" data-testid="app-version">Έκδοση {__APP_VERSION__}</p>
       </section>
     </div>
   );

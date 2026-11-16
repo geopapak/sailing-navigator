@@ -50,7 +50,7 @@ export function Onboarding() {
   );
 
   return (
-    <section className="card onboard" aria-live="polite">
+    <section className="card onboard" data-testid="onboarding" aria-live="polite">
       <div className="dots" role="img" aria-label={`Βήμα ${step + 1} από ${STEPS}`}>
         {Array.from({ length: STEPS }, (_, i) => (
           <span key={i} className={i <= step ? 'on' : ''} />

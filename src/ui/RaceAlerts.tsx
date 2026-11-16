@@ -11,7 +11,9 @@ import { useNav } from './NavContext';
 import { useInstruments } from './InstrumentsContext';
 import { useRace } from './RaceContext';
 import { useLaylines, type LaylineView } from './useLaylines';
-import { useLiveNumbers, useSessionMarks } from './useSession';
+import { useCruiseNav, useLiveNumbers, useSessionMarks } from './useSession';
+import { AHEAD_NM, aheadOf, arriveStep, sampleDue, type DepthReading } from '../race/cruise';
+import { chartDepthAt, claimAhead } from './depthCache';
 import { audioReady, notify, unlockAudio } from './sound';
 
 /** Manoeuvre alerts while a session records (P-023; per kind, P-034): one engine for the whole app. */
@@ -50,8 +52,11 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
   const numbers = useLiveNumbers();
   const kind = race.recording ? race.kind : undefined;
   const profile = useMemo(() => (kind ? profileFor(kind, settings) : undefined), [kind, settings]);
-  // The engine runs while a session records (it also feeds the 15″ % mean); a cruise has no alerts yet.
+  // The engine runs while a session records (it also feeds the 15″ % mean); a cruise has safety alerts only.
   const on = !!kind;
+  const cruise = useCruiseNav();
+  // Cruise: the latest chart sample ahead (EMODnet), used until the next one.
+  const ahead = useRef<DepthReading>();
   const engine = useRef(newEngine());
   const [banner, setBanner] = useState<AlertsState['banner']>();
   const [, setTick] = useState(0);
@@ -76,8 +81,8 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
   const waitingFor = race.waitingGps ? stallMinutes(race.everyMs) * 60_000 : undefined;
   const stalled = !!race.stalledMin;
 
-  const latest = useRef({ settings, inst, lay, markInSec, layInSec, marks, profile, numbers, stalled, waitingFor, known });
-  latest.current = { settings, inst, lay, markInSec, layInSec, marks, profile, numbers, stalled, waitingFor, known };
+  const latest = useRef({ settings, inst, lay, markInSec, layInSec, marks, profile, numbers, stalled, waitingFor, known, cruise, fix, session: race.session });
+  latest.current = { settings, inst, lay, markInSec, layInSec, marks, profile, numbers, stalled, waitingFor, known, cruise, fix, session: race.session };
 
   useEffect(() => {
     // A new kind (training ↔ cruise) starts the engine afresh and hides the alert (AC 17).
@@ -88,6 +93,10 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
     setPct15(undefined);
     manSamples.current = [];
     setPendingManoeuvre(undefined);
+    ahead.current = undefined;
+    // Cruise: «ΦΤΑΝΕΙΣ» once per destination, also after a pause, a switch or a reload (kept on the session).
+    const firedDest = latest.current.session?.arriveFired;
+    if (firedDest) engine.current.fired.add(`arrive-${firedDest}`);
     if (!on) return;
     const since = Date.now();
     const training = kind === 'training';
@@ -125,6 +134,25 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
         const last = left[left.length - 1];
         setPendingManoeuvre((p) => (p?.t === last?.t ? p : last ? { t: last.t, kind: last.kind } : undefined));
       }
+      // Cruise: depth from the sounder, else the chart sample ahead; the destination left.
+      let depth: DepthReading | undefined;
+      let destNm: number | undefined;
+      let destKey: string | undefined;
+      if (kind === 'cruise') {
+        const { cruise: cn, session: r, fix: f } = latest.current;
+        const sounder = i.live ? i.values.depth : undefined;
+        depth = sounder !== undefined ? { depth: sounder, from: 'sounder' } : ahead.current;
+        if (r) {
+          // Armed only once > 0,6 nm from the destination since it was set (a return to the
+          // own marina does not «arrive» at the start); «άφιξη» of the summary at 0,1 nm.
+          const a = arriveStep(r, { key: cn.key, leftNm: cn.leftNm, toLastNm: cn.toLastNm, hasFix: !!f && cn.hasFix, now });
+          if (a.patch) update(a.patch);
+          if (a.alertNm !== undefined) {
+            destNm = a.alertNm;
+            destKey = cn.key;
+          }
+        }
+      }
       if (p && p.types.length) {
         const x: Situation = {
           now,
@@ -139,8 +167,12 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
           gpsLost: lost,
           pct15: pm,
           instruments: nb.withInst,
+          depth,
+          destNm,
+          destKey,
         };
         const a = step(engine.current, s.alerts, x, p);
+        if (a?.type === 'arrive' && destKey) update({ arriveFired: destKey });
         if (a) {
           const muted = isMuted(engine.current, now);
           setBanner({ ...a, muted });
@@ -156,6 +188,36 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
       pendingMan.current = [];
     };
   }, [on, kind, update]);
+
+  // Cruise «Ρηχά μπροστά» without a sounder: one EMODnet sample 0,3 nm ahead on the COG, at
+  // most once a minute, online and moving (> 1 kn) only; nothing is sent when the alert is off.
+  const shallowOn = kind === 'cruise' && profile?.types.includes('shallow');
+  useEffect(() => {
+    if (!shallowOn) return;
+    let stop = false;
+    const tick = () => {
+      const { inst: i, fix: f } = latest.current;
+      const now = Date.now();
+      if (i.live && i.values.depth !== undefined) return; // the sounder answers
+      const online = navigator.onLine !== false;
+      if (!f || f.cog === undefined || !online || (f.sog ?? 0) <= 1) return;
+      claimAhead(now);
+      // The shared budget (depthCache) keeps it to one request a minute, shared with «Βάθος εδώ».
+      if (!sampleDue(undefined, now, { online, sog: f.sog })) return;
+      chartDepthAt(aheadOf(f, f.cog, AHEAD_NM), now, 'ahead').then((c) => {
+        if (stop || !c) return;
+        // Land ahead counts as no water at all.
+        if (c.land) ahead.current = { depth: 0, from: 'chart', aheadNm: AHEAD_NM };
+        else if (c.d) ahead.current = { depth: c.d.depth, from: 'chart', aheadNm: AHEAD_NM };
+      });
+    };
+    tick();
+    const t = window.setInterval(tick, 5_000);
+    return () => {
+      stop = true;
+      window.clearInterval(t);
+    };
+  }, [shallowOn]);
 
   // Hide the banner after a while ("now" sooner).
   useEffect(() => {

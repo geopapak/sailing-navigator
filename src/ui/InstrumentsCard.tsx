@@ -35,7 +35,7 @@ export function InstrumentsCard() {
       : inst.message ?? (inst.status === 'connecting' ? 'Σύνδεση…' : 'Δεν έρχονται δεδομένα.');
 
   return (
-    <section className="card form-grid instruments">
+    <section className="card form-grid instruments" data-testid="instruments-card">
       <h3>Όργανα σκάφους</h3>
       <div className={`inst-status full ${cfg.enabled ? (inst.live ? 'ok' : 'bad') : ''}`}>
         <span className="dot" aria-hidden="true" />

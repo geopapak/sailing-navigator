@@ -18,6 +18,8 @@ import { SESSION_FLASH } from './sessionFlash';
 import { holdShare } from './crewShare';
 import { activeMs, goalOf, goalSub, mss } from '../race/training';
 import { pausedSince } from '../race/pauses';
+import { destName } from '../race/cruise';
+import { CRUISE_TEXT } from './sessionText';
 
 /**
  * Inside a session (P-033): the bar on top with kind, running time, ⚙ quick
@@ -109,7 +111,8 @@ export function SessionBar({ onEnded }: { onEnded: (e: Ended) => void }) {
   const before = now < r.start;
   const paused = race.paused;
   const recording = now >= from && !paused;
-  const what = kind === 'race' ? r.name || 'Αγώνας' : kind === 'training' ? goalSub(goalOf(r)) : 'χωρίς προορισμό';
+  const dn = kind === 'cruise' ? destName(r) : undefined;
+  const what = kind === 'race' ? r.name || 'Αγώνας' : kind === 'training' ? goalSub(goalOf(r)) : dn ? CRUISE_TEXT.toward(dn) : CRUISE_TEXT.noDestSmall;
   const sub = now < from ? `καταγραφή από ${hhmm(from)}` : `${paused ? 'σε παύση' : 'σε εξέλιξη'} · ${what}`;
   // Training and cruise: the clock leaves the pauses out (P-039 AC 16).
   const time = before ? `−${hms(r.start - now)}` : hms(kind === 'race' ? now - r.start : activeMs(r, now));
@@ -154,7 +157,7 @@ export function SessionBar({ onEnded }: { onEnded: (e: Ended) => void }) {
         <button type="button" className="sb" aria-label="Γρήγορες ρυθμίσεις" onClick={() => setSheet('quick')}>
           <Icon name="gear" />
         </button>
-        <button type="button" className="sb end" onClick={() => setSheet('end')}>
+        <button type="button" className="sb end" data-testid="session-end" onClick={() => setSheet('end')}>
           ■ Τέλος
         </button>
       </div>
@@ -218,7 +221,7 @@ function UpdateLine() {
   if (phase !== 'waiting' && phase !== 'deferred') return null;
   const text = phase === 'waiting' ? UPDATE_TEXT.sessionWaiting : UPDATE_TEXT.sessionAfter;
   return (
-    <div className="update-line" role="status" title={text}>
+    <div className="update-line" data-testid="update-line" role="status" title={text}>
       <span className="update-badge" aria-hidden="true">
         ↻
       </span>
@@ -239,6 +242,7 @@ function SessionStrip({ r, now, flash, onFlash }: { r: Race; now: number; flash?
       <button
         type="button"
         className="strip-btn"
+        data-testid="session-pause"
         aria-label="Παύση καταγραφής"
         onClick={() => {
           race.pause();
@@ -251,7 +255,7 @@ function SessionStrip({ r, now, flash, onFlash }: { r: Race; now: number; flash?
   const since = pausedSince(r);
   if (race.saveError)
     return (
-      <div className="net-strip race-strip bad" role="alert">
+      <div data-testid="session-strip" className="net-strip race-strip bad" role="alert">
         <span className="dot" aria-hidden="true" />
         <span>Δεν αποθηκεύτηκε η έξοδος. Η καταγραφή συνεχίζει στη μνήμη.</span>
         <button type="button" className="link" onClick={race.retrySave}>
@@ -261,14 +265,14 @@ function SessionStrip({ r, now, flash, onFlash }: { r: Race; now: number; flash?
     );
   if (flash)
     return (
-      <div className="net-strip ok race-strip" role="status">
+      <div data-testid="session-strip" className="net-strip ok race-strip" role="status">
         <span className="dot" aria-hidden="true" />
         <span>{flash}</span>
       </div>
     );
   if (since !== undefined)
     return (
-      <div className="net-strip race-strip paused-strip" role="status">
+      <div data-testid="session-strip" className="net-strip race-strip paused-strip" role="status">
         <span className="dot" aria-hidden="true" />
         <span>
           <b>Σε παύση {mss((now - since) / 1000)}</b> · δεν καταγράφεται, χωρίς ειδοποιήσεις
@@ -276,6 +280,7 @@ function SessionStrip({ r, now, flash, onFlash }: { r: Race; now: number; flash?
         <button
           type="button"
           className="strip-btn"
+          data-testid="session-resume"
           onClick={() => {
             race.resume();
             onFlash('Συνέχεια · η καταγραφή ξανάρχισε');
@@ -287,7 +292,7 @@ function SessionStrip({ r, now, flash, onFlash }: { r: Race; now: number; flash?
     );
   if (race.gap)
     return (
-      <div className="net-strip race-strip" role="alert">
+      <div data-testid="session-strip" className="net-strip race-strip" role="alert">
         <span className="dot" aria-hidden="true" />
         <span>
           Κενό {race.gap.minutes}′ στο ίχνος: η οθόνη έκλεισε ή η εφαρμογή πήγε στο παρασκήνιο. Άφησε την εφαρμογή ανοιχτή στην έξοδο.
@@ -299,14 +304,14 @@ function SessionStrip({ r, now, flash, onFlash }: { r: Race; now: number; flash?
     );
   if (now < recordFrom(r))
     return (
-      <div className="net-strip ok race-strip quiet" role="status">
+      <div data-testid="session-strip" className="net-strip ok race-strip quiet" role="status">
         <span className="dot" aria-hidden="true" />
         <span>Η καταγραφή ξεκινά μόνη της στις {hhmm(recordFrom(r))}, 10′ πριν την εκκίνηση.</span>
       </div>
     );
   if (race.waitingGps)
     return (
-      <div className="net-strip race-strip bad" role="alert">
+      <div data-testid="session-strip" className="net-strip race-strip bad" role="alert">
         <span className="dot" aria-hidden="true" />
         <span>Η καταγραφή περιμένει θέση GPS (ή όργανα).</span>
         {pauseBtn}
@@ -314,7 +319,7 @@ function SessionStrip({ r, now, flash, onFlash }: { r: Race; now: number; flash?
     );
   if (race.stalledMin)
     return (
-      <div className="net-strip race-strip bad" role="alert">
+      <div data-testid="session-strip" className="net-strip race-strip bad" role="alert">
         <span className="dot" aria-hidden="true" />
         <span>Η καταγραφή σταμάτησε πριν από {race.stalledMin}′: δεν έρχεται θέση GPS.</span>
         {pauseBtn}
@@ -322,7 +327,7 @@ function SessionStrip({ r, now, flash, onFlash }: { r: Race; now: number; flash?
     );
   const fromInst = inst.live && inst.values.lat !== undefined;
   return (
-    <div className="net-strip ok race-strip quiet" role="status">
+    <div data-testid="session-strip" className="net-strip ok race-strip quiet" role="status">
       <span className="dot" aria-hidden="true" />
       <span>
         Καταγραφή κάθε {every}″{race.wakeOn ? ' · η οθόνη μένει ανοιχτή' : ' · κράτα την οθόνη ανοιχτή'}
@@ -333,7 +338,7 @@ function SessionStrip({ r, now, flash, onFlash }: { r: Race; now: number; flash?
   );
 }
 
-export function SheetFrame({ label, onClose, children }: { label: string; onClose: () => void; children: React.ReactNode }) {
+export function SheetFrame({ label, onClose, children, testId }: { label: string; onClose: () => void; children: React.ReactNode; testId?: string }) {
   useEffect(() => {
     const k = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', k);
@@ -341,7 +346,7 @@ export function SheetFrame({ label, onClose, children }: { label: string; onClos
   }, [onClose]);
   return (
     <div className="sheet-backdrop" onClick={onClose}>
-      <div className="sheet session-sheet" role="dialog" aria-modal="true" aria-label={label} onClick={(e) => e.stopPropagation()}>
+      <div className="sheet session-sheet" data-testid={testId} role="dialog" aria-modal="true" aria-label={label} onClick={(e) => e.stopPropagation()}>
         {children}
       </div>
     </div>

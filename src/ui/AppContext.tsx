@@ -94,8 +94,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setSyncStatus((s) => ({ ...s, busy: true, error: undefined }));
     try {
       const r = await syncNow(aiUrl || DEFAULT_SERVER, authToken);
-      setSyncStatus({ busy: false, at: r.at });
+      // Data first, then «synced»: the first-run screens must not flash before the boats are loaded.
       if (r.pulled) await reload();
+      setSyncStatus({ busy: false, at: r.at });
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) {
         // Session expired or revoked.

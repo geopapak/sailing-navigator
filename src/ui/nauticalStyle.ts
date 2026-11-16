@@ -177,7 +177,41 @@ export function formatDepth(s: DepthSample): string {
 }
 
 export async function fetchDepth(lat: number, lon: number, signal?: AbortSignal): Promise<DepthSample | undefined> {
+  return (await fetchDepthInfo(lat, lon, signal)).d;
+}
+
+/** Depth at a point and whether EMODnet puts it on land (height ≥ 0). */
+export async function fetchDepthInfo(lat: number, lon: number, signal?: AbortSignal): Promise<{ d?: DepthSample; land: boolean }> {
   const res = await fetch(`${EMODNET_DEPTH}?geom=${encodeURIComponent(`POINT(${lon.toFixed(5)} ${lat.toFixed(5)})`)}`, { signal });
   if (!res.ok) throw new Error(String(res.status));
-  return parseDepth(await res.json());
+  const j = (await res.json()) as { avg?: number | null; min?: number | null; max?: number | null };
+  return { d: parseDepth(j), land: typeof j.avg === 'number' && Number.isFinite(j.avg) && j.avg >= 0 };
 }
+
+/**
+ * The 5 m depth line (P-036 «ρηχά (5 μ)»), drawn by EMODnet from its depth grid as a
+ * dotted line, so it reads in Night (red only) by its dots, not only by colour.
+ */
+export function shallowSld(color: string): string {
+  return (
+    '<StyledLayerDescriptor version="1.0.0" xmlns="http://www.opengis.net/sld" xmlns:ogc="http://www.opengis.net/ogc"><NamedLayer><Name>emodnet:mean</Name>' +
+    '<UserStyle><FeatureTypeStyle><Transformation><ogc:Function name="ras:Contour">' +
+    '<ogc:Function name="parameter"><ogc:Literal>data</ogc:Literal></ogc:Function>' +
+    '<ogc:Function name="parameter"><ogc:Literal>levels</ogc:Literal><ogc:Literal>-5</ogc:Literal></ogc:Function>' +
+    '</ogc:Function></Transformation><Rule><LineSymbolizer><Stroke>' +
+    `<CssParameter name="stroke">${color}</CssParameter><CssParameter name="stroke-width">2.5</CssParameter>` +
+    '<CssParameter name="stroke-dasharray">2 4</CssParameter>' +
+    '</Stroke></LineSymbolizer></Rule></FeatureTypeStyle></UserStyle></NamedLayer></StyledLayerDescriptor>'
+  );
+}
+
+/** Colour of the 5 m line per theme (amber; dim red at night). */
+export const SHALLOW_COLOR: Record<Theme, string> = { day: '#b45309', dark: '#fbbf24', night: '#d1342a' };
+/**
+ * The dashed line to the destination: its own colour per theme, not the 5 m line's
+ * (magenta, as a route on a plotter). Night is red only: there it is told apart by its
+ * long dashes and its width (the 5 m line is dotted and thinner).
+ */
+export const DEST_COLOR: Record<Theme, string> = { day: '#a21caf', dark: '#e879f9', night: '#d1342a' };
+export const DEST_WIDTH: Record<Theme, number> = { day: 2.5, dark: 2.5, night: 4 };
+export const shallowTiles = (theme: Theme) => wmsTiles('emodnet:mean', shallowSld(SHALLOW_COLOR[theme]));

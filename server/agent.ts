@@ -43,6 +43,26 @@ export const SYSTEM_BLOCKS = [
   { type: 'text' as const, text: KNOWLEDGE + PLACES_TEXT, cache_control: { type: 'ephemeral' as const } },
 ];
 
+/** Extra instruction for a cruise session (P-036 Φ4): depth, chart and route info is indicative only. */
+export const CRUISE_SYSTEM = `Τώρα το πλήρωμα κάνει Βόλτα (ελεύθερη έξοδο, όχι αγώνα). Δώσε έμφαση σε καιρό, ασφάλεια, αγκυροβόλια και άνεση. Η ασφάλεια προηγείται πάντα: αν βλέπεις κίνδυνο (δυνατός άνεμος ή ριπές, μελτέμι, καταιγίδα, νύχτα, ρηχά), πες το πρώτο.
+- Βάθη, χάρτες, διαδρομές, αποστάσεις και ό,τι αφορά την ασφαλή πλοήγηση είναι ενδεικτικά. Τα δεδομένα της εφαρμογής δεν είναι επίσημος ναυτικός χάρτης και τα βάθη (EMODnet) έχουν μικρή ανάλυση, οπότε ξέρες και βράχοι κοντά στην ακτή μπορεί να μη φαίνονται. Μη χαρακτηρίζεις ποτέ ένα πέρασμα, ένα βάθος ή ένα αγκυροβόλιο «ασφαλές» με βάση αυτά. Υπενθύμισε ότι ο κυβερνήτης τα επιβεβαιώνει με επίσημους ναυτικούς χάρτες, τις Αγγελίες προς Ναυτιλλομένους και το βυθόμετρο.
+- Όταν μιλάς για βάθος, λάβε υπόψη το βύθισμα του σκάφους και αν το βυθόμετρο δείχνει βάθος κάτω από την καρίνα ή από την επιφάνεια. Αν δεν τα ξέρεις, πες το ή ρώτα.
+- Για τον καιρό, ξεχώριζε την πρόγνωση των μοντέλων από το επίσημο δελτίο της ΕΜΥ για ναυτιλλόμενους και τις προειδοποιήσεις NAVTEX/VHF, και πρότεινε να τα ελέγξει πριν φύγει.
+- Όταν η απάντηση δίνει βάθος, διαδρομή, πορεία, αγκυροβόλιο, είσοδο σε λιμάνι ή άλλη πληροφορία ασφαλούς πλοήγησης, κλείσε την με την πρόταση «Ενδεικτικά, όχι για ναυσιπλοΐα.». Σε απαντήσεις μόνο για καιρό, πανιά ή άνεση μην τη βάζεις.`;
+
+/**
+ * System blocks for a request. The stable blocks come first and keep the cache
+ * breakpoint; the per-session-kind addition goes after it, so it never
+ * invalidates the cached prefix (tools + stable system).
+ */
+export function systemFor(ctx: ChatContext | undefined) {
+  // The context is client data and not type-checked: compare strictly.
+  if ((ctx as { session?: { kind?: unknown } } | undefined)?.session?.kind === 'cruise') {
+    return [...SYSTEM_BLOCKS, { type: 'text' as const, text: CRUISE_SYSTEM }];
+  }
+  return SYSTEM_BLOCKS;
+}
+
 const json = (x: unknown) => JSON.stringify(compact(x));
 
 function findBoat(ctx: ChatContext | undefined, name?: string): BoatProfile | undefined {
@@ -271,7 +291,7 @@ export async function runAgent(
     betas: ['server-side-fallback-2026-07-01'],
     fallbacks: 'default',
     output_config: { effort: 'medium' },
-    system: SYSTEM_BLOCKS,
+    system: systemFor(req.context),
     tools: opts.webSearch ? [...tools, WEB_SEARCH_TOOL] : tools,
     messages: buildMessages(req),
   });

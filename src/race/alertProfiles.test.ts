@@ -145,7 +145,8 @@ describe('alert profiles per kind (P-034)', () => {
 
   it('cruise: no manoeuvre alerts ever', () => {
     const p = profileFor('cruise', S);
-    expect(p.types).toEqual([]);
+    // Safety only (P-036): shallow water and arrival.
+    expect(p.types).toEqual(['shallow', 'arrive']);
     const st = newEngine();
     step(st, DEFAULT_ALERTS, { ...base, instTwd: 100 }, p);
     const all = [

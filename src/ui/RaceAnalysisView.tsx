@@ -51,7 +51,7 @@ export function RaceAnalysisView({ id, onBack, backLabel = 'Αγώνες' }: { i
   };
 
   return (
-    <div className="race-analysis">
+    <div className="race-analysis" data-testid="race-analysis">
       <section className="card">
         <div className="row between">
           <div>
@@ -95,7 +95,7 @@ export function RaceAnalysisView({ id, onBack, backLabel = 'Αγώνες' }: { i
       <section className="card">
         <h3>Τι να κρατήσουμε (σύμβουλος AI)</h3>
         {race.analysis?.lessons.length ? (
-          <ul className="lessons">
+          <ul className="lessons" data-testid="lessons">
             {race.analysis.lessons.map((l, i) => (
               <li key={i}>
                 {l.text}
@@ -106,8 +106,8 @@ export function RaceAnalysisView({ id, onBack, backLabel = 'Αγώνες' }: { i
         ) : (
           <p className="muted small">Ο σύμβουλος διαβάζει τα νούμερα του αγώνα (σκέλη, % target, αναστροφές, πανιά) και γράφει τι να αλλάξετε την επόμενη φορά.</p>
         )}
-        {error && <p className="errors">{error}</p>}
-        <button className="btn wide" disabled={busy || !account || race.track.length < 2} onClick={ask}>
+        {error && <p className="errors" data-testid="lessons-error">{error}</p>}
+        <button className="btn wide" data-testid="lessons-ask" disabled={busy || !account || race.track.length < 2} onClick={ask}>
           {busy ? 'Ο σύμβουλος γράφει…' : race.analysis ? 'Ξανά από τον σύμβουλο' : 'Ζήτα μαθήματα από τον σύμβουλο'}
         </button>
         <p className="muted small">Με βάση την καταγραφή και τα polars · η απόφαση είναι του κυβερνήτη · μετράει ως 1 ερώτηση AI.</p>
@@ -162,10 +162,10 @@ export function RaceAnalysisView({ id, onBack, backLabel = 'Αγώνες' }: { i
       <section className="card">
         <h3>Export</h3>
         <div className="btn-row">
-          <button className="btn" disabled={!race.track.length} onClick={() => download(`${fileName(race)}.gpx`, toGpx(race), 'application/gpx+xml')}>
+          <button className="btn" data-testid="export-gpx" disabled={!race.track.length} onClick={() => download(`${fileName(race)}.gpx`, toGpx(race), 'application/gpx+xml')}>
             GPX
           </button>
-          <button className="btn" disabled={!race.track.length} onClick={() => download(`${fileName(race)}.csv`, toCsv(race), 'text/csv')}>
+          <button className="btn" data-testid="export-csv" disabled={!race.track.length} onClick={() => download(`${fileName(race)}.csv`, toCsv(race), 'text/csv')}>
             CSV
           </button>
         </div>

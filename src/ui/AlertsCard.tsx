@@ -4,12 +4,14 @@ import {
   RACE_SHIFT_DEGS,
   TRAINING_SHIFT_DEGS,
   type AlertSettings,
+  type CruiseAlerts,
   type Lead,
   type TrainingAlerts,
 } from '../race/alerts';
 import type { SessionKind } from '../race/types';
 import { ALERT_SETTINGS_TEXT as T } from './sessionText';
 import { beep, canVibrate, notify, speak, unlockAudio } from './sound';
+import { useOnline } from './hooks';
 
 export function Toggle({
   on,
@@ -60,6 +62,11 @@ export function KindAlertToggles({ kind, quick = false }: { kind: SessionKind; q
   const hasInst = quick ? inst.live : !!settings.instruments?.enabled;
   const setA = (p: Partial<AlertSettings>) => updateSettings({ alerts: { ...a, ...p } });
   const setT = (p: Partial<TrainingAlerts>) => updateSettings({ training: { ...t, ...p } });
+  const c = settings.cruiseAlerts;
+  const setC = (p: Partial<CruiseAlerts>) => updateSettings({ cruiseAlerts: { ...c, ...p } });
+  const online = useOnline();
+  // Offline the chart cannot be asked: only the sounder can warn (P-036 edge cases).
+  const sounder = quick ? inst.live && inst.values.depth !== undefined : !!settings.instruments?.enabled;
   const w = a.words === 'slang' ? { tack: 'τακ', gybe: 'τζάιμπ' } : { tack: 'αναστροφή', gybe: 'υποσταύρωση' };
   const sub = (x: string) => (quick ? undefined : x);
   if (kind === 'race')
@@ -94,7 +101,16 @@ export function KindAlertToggles({ kind, quick = false }: { kind: SessionKind; q
         <p className="small muted">{T.trainingNote}</p>
       </>
     );
-  return <p className="small muted">{T.cruiseNone}</p>;
+  const shallowSub = [quick ? undefined : `${T.shallowSub}. ${T.shallowPrivacy}`, !online && !sounder ? T.shallowOffline : undefined]
+    .filter(Boolean)
+    .join(' · ');
+  return (
+    <>
+      <Toggle on={c.shallow} label={T.shallow} sub={shallowSub || undefined} onChange={(v) => setC({ shallow: v })} />
+      <Toggle on={c.arrive} label={T.arrive} sub={sub(T.arriveSub)} onChange={(v) => setC({ arrive: v })} />
+      {!quick && <p className="small muted">{T.cruiseNote}</p>}
+    </>
+  );
 }
 
 /** Settings → alerts per kind (P-023, P-034). Defaults follow the prototype: everything on, beep only. */
@@ -157,6 +173,10 @@ export function AlertsCard() {
         <KindAlertToggles kind="training" />
       </section>
       <section className="card alerts-card">
+        <h3>{T.cruiseTitle}</h3>
+        <KindAlertToggles kind="cruise" />
+      </section>
+      <section className="card alerts-card">
         <h3>{T.soundTitle}</h3>
         <div className="seg" role="group" aria-label="Ήχος">
           {(
@@ -186,6 +206,31 @@ export function AlertsCard() {
             </button>
           )}
         </p>
+      </section>
+    </>
+  );
+}
+
+/** Settings → «Ίχνος» (cruise 15″ / 30″) and «Ξεχασμένη έξοδος» (P-036 AC 8). */
+export function TrackCards() {
+  const { settings, updateSettings } = useApp();
+  return (
+    <>
+      <section className="card">
+        <h3>{T.trackTitle}</h3>
+        <p className="small">{T.trackFixed}</p>
+        <div className="settings-sub">{T.trackCruise}</div>
+        <div className="seg" role="group" aria-label={`${T.trackTitle} · ${T.trackCruise}`}>
+          {([15, 30] as const).map((v) => (
+            <button key={v} type="button" className={settings.cruiseTrackSec === v ? 'on' : ''} aria-pressed={settings.cruiseTrackSec === v} onClick={() => updateSettings({ cruiseTrackSec: v })}>
+              {T.every(v)}
+            </button>
+          ))}
+        </div>
+      </section>
+      <section className="card">
+        <h3>{T.forgottenTitle}</h3>
+        <p className="small">{T.forgottenText}</p>
       </section>
     </>
   );

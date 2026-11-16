@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useApp } from './AppContext';
 import { useRace } from './RaceContext';
 import { useTraining } from './TrainingContext';
@@ -8,14 +8,13 @@ import { selectableSails } from '../performance/sails';
 import { bestLap, goalOf, liveLaps, manoeuvreStats, mss, noteLap, TRIM_MAX } from '../race/training';
 import type { Lap } from '../race/types';
 import { useNav } from './NavContext';
-import { useInstruments } from './InstrumentsContext';
 import { useAlerts } from './RaceAlerts';
-import { useLiveNumbers, usePublishLive } from './useSession';
+import { useLiveNumbers, usePublishCruise, usePublishLive } from './useSession';
 import { PolarTrimPanel } from './PolarTrimPanel';
 import { requestKindSheet, hhmm } from './SessionBar';
-import { LIVE_TEXT, TRAINING_TEXT as TT } from './sessionText';
-import { depthDue, legOf, nextChange, trainingHint, type WindAt } from '../race/liveNumbers';
-import { fetchDepth, type DepthSample } from './nauticalStyle';
+import { CRUISE_TEXT, LIVE_TEXT, TRAINING_TEXT as TT } from './sessionText';
+import { legOf, nextChange, trainingHint, type WindAt } from '../race/liveNumbers';
+import { DestSheet, DestTile, depthNum, useCruiseDepth, useOnline } from './CruiseViews';
 import { gridField } from '../weather/field';
 
 const f1 = (v?: number) => (v === undefined || !Number.isFinite(v) ? '—' : v.toFixed(1).replace('.', ','));
@@ -174,6 +173,7 @@ export function TrainingLive() {
       <button
         type="button"
         className="lap-btn"
+        data-testid="lap-button"
         disabled={paused}
         aria-label={TT.lapAria(laps.current.n, mss(laps.current.sec))}
         onClick={tr.lap}
@@ -182,7 +182,7 @@ export function TrainingLive() {
       </button>
       {tr.undoLeft > 0 && lastDone ? (
         <div className="g2">
-          <button type="button" className="btn" onClick={tr.undo}>
+          <button type="button" className="btn" data-testid="lap-undo" onClick={tr.undo}>
             {TT.undo(tr.undoLeft)}
           </button>
           <button type="button" className="btn" onClick={() => setNoteFor(lastDone.n)}>
@@ -197,7 +197,7 @@ export function TrainingLive() {
         )
       )}
       {laps.done.length ? (
-        <p className="lap-list">
+        <p className="lap-list" data-testid="lap-list">
           {[...laps.done]
             .reverse()
             .slice(0, 5)
@@ -342,69 +342,22 @@ export function PauseCard() {
   );
 }
 
-function useOnline() {
-  const [online, setOnline] = useState(() => typeof navigator === 'undefined' || navigator.onLine !== false);
-  useEffect(() => {
-    const on = () => setOnline(true);
-    const off = () => setOnline(false);
-    window.addEventListener('online', on);
-    window.addEventListener('offline', off);
-    return () => {
-      window.removeEventListener('online', on);
-      window.removeEventListener('offline', off);
-    };
-  }, []);
-  return online;
-}
-
-/** Last chart depth, kept across re-mounts so tab switches do not ask again within 60″. */
-let chartDepth: { at: number; d?: DepthSample } | undefined;
-
-/** Depth from the chart (EMODnet `depth_sample`) at our position: at most once every 60″, online only. */
-function useChartDepth(pos: { lat: number; lon: number } | undefined, enabled: boolean, online: boolean): DepthSample | undefined {
-  const [d, setD] = useState(chartDepth?.d);
-  const has = !!pos;
-  const ref = useRef(pos);
-  ref.current = pos;
-  useEffect(() => {
-    if (!enabled || !online || !has) return;
-    let ctl: AbortController | undefined;
-    const tick = () => {
-      const p = ref.current;
-      if (!p || !depthDue(chartDepth?.at, Date.now(), navigator.onLine !== false)) return;
-      chartDepth = { at: Date.now(), d: chartDepth?.d };
-      ctl = new AbortController();
-      fetchDepth(p.lat, p.lon, ctl.signal)
-        .then((x) => {
-          chartDepth = { at: Date.now(), d: x };
-          setD(x);
-        })
-        .catch(() => undefined);
-    };
-    tick();
-    const t = window.setInterval(tick, 5_000);
-    return () => {
-      window.clearInterval(t);
-      ctl?.abort();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, online, has]);
-  return d;
-}
-
 /**
- * Cruise Live, basic (P-034 AC 7–8): speed over ground with course, depth
+ * Cruise Live (P-034 AC 7–8, P-036 AC 3–4): speed over ground with course, the
+ * destination with distance left and ETA (or «Χωρίς προορισμό» · «Βάλε»), depth
  * (sounder, or the chart: indicative, not for navigation), weather and «⇄ Γίνε Προπόνηση».
- * Destination and ETA come in Φ4.
  */
 export function CruiseLive() {
+  const { settings } = useApp();
   const nav = useNav();
-  const inst = useInstruments();
   const online = useOnline();
   const fix = nav.gps.fix;
-  const sounder = inst.live ? inst.values.depth : undefined;
-  const chart = useChartDepth(fix ? { lat: fix.lat, lon: fix.lon } : undefined, sounder === undefined, online);
-  const depth = sounder ?? (online ? chart?.depth : undefined);
+  const [sheet, setSheet] = useState(false);
+  const { sounder, chart } = useCruiseDepth();
+  const depth = sounder ?? chart?.d?.depth;
+  const shallowOn = settings.cruiseAlerts?.shallow !== false;
+  // «Σύμβουλος» sees the cruise Live (SOG, COG, depth, destination and ETA).
+  usePublishCruise(useLiveNumbers(), { m: depth, from: sounder !== undefined ? 'sounder' : 'chart' });
   return (
     <div className="session-live">
       <section className="card race-screen">
@@ -421,13 +374,15 @@ export function CruiseLive() {
             <small> κν</small>
           </span>
         </div>
+        <DestTile onSet={() => setSheet(true)} />
         <div className="rs-tile">
           <span>
             <span className="lab">{LIVE_TEXT.depth}</span>
             <span className="ab">{sounder !== undefined ? LIVE_TEXT.depthSounder : LIVE_TEXT.depthChart}</span>
+            {shallowOn && <span className="sub">{CRUISE_TEXT.shallowHint}</span>}
           </span>
           <span className="val">
-            {depth === undefined ? '—' : `${sounder === undefined ? '~' : ''}${depth < 10 ? f1(depth) : Math.round(depth)}`}
+            {depth === undefined ? '—' : `${sounder === undefined ? '~' : ''}${depthNum(depth)}`}
             <small> μ</small>
           </span>
         </div>
@@ -436,6 +391,7 @@ export function CruiseLive() {
       <button type="button" className="btn big-btn wide swap-btn" onClick={requestKindSheet}>
         {LIVE_TEXT.toTraining}
       </button>
+      {sheet && <DestSheet onClose={() => setSheet(false)} />}
     </div>
   );
 }
