@@ -3,7 +3,7 @@ import { accountApi, type ServerConfig } from '../sync/api';
 
 /** Version of the texts below; must match TERMS_VERSION on the server. */
 export const TERMS_VERSION = 4;
-export const TERMS_DATE = '16/11/2026';
+export const TERMS_DATE = '17/11/2026';
 
 const KEY = 'server-config';
 
