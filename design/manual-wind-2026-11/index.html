@@ -1,0 +1,927 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" href="data:," />
+<title>Χειροκίνητος άνεμος μέσα στην έξοδο (P-053)</title>
+<style>
+  /* ---------- Canvas around the devices (not part of the design) ---------- */
+  body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:#dfe3e8; color:#111; }
+  .controls { position:sticky; top:0; z-index:50; background:#fff; border-bottom:1px solid #cfd4da; padding:8px 14px; display:flex; flex-wrap:wrap; gap:6px 14px; align-items:center; }
+  .controls .grp { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+  .controls label { font-size:.78rem; font-weight:700; color:#374151; }
+  .controls hr { flex-basis:100%; border:0; border-top:1px dashed #d1d5db; margin:2px 0; }
+  .pick { display:inline-flex; border:1px solid #9ca3af; border-radius:999px; overflow:hidden; flex-wrap:wrap; }
+  .pick button { border:0; background:#fff; padding:6px 10px; font:inherit; font-size:.8rem; font-weight:600; min-height:36px; cursor:pointer; }
+  .pick button + button { border-left:1px solid #d1d5db; }
+  .pick button.on { background:#0b2a4a; color:#fff; }
+  .pick button:disabled { color:#9ca3af; cursor:default; }
+  .page { display:flex; flex-wrap:wrap; gap:22px; padding:20px 14px 40px; justify-content:center; align-items:flex-start; }
+  .phones { display:flex; flex-wrap:wrap; gap:18px; justify-content:center; align-items:flex-start; }
+  .cap { text-align:center; font-size:.8rem; font-weight:700; color:#374151; margin:6px 0 0; }
+  .devwrap { width:calc(var(--fw) * var(--sc)); height:calc(var(--fh) * var(--sc)); }
+  .devwrap > .phone { transform:scale(var(--sc)); transform-origin:0 0; }
+  .notes { width:470px; max-width:100%; background:#fff; border-radius:16px; padding:16px 20px; line-height:1.5; font-size:.92rem; box-sizing:border-box; }
+  .notes h2 { margin:.1em 0 .4em; font-size:1.2rem; } .notes h3 { margin:1em 0 .3em; font-size:1rem; }
+  .notes ul, .notes ol { padding-left:1.2em; margin:.3em 0; }
+  .notes code { font-size:.85em; background:#f3f4f6; padding:0 3px; border-radius:4px; }
+  .notes table { border-collapse:collapse; width:100%; font-size:.82rem; margin:.4em 0; }
+  .notes td, .notes th { border:1px solid #d1d5db; padding:4px 6px; text-align:left; vertical-align:top; }
+  .tag { display:inline-block; font-size:.72rem; font-weight:800; padding:2px 7px; border-radius:6px; background:#dcfce7; color:#14532d; margin-right:4px; }
+  .tag.same { background:#e5e7eb; color:#374151; } .tag.ask { background:#fef3c7; color:#78350f; } .tag.cw { background:#fae8ff; color:#701a75; } .tag.ok { background:#dbeafe; color:#1e3a8a; }
+  .log { font-family:ui-monospace,Consolas,monospace; font-size:.78rem; background:#f3f4f6; border-radius:8px; padding:6px 8px; max-height:140px; overflow:auto; white-space:pre-wrap; }
+
+  /* =====================================================================
+     DESIGN TOKENS: same as the approved design/refresh-2026-11 (P-049),
+     plus 3 new ones for the stale manual wind: --stale-bg/-fg/-line.
+     ===================================================================== */
+  .phone[data-theme='day'] {
+    --bg:#ffffff; --surface:#f2f4f7; --surface-2:#e4e8ee; --fg:#05080f; --muted:#475467; --line:#667085; --line-soft:#d0d5dd;
+    --accent:#0b2a4a; --accent-fg:#ffffff; --accent-cont:#dbe7f5; --on-accent-cont:#0b2a4a;
+    --good:#047857; --good-cont:#d1fae5; --fair:#b45309; --fair-cont:#fef3c7; --bad:#b91c1c; --bad-cont:#fee2e2;
+    --stbd:#047857; --port:#b91c1c; --scrim:rgba(5,8,15,.40);
+    --stale-bg:#fde047; --stale-fg:#05080f; --stale-line:#a16207;
+    --shadow-1:0 1px 2px rgba(16,24,40,.10),0 1px 3px rgba(16,24,40,.10); --shadow-2:0 8px 24px rgba(16,24,40,.18);
+  }
+  .phone[data-theme='dark'] {
+    --bg:#0b1220; --surface:#152033; --surface-2:#1e2b42; --fg:#f8fafc; --muted:#a3b1c6; --line:#6b7c96; --line-soft:#2a3a55;
+    --accent:#7cb4ff; --accent-fg:#0b1220; --accent-cont:#1e3a5f; --on-accent-cont:#dbeafe;
+    --good:#34d399; --good-cont:#0f3b2e; --fair:#fbbf24; --fair-cont:#3d2e0a; --bad:#f87171; --bad-cont:#3f1616;
+    --stbd:#34d399; --port:#f87171; --scrim:rgba(0,0,0,.55);
+    --stale-bg:#d6a514; --stale-fg:#0b1220; --stale-line:#fbbf24;
+    --shadow-1:none; --shadow-2:0 8px 24px rgba(0,0,0,.5);
+  }
+  .phone[data-theme='night'] {
+    --bg:#000000; --surface:#120202; --surface-2:#1c0403; --fg:#ff3b30; --muted:#d8372c; --line:#b02a20; --line-soft:#4a0b07;
+    --accent:#ff3b30; --accent-fg:#000000; --accent-cont:#2a0503; --on-accent-cont:#ff3b30;
+    --good:#ff6b5e; --good-cont:#2a0503; --fair:#d1342a; --fair-cont:#2a0503; --bad:#ff3b30; --bad-cont:#2a0503;
+    --stbd:#ff6b5e; --port:#d8372c; --scrim:rgba(0,0,0,.72);
+    --stale-bg:#000000; --stale-fg:#ff8a80; --stale-line:#ff8a80; /* brighter red from today's --now; no yellow, no white */
+    --shadow-1:none; --shadow-2:none;
+  }
+  .phone {
+    --font:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,'Noto Sans',sans-serif;
+    --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px;
+    --r-s:10px; --r-m:14px; --r-l:20px; --r-xl:28px; --r-pill:999px;
+    --hit:48px; --hit-main:56px;
+    --dur-1:120ms; --dur-2:220ms; --ease:cubic-bezier(.2,0,0,1);
+  }
+
+  /* ---------- Device frame: the content box is the real viewport and the size container «dev» ---------- */
+  .phone { box-sizing:content-box; width:var(--dw); height:var(--dh); border:10px solid #111; border-radius:34px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,.28); position:relative; display:flex; flex-direction:column; background:var(--bg); color:var(--fg); font-family:var(--font); font-size:17px; font-weight:500; line-height:1.35; container:dev / size; }
+  .phone.k-tablet { border-width:14px; border-radius:26px; }
+  .phone.k-laptop { border-width:12px 12px 26px; border-radius:12px 12px 4px 4px; }
+  .phone.k-land { border-radius:30px; }
+  .phone.sz-l { font-size:20px; } .phone.sz-xl { font-size:23px; }
+  .phone * { box-sizing:border-box; }
+  .phone button, .phone input { font:inherit; color:inherit; }
+  .phone button { cursor:pointer; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
+  .phone :focus-visible { outline:3px solid var(--fg); outline-offset:2px; }
+  .phone h3:focus { outline:none; }
+  .num { font-variant-numeric:tabular-nums; letter-spacing:-.02em; }
+  .muted { color:var(--muted); }
+  .cap2 { font-size:.8em; font-weight:600; color:var(--muted); }
+  .ic { width:1.3em; height:1.3em; flex-shrink:0; }
+  .wi { width:1em; height:1em; flex-shrink:0; vertical-align:-.12em; margin-right:.2em; }
+  .sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+  .show-cw .cw { outline:2px dashed #c026d3; outline-offset:1px; }
+
+  /* ---------- App shell: phone portrait = bar / strip / main / bottom nav ---------- */
+  .app { flex:1; min-height:0; display:grid; grid-template-areas:"bar" "strip" "main" "nav"; grid-template-columns:minmax(0,1fr); grid-template-rows:auto auto minmax(0,1fr) auto; }
+  .app > header { grid-area:bar; } .strips { grid-area:strip; } .scr { grid-area:main; } .nav { grid-area:nav; }
+  .scr { overflow-y:auto; overflow-x:hidden; padding:var(--s2) var(--s4) var(--s5); position:relative; container:main / inline-size; }
+
+  /* Top bar (outside a session) */
+  .top { display:flex; align-items:center; gap:var(--s2); padding:var(--s2) var(--s3); min-height:68px; background:var(--bg); border-bottom:1px solid var(--line-soft); }
+  .top .ttl { flex:1; min-width:0; font-weight:800; font-size:1.1em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .iconbtn { min-width:var(--hit); min-height:var(--hit); border-radius:var(--r-pill); border:0; background:none; display:inline-flex; align-items:center; justify-content:center; font-weight:800; }
+  .boatchip { display:flex; align-items:center; gap:6px; min-height:var(--hit); max-width:60%; padding:0 12px 0 10px; border-radius:var(--r-pill); border:2px solid var(--line); background:var(--surface); font-weight:800; }
+  .boatchip span { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+
+  /* Status strip */
+  .strip { display:flex; gap:var(--s2); align-items:flex-start; padding:8px var(--s4); min-height:44px; font-size:.84em; font-weight:700; background:var(--fair-cont); color:var(--fg); border-bottom:2px solid var(--fair); }
+  .strip.info { background:var(--surface); border-bottom-color:var(--line-soft); }
+  .strip.bad { background:var(--bad-cont); border-bottom-color:var(--bad); }
+  .strip .d { width:10px; height:10px; border-radius:5px; background:var(--fair); flex-shrink:0; margin-top:.35em; }
+  .strip.info .d { background:var(--line); }
+  .strip.bad .d { background:var(--bad); }
+
+  /* Buttons */
+  .b { min-height:var(--hit); padding:0 18px; border-radius:var(--r-m); border:2px solid transparent; font-weight:800; display:inline-flex; align-items:center; justify-content:center; gap:8px; transition:transform var(--dur-1) var(--ease), filter var(--dur-1); text-align:center; line-height:1.15; }
+  .b:active { transform:scale(.98); filter:brightness(.92); }
+  .b.main { min-height:var(--hit-main); font-size:1.05em; }
+  .b.wide { width:100%; }
+  .b.fill { background:var(--accent); color:var(--accent-fg); }
+  .b.tonal { background:var(--accent-cont); color:var(--on-accent-cont); }
+  .b.out { background:var(--bg); border-color:var(--line); color:var(--fg); }
+  .b.sm { min-height:var(--hit); padding:0 14px; }
+  .b:disabled { opacity:.45; cursor:default; transform:none; filter:none; }
+  .phone[data-theme='night'] .b.fill { background:#000; color:var(--fg); border-color:var(--fg); box-shadow:inset 0 0 0 1px var(--fg); }
+  .phone[data-theme='night'] .b.tonal { border-color:var(--line); }
+
+  /* Bottom navigation */
+  .nav { display:grid; grid-template-columns:repeat(var(--n,3),minmax(0,1fr)); background:var(--surface); border-top:1px solid var(--line-soft); padding:6px 4px 14px; }
+  .nav button { background:none; border:0; min-height:64px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; font-size:.74em; font-weight:700; color:var(--muted); min-width:0; }
+  .nav button .pill { width:64px; max-width:100%; height:34px; border-radius:17px; display:flex; align-items:center; justify-content:center; }
+  .nav button.on { color:var(--fg); font-weight:800; }
+  .nav button.on .pill { background:var(--accent-cont); color:var(--on-accent-cont); }
+  .phone[data-theme='night'] .nav button.on .pill { background:#000; border:2px solid var(--fg); color:var(--fg); }
+  .nav button span.l { max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+  /* Session bar */
+  .sbar { display:flex; align-items:center; gap:var(--s2); padding:var(--s2) var(--s3); background:var(--accent); color:var(--accent-fg); min-height:72px; }
+  .phone[data-theme='night'] .sbar { background:#000; color:var(--fg); border-bottom:2px solid var(--line); }
+  .sbar .mode2 { flex:1; min-width:0; line-height:1.15; }
+  .sbar .mode2 b { display:flex; align-items:center; gap:6px; font-size:.82em; font-weight:800; letter-spacing:.04em; }
+  .sbar .mode2 .clk { display:block; font-size:1.4em; font-weight:900; }
+  .sbar .mode2 .s { display:block; font-size:.74em; font-weight:700; opacity:.9; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .rec { flex-shrink:0; width:12px; height:12px; border-radius:6px; background:#ef4444; box-shadow:0 0 0 2px currentColor; animation:pulse 1.6s infinite; }
+  .phone[data-theme='night'] .rec { background:var(--fg); box-shadow:none; }
+  @keyframes pulse { 50% { opacity:.35; } }
+  .sb { min-width:52px; min-height:52px; border-radius:var(--r-m); border:2px solid currentColor; background:none; color:inherit; font-weight:900; padding:0 10px; display:inline-flex; align-items:center; justify-content:center; gap:4px; white-space:nowrap; }
+
+  /* ---------- Live grid: 2 / 3 / 4 columns by the width of «main» ---------- */
+  .live { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:var(--s2); max-width:72em; margin:0 auto; }
+  .live > * { margin:0; min-width:0; }
+  .s-full, .s-hero, .s-wide { grid-column:1 / -1; }
+
+  .band { border-radius:var(--r-l); padding:10px 14px; min-height:56px; display:flex; flex-direction:column; justify-content:center; }
+  .band.warn { background:var(--fair); color:var(--bg); min-height:84px; }
+  .band.idle { background:var(--surface); border:1px solid var(--line-soft); }
+  .band .big { font-size:1.55em; font-weight:900; line-height:1.05; }
+  .band.idle .big { font-size:.95em; font-weight:800; }
+  .band .sub { font-weight:800; font-size:.88em; margin-top:4px; }
+  .phone[data-theme='night'] .band.warn { background:#000; color:var(--fg); border:3px solid var(--fg); }
+  .phone[data-theme='dark'] .band.warn { color:#0b1220; }
+  .t { background:var(--surface); border-radius:var(--r-l); padding:10px 14px; border:1px solid var(--line-soft); min-width:0; }
+  .t .lab { font-weight:800; font-size:.86em; display:flex; flex-wrap:wrap; justify-content:space-between; gap:0 6px; }
+  .t .lab .ab { color:var(--muted); font-weight:700; }
+  .t .val { font-weight:900; line-height:1; white-space:nowrap; font-size:2.6em; margin-top:4px; }
+  .t .val.mid { font-size:2em; }
+  .t .val.sm { font-size:1.45em; }
+  .t .val.word { font-size:1.05em; margin-top:8px; white-space:normal; }
+  .t .val small { font-size:.4em; font-weight:800; margin-left:2px; }
+  .t .val.dash { color:var(--muted); }
+  .t .sub { font-size:.82em; font-weight:700; color:var(--muted); margin-top:4px; }
+  .t .sub.good { color:var(--good); } .t .sub.fair { color:var(--fair); }
+  .t .note { font-size:.74em; font-weight:700; color:var(--muted); margin-top:4px; }
+  .t .note.stale { color:var(--fg); }
+  .t.hero { padding:12px 16px; border:2px solid var(--line); }
+  .t.hero .val { font-size:4.2em; }
+  .t.small { padding:8px 10px; }
+  .bar { height:10px; border-radius:5px; background:var(--surface-2); margin-top:8px; overflow:hidden; border:1px solid var(--line-soft); }
+  .bar i { display:block; height:100%; background:var(--good); border-radius:5px; }
+  .phone[data-theme='night'] .bar i { background:var(--fg); }
+  .tws .val.stbd { color:var(--stbd); } .tws .val.port { color:var(--port); }
+  .disc { font-size:.76em; font-weight:600; color:var(--muted); margin-top:var(--s2) !important; }
+  .lapbtn { width:100%; min-height:72px; border-radius:var(--r-l); border:0; background:var(--accent); color:var(--accent-fg); font-weight:900; font-size:1.25em; }
+  .phone[data-theme='night'] .lapbtn { background:#000; color:var(--fg); border:3px solid var(--fg); }
+  .seg { display:grid; grid-auto-flow:column; grid-auto-columns:minmax(0,1fr); background:var(--surface-2); border-radius:var(--r-m); padding:4px; gap:4px; }
+  .seg button { min-height:var(--hit); border:0; border-radius:11px; background:none; font-weight:800; color:var(--muted); padding:0 6px; }
+  .seg button.on { background:var(--bg); color:var(--fg); box-shadow:var(--shadow-1); }
+  .phone[data-theme='dark'] .seg button.on { background:var(--accent-cont); color:var(--on-accent-cont); }
+  .phone[data-theme='night'] .seg button.on { background:#000; border:2px solid var(--fg); color:var(--fg); }
+  .c { background:var(--surface); border-radius:var(--r-l); padding:var(--s3) var(--s4); border:1px solid var(--line-soft); }
+  .mini { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:var(--s2); margin-top:6px; }
+  .mini b { display:block; font-size:1.2em; font-weight:900; white-space:nowrap; }
+  .mini span { font-size:.76em; font-weight:700; color:var(--muted); }
+
+  /* ===================== wind reading (data-testid="wind-reading") ===================== */
+  .wind { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:2px 10px; width:100%; min-height:64px; padding:8px 8px 8px 14px; text-align:left; background:var(--surface); border:2px solid var(--line); border-radius:var(--r-l); }
+  .wind:active { filter:brightness(.95); }
+  @media (hover:hover) { .wind:hover { border-color:var(--fg); } }
+  .wind .wk { display:flex; flex-wrap:wrap; gap:2px 8px; align-items:baseline; font-size:.8em; font-weight:800; min-width:0; }
+  .wind .wsrc { font-weight:800; color:var(--muted); overflow-wrap:anywhere; }
+  .wind.manual .wsrc { color:var(--fg); }
+  .wind .wv { display:flex; flex-wrap:wrap; align-items:baseline; gap:0 14px; font-weight:900; font-size:1.55em; line-height:1.1; min-width:0; }
+  .wind .wv small { font-size:.55em; font-weight:800; margin-left:2px; }
+  .wind .wgo { grid-row:1 / span 2; grid-column:2; min-width:56px; min-height:56px; border-radius:var(--r-m); background:var(--accent-cont); color:var(--on-accent-cont); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; padding:4px 6px; }
+  .wind .wgo .wgl { font-size:.72em; font-weight:800; line-height:1.1; }
+  .phone[data-theme='night'] .wind .wgo { background:#000; border:2px solid var(--fg); color:var(--fg); }
+  .wind.stale { background:var(--stale-bg); color:var(--stale-fg); border-color:var(--stale-line); border-width:3px; }
+  .wind.stale .wsrc { color:var(--stale-fg); }
+  .wind.stale .wgo { background:transparent; border:2px solid currentColor; color:inherit; }
+  .wind.cruise .wv { font-size:1.3em; }
+  .wind.empty { border-style:dashed; }
+  .prompt { border:2px dashed var(--line); border-radius:var(--r-l); padding:12px 14px; background:var(--bg); }
+  .prompt p { margin:0 0 10px; font-size:.88em; font-weight:700; }
+  .prompt p b { font-weight:900; }
+  .wrow { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:center; border:2px dashed var(--line); border-radius:var(--r-l); padding:8px 10px 8px 14px; }
+  .wrow b { display:block; } .wrow .cap2 { display:block; }
+
+  /* ===================== sheet «Άνεμος» (data-testid="wind-sheet") ===================== */
+  .scrim { position:absolute; inset:0; background:var(--scrim); z-index:20; display:flex; align-items:flex-end; justify-content:center; animation:fade var(--dur-2) var(--ease); }
+  .sheet { width:100%; max-height:84%; overflow-y:auto; overflow-x:hidden; background:var(--bg); border-radius:var(--r-xl) var(--r-xl) 0 0; padding:0 var(--s4) 0; box-shadow:var(--shadow-2); animation:up var(--dur-2) var(--ease); container:sheet / inline-size; }
+  .phone[data-theme='night'] .sheet { border:2px solid var(--line); border-bottom:0; }
+  .sheet .hdl { display:flex; justify-content:center; align-items:center; height:24px; }
+  .sheet .hdl i { width:40px; height:5px; border-radius:3px; background:var(--line); }
+  .sheet .sh { display:flex; align-items:center; gap:8px; }
+  .sheet .sh h3 { flex:1; margin:0; font-size:1.2em; font-weight:800; }
+  .sheet .foot { position:sticky; bottom:0; background:var(--bg); padding:var(--s3) 0 var(--s4); margin-top:var(--s3); border-top:1px solid var(--line-soft); }
+  @keyframes up { from { transform:translateY(40px); opacity:.4; } to { transform:none; opacity:1; } }
+  @keyframes fade { from { opacity:0; } }
+  .wstat { display:inline-flex; flex-wrap:wrap; align-items:center; gap:4px 8px; min-height:36px; padding:4px 12px; border-radius:var(--r-pill); border:2px solid var(--line); font-weight:800; font-size:.9em; margin:2px 0 4px; }
+  .wstat.off { border-style:dashed; color:var(--muted); }
+  .wstat.stale { background:var(--stale-bg); color:var(--stale-fg); border-color:var(--stale-line); border-width:3px; }
+  .info { display:flex; gap:10px; align-items:flex-start; background:var(--surface); border-radius:var(--r-m); padding:10px 12px; font-size:.84em; font-weight:700; margin:var(--s2) 0; border:1px solid var(--line-soft); }
+  .info.warn { background:var(--fair-cont); border-color:var(--fair); }
+  .stl { font-weight:800; font-size:.95em; margin:var(--s3) 0 6px; }
+  .stl .u { color:var(--muted); font-weight:700; }
+  .st { display:grid; grid-template-columns:repeat(2,minmax(50px,56px)) minmax(0,1fr) repeat(2,minmax(50px,56px)); gap:8px; }
+  .sp { min-height:56px; min-width:0; border-radius:var(--r-m); border:2px solid var(--line); background:var(--surface); font-weight:900; font-size:1.1em; padding:0; }
+  .sp:active { background:var(--accent); color:var(--accent-fg); }
+  .sv { display:flex; align-items:center; justify-content:center; gap:2px; min-height:56px; border-radius:var(--r-m); border:2px solid var(--line-soft); background:var(--bg); padding:0 6px; min-width:0; }
+  .sv input { width:100%; min-width:0; border:0; background:none; text-align:center; font-weight:900; font-size:1.55em; font-variant-numeric:tabular-nums; padding:0; }
+  .sv input:focus { outline:none; }
+  .sv:focus-within { border-color:var(--fg); }
+  .sv .u { font-weight:800; color:var(--muted); font-size:.8em; flex-shrink:0; }
+  .conv { font-size:.86em; font-weight:800; margin-top:6px; }
+  .hint { font-size:.8em; font-weight:600; color:var(--muted); margin-top:4px; overflow-wrap:anywhere; }
+  .twa { background:var(--surface); border:1px solid var(--line-soft); border-radius:var(--r-m); padding:10px 12px; margin-top:var(--s3); }
+  .twa b { font-weight:900; }
+  .help { font-size:.8em; font-weight:600; color:var(--muted); margin:var(--s3) 0 0; }
+  .toggle { display:flex; align-items:center; gap:12px; width:100%; min-height:64px; border:2px solid var(--line); border-radius:var(--r-m); background:var(--surface); text-align:left; padding:8px 12px; font-weight:800; margin-top:var(--s4); }
+  .toggle .tx { flex:1; min-width:0; }
+  .toggle .tx .cap2 { display:block; margin-top:2px; }
+  .knob { width:60px; height:34px; border-radius:17px; background:var(--surface-2); border:2px solid var(--line); position:relative; flex-shrink:0; }
+  .knob::after { content:''; position:absolute; top:4px; left:4px; width:22px; height:22px; border-radius:11px; background:var(--line); transition:left var(--dur-2) var(--ease); }
+  .toggle.on { border-color:var(--accent); }
+  .toggle.on .knob { background:var(--accent); border-color:var(--accent); }
+  .toggle.on .knob::after { left:30px; background:var(--accent-fg); }
+  .toggle:disabled { opacity:.55; }
+  .phone[data-theme='night'] .toggle.on .knob { background:#000; border-color:var(--fg); } .phone[data-theme='night'] .toggle.on .knob::after { background:var(--fg); }
+  .frow { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:var(--s2); }
+  .frow .b { padding:0 8px; }
+
+  /* Snackbar */
+  .snack { position:absolute; left:var(--s3); right:var(--s3); bottom:96px; z-index:25; background:var(--fg); color:var(--bg); border-radius:var(--r-m); padding:4px 4px 4px 16px; display:flex; align-items:center; gap:8px; font-weight:700; font-size:.9em; min-height:56px; box-shadow:var(--shadow-2); animation:up var(--dur-2) var(--ease); }
+  .snack span { flex:1; min-width:0; }
+  .snack button { background:none; border:0; color:inherit; font-weight:900; text-decoration:underline; min-height:var(--hit); min-width:var(--hit); padding:0 12px; }
+  .snack.top { top:84px; bottom:auto; }
+  .phone[data-theme='night'] .snack { background:#000; color:var(--fg); border:2px solid var(--fg); }
+
+  /* =====================================================================
+     RESPONSIVE RULES. Container queries in em: they follow the text size
+     setting (17 / 20 / 23 px), so «Πολύ μεγάλα» reaches the wide layouts later.
+     ===================================================================== */
+
+  /* Sheet content narrow (phones ≤ 360 px, or ≥ «Μεγάλα» on 375): value above, ± below. */
+  @container sheet (max-width: 19em) {
+    .st { grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
+    .st .sv { grid-column:1 / -1; order:-1; min-height:60px; }
+    .st .sv input { font-size:1.7em; }
+  }
+  /* Main content narrow (320 px, or 375 with big text): smaller numbers. */
+  @container main (max-width: 16em) {
+    .t.hero .val { font-size:3.2em; }
+    .t .val { font-size:1.9em; } .t .val.mid { font-size:1.7em; } .t .val.sm { font-size:1.3em; }
+  }
+  @container main (max-width: 11em) { .live { grid-template-columns:minmax(0,1fr); } }
+  /* 3 columns (tablet portrait, phone landscape with rail): speed big on the left, TWA and next on the right. */
+  @container main (min-width: 40em) {
+    .live { grid-template-columns:repeat(3,minmax(0,1fr)); gap:var(--s3); }
+    .s-hero { grid-column:span 2; grid-row:span 2; }
+    .t.hero .val { font-size:6em; } .t .val { font-size:3em; } .t .val.mid { font-size:2.6em; } .t .val.sm { font-size:1.7em; }
+    .t.hero { display:flex; flex-direction:column; justify-content:center; }
+  }
+  /* 4 columns (tablet landscape, laptop): wind card next to the speed, under TWA / next. */
+  @container main (min-width: 50em) {
+    .live { grid-template-columns:repeat(4,minmax(0,1fr)); }
+    .s-wide { grid-column:span 2; }
+  }
+  /* Wide portrait (tablet portrait, ≥ 34em): the bottom sheet is centred and capped. */
+  @container dev (min-width: 34em) {
+    .sheet { max-width:34em; border-radius:var(--r-xl) var(--r-xl) 0 0; }
+    .snack { left:50%; right:auto; transform:translateX(-50%); width:min(30em, calc(100% - 24px)); }
+  }
+  /* Rail layout: wide screens (≥ 60em: tablet landscape, laptop) and phone landscape (height ≤ 30em).
+     Nav becomes a left rail; the sheet becomes a non-modal side panel on the right and the Live reflows. */
+  @container dev (min-width: 60em) or ((max-height: 30em) and (orientation: landscape)) {
+    .app { grid-template-areas:"rail bar bar" "rail strip side" "rail main side"; grid-template-columns:auto minmax(0,1fr) auto; grid-template-rows:auto auto minmax(0,1fr); }
+    .nav { grid-area:rail; display:flex; flex-direction:column; justify-content:flex-start; gap:4px; width:max(84px, 5.2em); padding:10px 4px; border-top:0; border-right:1px solid var(--line-soft); }
+    .nav button { min-height:68px; }
+    .nav button .pill { width:56px; }
+    .scrim { grid-area:side; position:static; inset:auto; background:none; display:block; animation:none; z-index:1; min-height:0; overflow:hidden; }
+    .sheet { width:min(26em, 48cqw); max-width:none; height:100%; max-height:none; border-radius:0; border-left:1px solid var(--line-soft); box-shadow:none; animation:none; }
+    .sheet .hdl { display:none; }
+    .sheet .sh { padding-top:var(--s3); }
+    .phone[data-theme='night'] .sheet { border:0; border-left:2px solid var(--line); }
+    .snack, .snack.top { left:calc(max(84px, 5.2em) + 16px); right:auto; top:auto; bottom:16px; transform:none; width:auto; max-width:min(26em, 60cqw); }
+  }
+  /* Short portrait phones (320×640, or big text on 375/430): speed and TWA side by side so the
+     four key readings (speed, TWA, next manoeuvre, wind) fit without scrolling. */
+  @container dev (max-height: 44em) and (orientation: portrait) {
+    .live { grid-auto-flow:row dense; }
+    .s-hero { grid-column:span 1; }
+    .s-wide.wind { grid-column:span 1; }
+    .wind { grid-template-columns:minmax(0,1fr); align-content:start; padding:8px 10px; }
+    .wind .wgo { grid-row:auto; grid-column:auto; flex-direction:row; gap:6px; width:100%; min-height:48px; margin-top:4px; }
+    .wind .wgo .wgl { font-size:.8em; }
+    .wind .wv { font-size:1.3em; gap:0 10px; }
+    .t.hero { padding:10px 14px; border-width:2px; }
+    .t.hero .val { font-size:2.6em; }
+    .band.warn { min-height:0; }
+    .band .big { font-size:1.25em; }
+    .band.idle { display:none; } /* same info as the «Επόμενη αναστροφή» tile */
+    .sbar { min-height:60px; }
+  }
+  @container dev (max-height: 44em) and (orientation: landscape) {
+    .t.hero .val { font-size:4.4em; }
+  }
+  /* Short screens (phone landscape in a holder): compact bar, all key numbers in one row. */
+  @container dev (max-height: 30em) and (orientation: landscape) {
+    .live { grid-auto-flow:row dense; }
+    .s-hero { grid-column:span 1; }
+    .sbar, .top { min-height:52px; padding-top:4px; padding-bottom:4px; }
+    .sbar .mode2 .clk { font-size:1.1em; }
+    .sb { min-height:48px; }
+    .band.warn { min-height:0; } .band { min-height:0; padding:6px 12px; }
+    .band .big { font-size:1.2em; }
+    .t.hero { padding:8px 12px; }
+    .t.hero .val { font-size:2.8em; } .t .val { font-size:2em; } .t .val.mid { font-size:1.8em; } .t .val.sm { font-size:1.4em; }
+    .s-hero { grid-row:auto; }
+    .strip { min-height:0; padding:4px var(--s4); }
+    .band.idle { display:none; }
+    @container main (min-width: 28em) {
+      .live { grid-template-columns:repeat(4,minmax(0,1fr)); }
+      .s-hero, .s-wide { grid-column:span 1; grid-row:auto; }
+      .s-wide.wind { grid-column:span 1; }
+      .wind { grid-template-columns:minmax(0,1fr); align-content:start; padding:8px 10px; }
+      .wind .wgo { grid-row:auto; grid-column:auto; flex-direction:row; gap:6px; width:100%; min-height:48px; margin-top:4px; }
+      .wind .wgo .wgl { font-size:.8em; }
+      .wind .wv { font-size:1.3em; gap:0 10px; }
+      .wind .wv { font-size:1.15em; }
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .phone *, .phone *::after { animation:none !important; transition:none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="controls" id="controls"></div>
+<div class="page">
+  <div class="phones" id="phones"></div>
+  <aside class="notes" id="notes"></aside>
+</div>
+
+<script>
+/* ---------------- Fixed data (fictional, Saronic) ---------------- */
+const INST = { tws: 13.6, twdT: 222, twa: 38, bsp: 6.2, hdgT: 184 };
+const COG_T = 180;
+const cogT = () => (SCEN[S.scen].k === 'cruise' ? 265 : COG_T); // cruise: reaching west to Σαλαμίνα
+const SPD = {
+  go:    { sog: 6.4, cog: 'ok',   label: '6,4 kt' },
+  hold:  { sog: 1.6, cog: 'hold', label: '1,6 kt · πριν από 10″' },
+  lost:  { sog: 1.6, cog: 'none', label: '1,6 kt · πριν από 40″' },
+  rec:   { sog: 2.2, cog: 'none', label: '2,2 kt μετά από στάση' },
+  nogps: { sog: null, cog: 'none', label: 'Χωρίς GPS' },
+};
+const FC = { twdT: 223, tws: 12.4, at: '10:00' };
+const QUICK = { twdT: 225, tws: 14 };
+
+const SCEN = {
+  'race-inst':   { k: 'race', label: 'Αγώνας · όργανα', inst: true },
+  'race-manual': { k: 'race', label: 'Αγώνας · χειροκίνητα', inst: false, manual: [220, 12], age: 4 },
+  'race-none':   { k: 'race', label: 'Αγώνας · χωρίς άνεμο', inst: false },
+  'train-inst':  { k: 'training', label: 'Προπόνηση · όργανα', inst: true },
+  'train-none':  { k: 'training', label: 'Προπόνηση · χωρίς άνεμο', inst: false },
+  'cruise':      { k: 'cruise', label: 'Αναψυχή', inst: false },
+  'basic':       { k: 'basic', label: 'Γρήγορη ματιά χωρίς polar', inst: false, manual: [40, 12], age: 4 },
+};
+// Devices: viewport in CSS px, frame kind, touch or not.
+const DEV = {
+  p320:  { w: 320,  h: 640,  k: 'phone',  label: 'Κινητό 320', touch: true },
+  p375:  { w: 375,  h: 812,  k: 'phone',  label: 'Κινητό 375', touch: true },
+  p430:  { w: 430,  h: 932,  k: 'phone',  label: 'Κινητό 430', touch: true },
+  pland: { w: 844,  h: 390,  k: 'land',   label: 'Κινητό οριζόντια 844×390', touch: true },
+  tp:    { w: 768,  h: 1024, k: 'tablet', label: 'Tablet 768×1024', touch: true },
+  tl:    { w: 1024, h: 768,  k: 'tablet', label: 'Tablet 1024×768', touch: true },
+  l1280: { w: 1280, h: 800,  k: 'laptop', label: 'Laptop 1280×800', touch: false },
+  l1440: { w: 1440, h: 900,  k: 'laptop', label: 'Laptop 1440×900', touch: false },
+};
+const FS = { m: 17, l: 20, xl: 23 };
+
+/* ---------------- State ---------------- */
+const S = {
+  scen: 'race-inst', theme: 'day', dev: 'p375', size: 'm', fit: 'fit', cw: false,
+  inst: true, hdg: true, fc: true, spd: 'go', mag: true, decl: 5, typed: false, banner: false,
+  manual: { on: false, twdT: null, tws: null, at: 0 },
+  draft: { twdT: null, tws: null, from: null },
+  opened: false, sheet: false, snack: null, undo: null, log: [], focus: null,
+};
+let snackT, setT;
+
+function setScen(id) {
+  const c = SCEN[id];
+  Object.assign(S, { scen: id, inst: c.inst, hdg: true, spd: 'go', typed: false, banner: false, sheet: false, snack: null, undo: null, log: [] });
+  S.manual = { on: false, twdT: null, tws: null, at: 0 };
+  S.draft = { twdT: null, tws: null, from: null };
+  S.opened = false;
+  if (c.manual) {
+    S.manual = { on: true, twdT: norm(c.manual[0] + (S.mag ? S.decl : 0)), tws: c.manual[1], at: Date.now() - c.age * 60000 };
+    S.opened = true;
+  }
+}
+/** Same thresholds as the CSS: side panel on wide (≥ 60em) or short (≤ 30em) screens. */
+function sideMode() { const d = DEV[S.dev], f = FS[S.size]; return d.w / f >= 60 || (d.h / f <= 30 && d.w > d.h); }
+
+/* ---------------- Helpers ---------------- */
+const norm = (d) => ((Math.round(d) % 360) + 360) % 360;
+const signed = (d) => ((((d + 540) % 360) + 360) % 360) - 180;
+const pad3 = (d) => String(norm(d)).padStart(3, '0');
+const f1 = (v) => (v == null || !Number.isFinite(v) ? '—' : v.toFixed(1).replace('.', ','));
+const fTws = (v) => (v == null ? '' : (Number.isInteger(v) ? String(v) : v.toFixed(1).replace('.', ',')));
+const U = () => (S.mag ? '°M' : '°T');
+const toDisp = (t) => norm(S.mag ? t - S.decl : t);
+const fromDisp = (d) => norm(S.mag ? d + S.decl : d);
+const deg = (t) => `${pad3(toDisp(t))}${U()}`;
+const ageMin = () => Math.max(0, Math.floor((Date.now() - S.manual.at) / 60000));
+function fmtAge(m) {
+  if (m < 1) return 'τώρα';
+  if (m < 60) return `πριν από ${m}′`;
+  return `πριν από ${Math.floor(m / 60)} ώ ${String(m % 60).padStart(2, '0')}′`;
+}
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+const ageWords = (m) => {
+  if (m < 1) return 'τώρα';
+  if (m < 60) return `πριν από ${plural(m, 'λεπτό', 'λεπτά')}`;
+  const h = plural(Math.floor(m / 60), 'ώρα', 'ώρες');
+  return m % 60 ? `πριν από ${h} και ${plural(m % 60, 'λεπτό', 'λεπτά')}` : `πριν από ${h}`;
+};
+const mmss = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Math.round(s % 60)).padStart(2, '0')}`;
+const kind = () => SCEN[S.scen].k;
+const polar = () => kind() !== 'basic';
+const cw = (html) => `<span class="cw">${html}</span>`;
+
+function course() {
+  if (S.inst && S.hdg) return { deg: INST.hdgT, src: 'hdg' };
+  const g = SPD[S.spd];
+  if (g.cog === 'ok') return { deg: cogT(), src: 'cog' };
+  if (g.cog === 'hold') return { deg: cogT(), src: 'hold' };
+  return { deg: null, src: null };
+}
+function wind() {
+  const sog = SPD[S.spd].sog;
+  const base = { bsp: S.inst ? INST.bsp : sog, bspFrom: S.inst ? 'BSP' : 'SOG' };
+  if (S.manual.on) {
+    const c = course();
+    const m = ageMin();
+    return { ...base, from: 'manual', twdT: S.manual.twdT, tws: S.manual.tws, twa: c.deg == null ? null : signed(S.manual.twdT - c.deg), c, age: m, stale: m >= 15 };
+  }
+  if (S.inst) return { ...base, from: 'inst', twdT: INST.twdT, tws: INST.tws, twa: INST.twa, c: { src: 'inst' } };
+  if (S.typed && kind() !== 'basic') {
+    const c = course();
+    return { ...base, from: 'quick', twdT: QUICK.twdT, tws: QUICK.tws, twa: c.deg == null ? null : signed(QUICK.twdT - c.deg), c };
+  }
+  return { ...base, from: 'none' };
+}
+function targets(tws, twa) {
+  if (tws == null || twa == null || !polar()) return null;
+  const a = Math.abs(twa);
+  const b = Math.min(7.6, 2.4 + 0.37 * tws);
+  const k = a < 35 ? 0.78 : a < 60 ? 1 : a < 100 ? 1.12 : a < 150 ? 1.05 : 0.9;
+  return { bsp: b * k, twa: Math.max(38, Math.min(46, 44 - (tws - 8) * 0.4)) };
+}
+function layline(w) {
+  if (SPD[S.spd].sog == null) return null;
+  let twdT = w.twdT, src = w.from;
+  if (w.from === 'none') { if (!S.fc) return null; twdT = FC.twdT; src = 'fc'; }
+  return { sec: S.banner ? 110 : Math.max(20, 580 + (twdT - 225) * 36), src };
+}
+
+/* ---------------- Icons (SVG, never emoji: emoji keep their colours in Night) ---------------- */
+const P = {
+  live: '<path d="M3 12h4l3-7 4 14 3-7h4"/>',
+  map: '<path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2zM9 4v14M15 6v14"/>',
+  chat: '<path d="M4 5h16v11H9l-5 4z"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
+  pen: '<path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"/>',
+  close: '<path d="M6 6l12 12M18 6L6 18"/>',
+  back: '<path d="M15 5l-7 7 7 7"/>',
+  home: '<path d="M4 11l8-7 8 7v9h-5v-6H9v6H4z"/>',
+  history: '<path d="M4 12a8 8 0 1 0 3-6.2M4 4v4h4M12 8v4l3 2"/>',
+  boats: '<path d="M11 3v13H4zM13 6l6 10h-6zM3 18h18l-3 3H6z"/>',
+  wind: '<path d="M3 8h11a3 3 0 1 0-3-3M3 12h16a3 3 0 1 1-3 3M3 16h8"/>',
+  warn: '<path d="M12 3L2 21h20z"/><path d="M12 10v5M12 18v.01"/>',
+  timer: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/>',
+};
+const icon = (n, cls = 'ic') => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n]}</svg>`;
+const WARN = icon('warn', 'wi');
+const NAV_IN = [['live', 'Live', 'live'], ['map', 'Χάρτης', 'map'], ['chat', 'Σύμβουλος', 'chat']];
+const NAV_OUT = [['home', 'Αρχική', 'home'], ['history', 'Ιστορικό', 'history'], ['boats', 'Σκάφη', 'boats'], ['settings', 'Ρυθμίσεις', 'gear']];
+const navBar = (items, on) => `<nav class="nav" style="--n:${items.length}" aria-label="Κύρια πλοήγηση">${items.map(([id, l, ic]) => `<button class="${id === on ? 'on' : ''}" ${id === on ? 'aria-current="page"' : ''}><span class="pill">${icon(ic)}</span><span class="l">${l}</span></button>`).join('')}</nav>`;
+
+/* ---------------- Pieces ---------------- */
+function sbar(title, clock, sub) {
+  return `<header class="sbar">
+    <div class="mode2"><b><span class="rec" aria-hidden="true"></span>${title}</b><span class="clk num">${clock}</span><span class="s">${sub}</span></div>
+    <button class="sb" aria-label="Γρήγορες ρυθμίσεις">${icon('gear')}</button>
+    <button class="sb">■ Τέλος</button>
+  </header>`;
+}
+
+function windReading(w, opts = {}) {
+  if (w.from === 'none') return '';
+  const man = w.from === 'manual';
+  const src = man
+    ? `${w.stale ? WARN : ''}χειροκίνητα · ${fmtAge(w.age)}${w.stale ? ' · έλεγξέ τον' : ''}`
+    : w.from === 'inst' ? 'όργανα' : 'από τη Γρήγορη ματιά';
+  const aria = `Άνεμος: TWS ${f1(w.tws)} kt, TWD ${deg(w.twdT)}, ${man ? `χειροκίνητα, ${ageWords(w.age)}${w.stale ? ', παλιός, έλεγξέ τον' : ''}` : w.from === 'inst' ? 'από τα όργανα' : 'από τη Γρήγορη ματιά'}. Αλλαγή`;
+  return `<button class="wind s-wide ${man ? 'manual' : ''} ${w.stale ? 'stale' : ''} ${opts.cruise ? 'cruise' : ''}" data-act="open" data-f="card" data-testid="wind-reading" aria-label="${aria}">
+    <span class="wk"><span>Άνεμος</span><span class="wsrc" data-testid="wind-age">${src}</span></span>
+    <span class="wv num"><span>${f1(w.tws)}<small>kt</small></span><span>${deg(w.twdT)}</span></span>
+    <span class="wgo" aria-hidden="true">${icon('pen')}<span class="wgl">Αλλαγή</span></span>
+  </button>`;
+}
+function noWindPrompt() {
+  return `<div class="prompt s-full" role="status">
+    <p><b>Χωρίς άνεμο:</b> δεν υπάρχουν όργανα και δεν έχεις βάλει άνεμο. Δεν βγαίνουν στόχοι και %.</p>
+    <button class="b fill main wide" data-act="open" data-f="card" data-testid="wind-prompt">${icon('wind')} Βάλε άνεμο</button>
+  </div>`;
+}
+function topStrip(w, k) {
+  const out = [];
+  if (SPD[S.spd].sog == null) out.push(`<div class="strip bad" role="alert"><span class="d"></span><span>Χωρίς GPS εδώ και 40″. Οι τιμές είναι οι τελευταίες.</span></div>`);
+  if (w.from === 'manual') out.push(`<div class="strip info" role="status"><span class="d"></span><span>${cw('Άνεμος χειροκίνητα: χωρίς ειδοποιήσεις στροφής ανέμου και «κάτω από 90%».')}</span></div>`);
+  else if (w.from === 'quick') out.push(`<div class="strip" role="status"><span class="d"></span><span>${k === 'race' ? 'Χωρίς όργανα: ταχύτητα από GPS, άνεμος χειροκίνητα. Οι ειδοποιήσεις στροφής ανέμου είναι κλειστές.' : 'Χωρίς όργανα: ταχύτητα από GPS, άνεμος χειροκίνητα. Τα νούμερα είναι ενδεικτικά λόγω ρεύματος. Η ειδοποίηση στροφής ανέμου είναι κλειστή.'}</span></div>`);
+  return `<div class="strips">${out.join('')}</div>`;
+}
+function twaTile(w, tg) {
+  const tw = w.twa;
+  const side = tw == null ? '' : tw >= 0 ? 'δεξιές μούρες' : 'αριστερές μούρες';
+  let sub = '';
+  if (w.from === 'none') sub = 'χρειάζεται άνεμο';
+  else if (tw == null) sub = cw('χρειάζεται SOG 2,5 kt');
+  else if (tg) sub = `στόχος ${Math.round(tg.twa)}°`;
+  return `<div class="t tws s-1"><div class="lab"><span>Γωνία ανέμου</span><span class="ab">TWA${side ? ' · ' + side : ''}</span></div>
+    <div class="val num ${tw == null ? 'dash' : tw >= 0 ? 'stbd' : 'port'}">${tw == null ? '—' : Math.round(Math.abs(tw)) + '°'}</div>
+    <div class="sub">${sub}</div></div>`;
+}
+
+/* ---------------- Screens ---------------- */
+function raceLive() {
+  const w = wind();
+  const tg = targets(w.tws, w.twa);
+  const pct = tg && w.bsp != null ? Math.round((w.bsp / tg.bsp) * 100) : null;
+  const ly = layline(w);
+  let band = '';
+  if (ly && S.banner) {
+    const age = w.from === 'manual' && w.stale ? ` · άνεμος ${fmtAge(w.age)}` : '';
+    band = `<div class="band warn s-full" role="status"><div class="big">Layline σε 2′</div><div class="sub">Αναστροφή σε αριστερές${age ? cw(age) : ''}</div></div>`;
+  } else if (ly) band = `<div class="band idle s-full" role="status"><div class="big">Επόμενο: αναστροφή στη layline αριστερών σε ${mmss(ly.sec)}</div></div>`;
+  let lnote = '';
+  if (ly && ly.src === 'manual') lnote = `<div class="note ${w.stale ? 'stale' : ''}">${w.stale ? `${WARN}άνεμος ${fmtAge(w.age)}` : 'άνεμος χειροκίνητα'} · χωρίς πρόσπτωση/ρεύμα</div>`;
+  if (ly && ly.src === 'fc') lnote = `<div class="note">${cw('άνεμος από την πρόγνωση')}</div>`;
+  return `${sbar('ΑΓΩΝΑΣ', '01:12:40', 'Σκέλος 2/3 · → Αίγινα')}${topStrip(w, 'race')}
+  <main class="scr"><div class="live">
+    ${band}
+    ${w.from === 'none' ? noWindPrompt() : ''}
+    <div class="t hero s-hero" data-key="speed"><div class="lab"><span>Ταχύτητα</span><span class="ab">${w.bspFrom === 'BSP' ? 'BSP' : 'SOG από GPS'} · kt</span></div>
+      <div class="val num">${f1(w.bsp)}</div>
+      ${pct != null ? `<div class="bar" aria-hidden="true"><i style="width:${Math.min(100, pct)}%"></i></div><div class="sub ${pct >= 95 ? 'good' : 'fair'}">στόχος ${f1(tg.bsp)} · ${pct}%</div>` : ''}
+    </div>
+    ${twaTile(w, tg)}
+    <div class="t s-1" data-key="next"><div class="lab"><span>Επόμενη αναστροφή</span></div>
+      <div class="val mid num ${ly ? '' : 'dash'}">${ly ? mmss(ly.sec) : '—'}</div>
+      <div class="sub">${ly ? 'στη layline αριστερών' : 'χρειάζεται άνεμο, θέση και διαδρομή'}</div>${lnote}</div>
+    ${windReading(w)}
+    <div class="t small s-1"><div class="lab"><span>Σημ. 2 · Αίγινα</span></div><div class="val sm num">6,8<small>NM</small></div><div class="sub">~58′</div></div>
+    <div class="t small s-1"><div class="lab"><span>Κατάταξη</span><span class="ab">εκτίμηση</span></div><div class="val sm num">3ος</div><div class="sub">+0:42</div></div>
+    <p class="disc s-full">Ενδεικτικό, όχι για ναυσιπλοΐα. Η απόφαση είναι του κυβερνήτη.</p>
+  </div></main>${navBar(NAV_IN, 'live')}`;
+}
+
+function trainingLive() {
+  const w = wind();
+  const tg = targets(w.tws, w.twa);
+  const pct = tg && w.bsp != null ? Math.round((w.bsp / tg.bsp) * 100) : null;
+  const vmg = w.twa != null && w.bsp != null && w.from !== 'none' ? w.bsp * Math.cos((Math.abs(w.twa) * Math.PI) / 180) : null;
+  const leg = w.twa == null ? '—' : Math.abs(w.twa) < 60 ? 'όρτσα' : Math.abs(w.twa) < 120 ? 'πλαγιοδρομία' : 'πρίμα';
+  return `${sbar('ΠΡΟΠΟΝΗΣΗ', '00:34:10', 'Ταχύτητα όρτσα · Φάληρο')}${topStrip(w, 'training')}
+  <main class="scr"><div class="live">
+    ${w.from === 'none' ? noWindPrompt() : ''}
+    <div class="t hero s-hero" data-key="speed"><div class="lab"><span>% του στόχου</span><span class="ab">μέσος όρος 15″</span></div>
+      <div class="val num ${pct == null ? 'dash' : ''}">${pct == null ? '—' : pct + '<small>%</small>'}</div>
+      ${pct != null ? `<div class="bar" aria-hidden="true"><i style="width:${Math.min(100, pct)}%"></i></div><div class="sub ${pct >= 95 ? 'good' : 'fair'}">${pct >= 95 ? 'Κράτα το' : 'Λίγο πιο κάτω για ταχύτητα'}</div>` : `<div class="sub">${w.from === 'none' ? 'χρειάζεται άνεμο' : cw('χρειάζεται SOG 2,5 kt')}</div>`}
+    </div>
+    ${twaTile(w, tg)}
+    <div class="t s-1" data-key="next"><div class="lab"><span>Ταχύτητα</span><span class="ab">${w.bspFrom === 'BSP' ? 'BSP' : 'SOG από GPS'}</span></div>
+      <div class="val mid num">${f1(w.bsp)}<small>kt</small></div>
+      <div class="sub">${tg ? 'στόχος ' + f1(tg.bsp) + ' kt' : ''}</div></div>
+    ${windReading(w)}
+    <div class="t small s-1"><div class="lab"><span>VMG</span></div><div class="val sm num ${vmg == null ? 'dash' : ''}">${vmg == null ? '—' : f1(vmg)}</div>${w.from === 'none' ? '<div class="sub">χρειάζεται άνεμο</div>' : ''}</div>
+    <div class="t small s-1"><div class="lab"><span>Σκέλος</span></div><div class="val word">${leg}</div></div>
+    <button class="lapbtn s-full" data-testid="lap-button" aria-label="Γύρος 3, 04:12. Πάτα για νέο γύρο">${icon('timer')} Γύρος 3 · 04:12</button>
+  </div></main>${navBar(NAV_IN, 'live')}`;
+}
+
+function cruiseLive() {
+  const w = wind();
+  const sog = SPD[S.spd].sog;
+  const row = w.from === 'none'
+    ? `<div class="wrow s-wide"><span><b>Άνεμος <span class="num">—</span></b><span class="cap2">TWS / TWD</span></span><button class="b tonal sm" data-act="open" data-f="card" data-testid="wind-prompt" aria-label="Βάλε άνεμο">Βάλε</button></div>`
+    : windReading(w, { cruise: true });
+  return `${sbar('ΑΝΑΨΥΧΗ', '02:05:18', '→ Σαλαμίνα · Κανάκια')}${topStrip(w, 'cruise')}
+  <main class="scr"><div class="live">
+    <div class="t hero s-hero" data-key="speed"><div class="lab"><span>Ταχύτητα</span><span class="ab">SOG · ως προς βυθό</span></div>
+      <div class="val num">${f1(sog)}<small>kt</small></div><div class="sub">πορεία ${SPD[S.spd].cog === 'none' ? '—' : `COG ${deg(cogT())}`}</div></div>
+    <div class="t s-1"><div class="lab"><span>Προορισμός</span></div><div class="val mid num">4,2<small>NM</small></div><div class="sub">Κανάκια · ETA 15:40</div></div>
+    <div class="t s-1"><div class="lab"><span>Βάθος</span></div><div class="val mid num">~38<small>m</small></div><div class="sub">από χάρτη · ενδεικτικό, όχι για ναυσιπλοΐα</div></div>
+    ${row}
+    <section class="c s-wide"><b>Καιρός</b>
+      <div class="mini"><div><b class="num">12 · 225°</b><span>άνεμος kt</span></div><div><b class="num">17</b><span>ριπές kt</span></div><div><b class="num">15:00</b><span>δυναμώνει</span></div></div>
+    </section>
+    <button class="b out main wide s-full">⇄ Άλλαξε σε Προπόνηση</button>
+  </div></main>${navBar(NAV_IN, 'live')}`;
+}
+
+function basicLive() {
+  const w = wind();
+  const tw = w.twa;
+  const windTile = w.from === 'none'
+    ? `<button class="wind empty s-wide" data-act="open" data-f="card" data-testid="wind-reading" aria-label="Άνεμος: κανένας. Βάλε άνεμο">
+      <span class="wk"><span>Άνεμος</span><span class="wsrc">TWS · αληθής</span></span>
+      <span class="wv num"><span>—</span><span class="cap2" style="font-size:.5em;align-self:center">Πάτα για να βάλεις άνεμο</span></span>
+      <span class="wgo" aria-hidden="true">${icon('pen')}<span class="wgl">Βάλε</span></span></button>`
+    : windReading(w);
+  return `<header class="top"><button class="iconbtn" aria-label="Πίσω">${icon('back')}</button><span class="ttl">Γρήγορη ματιά</span>
+    <button class="boatchip" aria-label="Ενεργό σκάφος: Αύρα, χωρίς polar">${icon('boats')}<span>Αύρα</span></button></header>
+  <div class="strips">${SPD[S.spd].sog == null ? `<div class="strip bad" role="alert"><span class="d"></span><span>Χωρίς GPS. Άνοιξε την τοποθεσία του κινητού.</span></div>` : ''}
+  <div class="strip info" role="status"><span class="d"></span><span>Γρήγορη ματιά: δεν καταγράφεται ίχνος, χωρίς ειδοποιήσεις.</span></div></div>
+  <main class="scr"><div class="live">
+    <div class="seg s-full" role="tablist" aria-label="Γρήγορη ματιά"><button class="on" role="tab" aria-selected="true">Live</button><button role="tab" aria-selected="false">Σύμβουλος</button></div>
+    <div class="t hero s-hero" data-key="speed"><div class="lab"><span>Ταχύτητα</span><span class="ab">${S.inst ? 'BSP' : 'SOG από GPS'}</span></div>
+      <div class="val num">${f1(w.bsp)}<small>kt</small></div></div>
+    ${windTile}
+    <div class="t small s-1"><div class="lab"><span>COG</span></div><div class="val sm num">${SPD[S.spd].cog === 'none' ? '—' : deg(cogT())}</div></div>
+    <div class="t small s-1"><div class="lab"><span>TWA</span></div><div class="val sm num ${tw == null ? 'dash' : ''}">${tw == null ? '—' : Math.round(Math.abs(tw)) + '°'}</div><div class="sub">${tw == null ? (w.from === 'none' ? 'χρειάζεται άνεμο' : cw('χρειάζεται SOG 2,5 kt')) : tw >= 0 ? 'δεξιές' : 'αριστερές'}</div></div>
+    <div class="t small s-1"><div class="lab"><span>Βάθος</span></div><div class="val sm num">—</div></div>
+    <button class="b fill main wide s-full">● Ξεκίνα καταγραφή (νέα έξοδος)</button>
+  </div></main>${navBar(NAV_OUT, 'home')}`;
+}
+
+/* ---------------- Sheet «Άνεμος» ---------------- */
+function stepper(k) {
+  const on = S.manual.on, cur = on ? S.manual : S.draft;
+  const twd = k === 'twd';
+  const v = twd ? cur.twdT : cur.tws;
+  const steps = twd ? [5, 1] : [2, 1];
+  const val = v == null ? '' : twd ? pad3(toDisp(v)) : fTws(v);
+  const btn = (d) => `<button class="sp" data-act="step" data-k="${k}" data-d="${d}" aria-label="${twd ? 'TWD' : 'TWS'} ${d > 0 ? '+' : '−'}${Math.abs(d)}">${d > 0 ? '+' : '−'}${Math.abs(d)}</button>`;
+  return `<div class="st">${btn(-steps[0])}${btn(-steps[1])}
+    <label class="sv"><input data-in="${k}" inputmode="decimal" enterkeyhint="done" value="${val}" placeholder="—" aria-label="${twd ? `TWD σε ${U()}` : 'TWS σε kt'}, γράψε τιμή"><span class="u">${twd ? U() : 'kt'}</span></label>
+    ${btn(steps[1])}${btn(steps[0])}</div>`;
+}
+function twaLine(cur) {
+  if (cur.twdT == null) return '';
+  const c = course();
+  if (c.deg == null) return `<div class="twa" data-testid="wind-twa" aria-live="polite"><b>TWA: —</b> · χρειάζεται πορεία GPS (SOG 2,5 kt και πάνω)</div>`;
+  const t = signed(cur.twdT - c.deg);
+  const head = `<b>TWA ${Math.round(Math.abs(t))}° ${t >= 0 ? 'δεξιές' : 'αριστερές'}</b>`;
+  if (c.src === 'hdg') return `<div class="twa" data-testid="wind-twa" aria-live="polite">${head} · από πλώρη οργάνων ${deg(c.deg)}</div>`;
+  return `<div class="twa" data-testid="wind-twa" aria-live="polite">${head} · από πορεία GPS ${deg(c.deg)}${c.src === 'hold' ? cw(' · τελευταία τιμή') : ''}
+    <div class="hint">Από την πορεία GPS: στην όρτσα η πραγματική TWA είναι περίπου 5° μικρότερη (πρόσπτωση, ρεύμα).</div></div>`;
+}
+function sheetHTML() {
+  if (!S.sheet) return '';
+  const on = S.manual.on, cur = on ? S.manual : S.draft;
+  const has = cur.twdT != null && cur.tws != null;
+  const basic = kind() === 'basic';
+  const m = ageMin(), stale = on && m >= 15;
+  const side = sideMode();
+  const status = on
+    ? `<div class="wstat ${stale ? 'stale' : ''}" data-testid="wind-age">${stale ? WARN : ''}Χειροκίνητα · ${fmtAge(m)}${stale ? ' · έλεγξέ τον' : ''}</div>`
+    : `<div class="wstat off">Τώρα: ${S.inst ? 'από τα όργανα' : S.typed && !basic ? 'από τη Γρήγορη ματιά' : 'χωρίς άνεμο'}</div>`;
+  const instNote = on && S.inst ? `<div class="info">Όργανα συνδεδεμένα. Ο άνεμος μένει χειροκίνητος.</div>` : '';
+  const pre = !on && S.draft.from && has
+    ? `<div class="info">Αρχικές τιμές από ${S.draft.from === 'inst' ? 'τα όργανα' : `την πρόγνωση των ${FC.at}`}. Διόρθωσέ τις.</div>`
+    : !on && !has ? `<div class="info">Πάτα ± για να αλλάξεις. Η TWA βγαίνει από την πορεία GPS.</div>` : '';
+  const conv = cur.twdT != null ? `<div class="conv num">${S.mag ? `${pad3(toDisp(cur.twdT))}°M = ${pad3(cur.twdT)}°T` : `${pad3(cur.twdT)}°T = ${pad3(cur.twdT - S.decl)}°M`}</div>` : '';
+  const decl0 = S.mag && S.decl === 0 ? `<div class="info warn">Απόκλιση 0°: σωστό; Στον Σαρωνικό είναι περίπου +5°. Άλλαξέ τη στις Ρυθμίσεις.</div>` : '';
+  const offTo = S.inst ? 'άνεμος από τα όργανα' : S.typed && !basic ? 'άνεμος από τη Γρήγορη ματιά' : 'χωρίς άνεμο';
+  const subOn = basic ? 'Ανοιχτό: η TWA βγαίνει από αυτόν τον άνεμο.' : 'Ανοιχτό: στόχοι και laylines με αυτόν τον άνεμο.';
+  const sub = on ? `${subOn} Αν το κλείσεις: ${offTo}.` : has ? `Κλειστό: ${offTo}.` : 'Βάλε TWD και TWS.';
+  const sw = `<button class="toggle ${on ? 'on' : ''}" role="switch" aria-checked="${on}" data-act="toggle" data-testid="${on ? 'wind-off' : 'wind-use'}" ${!on && !has ? 'disabled' : ''}>
+      <span class="tx">Χρήση χειροκίνητου ανέμου<span class="cap2">${cw(sub)}</span></span><span class="knob" aria-hidden="true"></span></button>`;
+  const foot = on
+    ? `<div class="frow"><button class="b tonal main" data-act="confirm" data-testid="wind-confirm">✓ Ισχύει ακόμα</button><button class="b out main" data-act="close">Έτοιμο</button></div>`
+    : `<button class="b out main wide" data-act="close">Έτοιμο</button>`;
+  return `<div class="scrim" data-act="scrim"><section class="sheet" role="dialog" aria-modal="${side ? 'false' : 'true'}" aria-labelledby="wsT" data-testid="wind-sheet">
+    <div class="hdl" aria-hidden="true"><i></i></div>
+    <div class="sh"><h3 id="wsT" tabindex="-1" data-f="sheet">Άνεμος</h3><button class="iconbtn" data-act="close" aria-label="Κλείσιμο">${icon('close')}</button></div>
+    ${status}${instNote}${pre}
+    <div class="stl">TWD · από πού φυσάει <span class="u">(${U()})</span></div>
+    ${stepper('twd')}${conv}${decl0}
+    <div class="stl">TWS · ένταση αληθούς ανέμου <span class="u">(kt)</span></div>
+    ${stepper('tws')}
+    <div class="hint">${cw('Στην όρτσα νιώθεις περισσότερο (φαινόμενος άνεμος). Βάλε τον αληθή.')}</div>
+    ${sw}
+    ${twaLine(cur)}
+    <p class="help">${cw('Πώς βρίσκεις την TWD: στην όρτσα, ο μέσος όρος της πλώρης με δεξιές και με αριστερές. Ή, πριν από την εκκίνηση, πλώρη στον άνεμο και διάβασε την πυξίδα.')}</p>
+    <div class="foot">${foot}</div>
+  </section></div>`;
+}
+
+/* ---------------- Actions ---------------- */
+function log(ev) {
+  const t = new Date().toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  S.log.push(`${t}  ${ev.padEnd(7)} ${S.manual.twdT == null ? '' : pad3(S.manual.twdT) + '°T'} ${S.manual.tws == null ? '' : fTws(S.manual.tws) + ' kt'}`);
+}
+function flushSet() { if (setT) { clearTimeout(setT); setT = null; log('set'); } }
+function snack(t, undo) { S.snack = { t, undo: !!undo }; clearTimeout(snackT); snackT = setTimeout(() => { S.snack = null; S.undo = null; render(); }, undo ? 6000 : 4000); }
+function openSheet() {
+  if (!S.opened && !S.manual.on) {
+    if (S.inst) S.draft = { twdT: norm(INST.twdT), tws: Math.round(INST.tws * 2) / 2, from: 'inst' };
+    else if (S.fc) S.draft = { twdT: fromDisp(Math.round(toDisp(FC.twdT) / 5) * 5), tws: Math.round(FC.tws), from: 'fc' };
+    else S.draft = { twdT: null, tws: null, from: null };
+    S.opened = true;
+  }
+  S.sheet = true; S.focus = 'sheet';
+}
+function closeSheet() { S.sheet = false; flushSet(); S.focus = 'card'; }
+function changed(k, nv) {
+  const on = S.manual.on, cur = on ? S.manual : S.draft;
+  cur[k === 'twd' ? 'twdT' : 'tws'] = nv;
+  if (on) { S.manual.at = Date.now(); clearTimeout(setT); setT = setTimeout(() => { setT = null; log('set'); renderNotes(); }, 5000); }
+}
+function step(k, d) {
+  navigator.vibrate?.(10);
+  const cur = S.manual.on ? S.manual : S.draft;
+  if (k === 'twd') changed(k, fromDisp((cur.twdT == null ? 0 : toDisp(cur.twdT)) + d));
+  else changed(k, Math.max(0, Math.min(60, (cur.tws == null ? 10 : cur.tws) + d)));
+}
+function typed(k, text) {
+  const n = Number(String(text).replace(',', '.').trim());
+  if (String(text).trim() === '' || !Number.isFinite(n)) return;
+  if (k === 'twd') changed(k, fromDisp(n));
+  else changed(k, Math.max(0, Math.min(60, Math.round(n * 2) / 2)));
+}
+function toggle() {
+  S.undo = { manual: { ...S.manual }, draft: { ...S.draft } };
+  if (S.manual.on) {
+    flushSet();
+    S.draft = { twdT: S.manual.twdT, tws: S.manual.tws, from: null };
+    S.manual.on = false; log('off');
+    snack(S.inst ? 'Ο άνεμος έρχεται ξανά από τα όργανα' : 'Χειροκίνητος άνεμος: κλειστός', true);
+  } else {
+    if (S.draft.twdT == null || S.draft.tws == null) return;
+    S.manual = { on: true, twdT: S.draft.twdT, tws: S.draft.tws, at: Date.now() };
+    log('on'); snack('Χειροκίνητος άνεμος: ανοιχτός', true);
+  }
+}
+function undo() {
+  if (!S.undo) return;
+  const wasOn = S.manual.on;
+  S.manual = S.undo.manual; S.draft = S.undo.draft; S.undo = null;
+  log(wasOn ? 'off' : 'on');
+  snack(S.manual.on ? 'Χειροκίνητος άνεμος: ανοιχτός' : 'Χειροκίνητος άνεμος: κλειστός');
+}
+
+/* ---------------- Render ---------------- */
+function screenHTML() {
+  const k = kind();
+  return k === 'race' ? raceLive() : k === 'training' ? trainingLive() : k === 'cruise' ? cruiseLive() : basicLive();
+}
+function insertSheet(html) {
+  // The sheet lives inside .app so that on wide screens it takes the «side» grid area.
+  return html.replace(/(<nav class="nav")/, `${sheetHTML()}$1`);
+}
+function phone(theme, sc) {
+  const d = DEV[S.dev];
+  const bw = d.k === 'tablet' ? 14 : d.k === 'laptop' ? 12 : 10;
+  const fw = d.w + 2 * bw, fh = d.h + (d.k === 'laptop' ? 38 : 2 * bw);
+  const sn = S.snack ? `<div class="snack ${S.sheet ? 'top' : ''}" role="status"><span>${S.snack.t}</span>${S.snack.undo ? '<button data-act="undo">Αναίρεση</button>' : ''}</div>` : '';
+  return `<div><div class="devwrap" style="--fw:${fw}px;--fh:${fh}px;--sc:${sc}">
+    <div class="phone k-${d.k} sz-${S.size} ${S.cw ? 'show-cw' : ''} ${S.sheet ? 'sheet-open' : ''}" data-theme="${theme}" style="--dw:${d.w}px;--dh:${d.h}px">
+      <div class="app">${insertSheet(screenHTML())}</div>${sn}</div></div>
+    <p class="cap">${{ day: 'Μέρα', dark: 'Σούρουπο', night: 'Νύχτα' }[theme]} · ${d.label} · ${{ m: 'Κανονικά', l: 'Μεγάλα', xl: 'Πολύ μεγάλα' }[S.size]}${sc < 1 ? ` · σε κλίμακα ${Math.round(sc * 100)}%` : ''}</p></div>`;
+}
+function render() {
+  const keep = [...document.querySelectorAll('.scr, .sheet')].map((e) => e.scrollTop);
+  const themes = S.theme === 'all' ? ['day', 'dark', 'night'] : [S.theme];
+  const d = DEV[S.dev];
+  const fw = d.w + 30;
+  const avail = Math.max(320, window.innerWidth - 40);
+  const perRow = Math.max(1, Math.min(themes.length, Math.floor(avail / (fw * 0.5 + 18))));
+  const sc = S.fit === 'real' ? 1 : Math.min(1, (avail - 18 * (perRow - 1)) / perRow / fw);
+  document.getElementById('phones').innerHTML = themes.map((t) => phone(t, sc)).join('');
+  document.querySelectorAll('.scr, .sheet').forEach((e, i) => (e.scrollTop = keep[i] || 0));
+  renderControls();
+  renderNotes();
+  if (S.focus) {
+    const el = document.querySelector(`.phones .phone [data-f="${S.focus}"]`);
+    el?.focus({ preventScroll: true });
+    S.focus = null;
+  }
+}
+
+const AGES = [[0, 'τώρα'], [4, '4′'], [15, '15′'], [18, '18′'], [65, '1 ώ 05′']];
+function ctlRow(k, l, opts) {
+  return `<div class="grp"><label>${l}</label><div class="pick">${opts.map(([v, t]) => `<button class="${String(S[k]) === String(v) ? 'on' : ''}" data-ctl="${k}" data-v="${v}">${t}</button>`).join('')}</div></div>`;
+}
+function renderControls() {
+  const am = S.manual.on ? ageMin() : -1;
+  document.getElementById('controls').innerHTML = [
+    ctlRow('scen', 'Σενάριο', Object.entries(SCEN).map(([id, c]) => [id, c.label])),
+    '<hr>',
+    ctlRow('dev', 'Συσκευή', Object.entries(DEV).map(([id, d]) => [id, d.label])),
+    ctlRow('fit', 'Κλίμακα', [['fit', 'Να χωράει'], ['real', '100%']]),
+    ctlRow('theme', 'Θέμα', [['day', 'Μέρα'], ['dark', 'Σούρουπο'], ['night', 'Νύχτα'], ['all', 'Και τα 3']]),
+    ctlRow('size', 'Γράμματα', [['m', 'Κανονικά'], ['l', 'Μεγάλα'], ['xl', 'Πολύ μεγάλα']]),
+    '<hr>',
+    ctlRow('inst', 'Όργανα', [[true, 'Συνδεδεμένα'], [false, 'Όχι']]),
+    ctlRow('hdg', 'Πλώρη οργάνων', [[true, 'Ναι'], [false, 'Όχι']]),
+    ctlRow('spd', 'SOG', Object.entries(SPD).map(([id, s]) => [id, s.label])),
+    ctlRow('fc', 'Πρόγνωση', [[true, 'Ναι'], [false, 'Όχι']]),
+    ctlRow('typed', 'Άνεμος στη Γρήγορη ματιά', [[false, 'Ποτέ'], [true, 'Έχει μπει']]),
+    ctlRow('mag', 'Ρύθμιση', [[true, '°M'], [false, '°T']]),
+    ctlRow('decl', 'Απόκλιση', [[5, '+5°'], [0, '0°']]),
+    `<div class="grp"><label>Ηλικία χειροκίνητου</label><div class="pick">${AGES.map(([m, t]) => `<button class="${am === m ? 'on' : ''}" data-age="${m}" ${S.manual.on ? '' : 'disabled'}>${t}</button>`).join('')}</div></div>`,
+    ctlRow('banner', 'Banner layline', [[false, 'Όχι'], [true, 'Σε 2′']]),
+    ctlRow('cw', 'Κείμενα για copywriter', [[false, 'Κρυφά'], [true, 'Σήμανση']]),
+  ].join('');
+}
+
+function renderNotes() {
+  document.getElementById('notes').innerHTML = `
+  <h2>Χειροκίνητος άνεμος μέσα στην έξοδο</h2>
+  <p>P-053 · πρωτότυπο, όχι αλλαγή στο <code>src/</code>. Εμφάνιση με τα εγκεκριμένα tokens της P-049 (<code>design/refresh-2026-11/</code>). Φανταστικά δεδομένα: όρτσα Πειραιάς → Αίγινα, COG 180°T, όργανα «Προσομοίωση». Έλεγχος ευχρηστίας και κανόνες για κάθε μέγεθος οθόνης: <code>REVIEW.md</code>.</p>
+  <h3>Εγκρίθηκε 17/11/2026 <span class="tag ok">εφαρμόστηκαν</span></h3>
+  <p>Οδηγίες για τον developer: <code>HANDOFF.md</code>. Στην P-053 φτιάχνονται μόνο η κάρτα «Άνεμος», το φύλλο / πλαϊνό πάνελ και οι καταστάσεις τους, πάνω στο σημερινό Live. Οι 3/4 στήλες και η πλαϊνή μπάρα πλοήγησης ανήκουν στην P-049.</p>
+  <ol>
+    <li>Διακόπτης «Χρήση χειροκίνητου ανέμου», όχι κουμπιά.</li>
+    <li>«⚠» στον παλιό άνεμο σε όλα τα θέματα. Είναι εικονίδιο SVG, όχι emoji, για να μένει κόκκινο στη Νύχτα.</li>
+    <li>Η γραμμή TWA φαίνεται στο φύλλο και με τον χειροκίνητο κλειστό.</li>
+    <li>Η κάρτα «Άνεμος» πιάνει όλο το πλάτος, κάτω από τα δύο πλακίδια (στα 4 στήλες: δίπλα στην ταχύτητα).</li>
+    <li>Σύντομο μήνυμα της ΚΑ 25 σε όλα τα μεγέθη (τελική διατύπωση από τον copywriter).</li>
+    <li>Το πλαϊνό πάνελ σε μεγάλες οθόνες δεν κλείνει με πάτημα έξω, μόνο με ✕, «Έτοιμο» ή Escape.</li>
+    <li>Το «✓ Ισχύει ακόμα» κλείνει και το φύλλο.</li>
+  </ol>
+  <h3>Δοκίμασε</h3>
+  <ol>
+    <li>«Συσκευή» → όλα τα μεγέθη, από 320 ως laptop 1440. «Κλίμακα: 100%» για πραγματικό μέγεθος.</li>
+    <li>Πάτα την κάρτα «Άνεμος». Σε κινητό ανοίγει φύλλο από κάτω. Σε tablet όρθιο το φύλλο ανοίγει στη μέση, με πλάτος έως 34em. Σε tablet οριζόντια, laptop και κινητό οριζόντια ανοίγει πάνελ δεξιά και το Live μένει ορατό.</li>
+    <li>Ο διακόπτης δίνει μήνυμα με «Αναίρεση» για 6″. Το «✓ Ισχύει ακόμα» κλείνει και το φύλλο.</li>
+    <li>«Ηλικία» 18′ και «Banner» για τον παλιό άνεμο. «SOG 1,6 kt · πριν από 40″» για TWA «—».</li>
+  </ol>
+  <h3>Κανόνες μεγέθους (container queries σε em)</h3>
+  <table>
+    <tr><th>Πλάτος περιεχομένου</th><th>Live</th></tr>
+    <tr><td>&lt; 16em</td><td>2 στήλες, μικρότερα νούμερα</td></tr>
+    <tr><td>16–40em</td><td>2 στήλες (κινητό)</td></tr>
+    <tr><td>40–50em</td><td>3 στήλες: ταχύτητα 2×2, TWA, επόμενη αναστροφή, άνεμος σε όλο το πλάτος</td></tr>
+    <tr><td>≥ 50em</td><td>4 στήλες: ταχύτητα 2×2 και δίπλα TWA, επόμενη, άνεμος· πλάτος έως 72em</td></tr>
+    <tr><td>Ύψος ≤ 30em</td><td>Πλαϊνή μπάρα πλοήγησης, όλα τα βασικά σε μία σειρά 4 στηλών</td></tr>
+  </table>
+  <h3>Κείμενα <span class="tag ok">τελικά 17/11</span></h3>
+  <p>Όλα τα κείμενα κλείδωσαν από τον copywriter (<code>HANDOFF.md</code> §7, στήλη «Άλλαξε»). Η «Σήμανση» δείχνει ποια ήταν ανοιχτά:</p>
+  <ul>
+    <li>Υπότιτλος TWS, γραμμή βοήθειας TWD, υπότιτλοι του διακόπτη.</li>
+    <li>«χρειάζεται SOG 2,5 kt», «· τελευταία τιμή», «άνεμος από την πρόγνωση», banner με την ηλικία.</li>
+    <li>ΚΑ 25 (σε όλα τα μεγέθη): «Άνεμος χειροκίνητα: χωρίς ειδοποιήσεις στροφής ανέμου και «κάτω από 90%».»</li>
+  </ul>
+  <h3>windLog (για τον developer)</h3>
+  <div class="log">${S.log.length ? S.log.join('\n') : '— κενό· οι αλλαγές τιμής γράφονται 5″ μετά το τελευταίο πάτημα ή στο κλείσιμο'}</div>`;
+}
+
+/* ---------------- Events ---------------- */
+document.addEventListener('click', (e) => {
+  const c = e.target.closest('[data-ctl]');
+  if (c) {
+    const k = c.dataset.ctl, v = c.dataset.v;
+    if (k === 'scen') setScen(v);
+    else if (k === 'decl') S[k] = Number(v);
+    else if (v === 'true' || v === 'false') S[k] = v === 'true';
+    else S[k] = v;
+    if (k === 'inst' || k === 'fc') S.opened = S.manual.on ? S.opened : false;
+    return render();
+  }
+  const ag = e.target.closest('[data-age]');
+  if (ag) { S.manual.at = Date.now() - Number(ag.dataset.age) * 60000; return render(); }
+  const a = e.target.closest('[data-act]');
+  if (!a) return;
+  const act = a.dataset.act;
+  if (act === 'scrim' && e.target !== a) return;
+  if (act === 'open') openSheet();
+  else if (act === 'close' || act === 'scrim') closeSheet();
+  else if (act === 'step') step(a.dataset.k, Number(a.dataset.d));
+  else if (act === 'toggle') toggle();
+  else if (act === 'undo') undo();
+  else if (act === 'confirm') { flushSet(); S.manual.at = Date.now(); log('confirm'); closeSheet(); snack(cw('Ο άνεμος ισχύει ακόμα')); }
+  render();
+});
+document.addEventListener('change', (e) => { const i = e.target.closest('[data-in]'); if (i) { typed(i.dataset.in, i.value); render(); } });
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.target.matches('[data-in]')) e.target.blur();
+  if (e.key === 'Escape' && S.sheet) { closeSheet(); render(); }
+});
+window.addEventListener('resize', () => render());
+setInterval(() => { if (!document.activeElement?.matches('.phone input')) render(); }, 15000);
+
+render();
+</script>
+</body>
+</html>

@@ -11,6 +11,7 @@ import { TRAINING_TEXT as TT } from './sessionText';
 import { dayStr, hhmm } from './SessionBar';
 import { accountApi, ApiError } from '../sync/api';
 import { toCsv, toGpx } from '../race/analysis';
+import { manualNote } from '../race/manualWind';
 import { trackSegments } from '../race/pauses';
 import {
   analysisBody,
@@ -460,6 +461,11 @@ export function TrainingSummaryView({ r }: { r: Race }) {
           ))}
         </div>
         {s.pausedSec > 0 && <p className="small muted">{TT.noPauses(mss(s.pausedSec))}</p>}
+        {s.windManual && (
+          <p className="small muted" data-testid="wind-manual-note">
+            {manualNote(s.windManual)}
+          </p>
+        )}
         <p className="small muted">
           {TT.worked}: <b>{goalName(goal)}</b>
         </p>

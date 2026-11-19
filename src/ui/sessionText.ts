@@ -14,8 +14,6 @@ export const LIVE_TEXT = {
   speed: 'Ταχύτητα',
   windAngle: 'Γωνία ανέμου',
   target: 'στόχος',
-  manualWind: 'χειροκίνητος άνεμος',
-  manualShort: '(χειρ.)',
   leg: 'σκέλος',
   sogFromGps: 'SOG από GPS',
   sogGround: 'SOG · ως προς βυθό',
@@ -37,7 +35,8 @@ export const LIVE_TEXT = {
   sail: 'Πανί',
   trim: 'Τριμάρισμα',
   noPolar: 'Το σκάφος δεν έχει polars, άρα ούτε στόχους. Πρόσθεσε polars από Σκάφη → Επεξεργασία.',
-  noWind: 'Χρειάζεται άνεμος: από τα όργανα ή χειροκίνητα στη «Γρήγορη ματιά».',
+  // L10 (P-053)
+  noWind: 'Χρειάζεται άνεμος: από τα όργανα ή με «Βάλε άνεμο».',
   next: 'Επόμενο',
   ranking: 'Κατάταξη (εκτίμηση)',
   finish: 'Τερματισμός',
@@ -228,4 +227,87 @@ export const TRAINING_TEXT = {
   sharedPart: (hhmm: string) =>
     `Το κομμάτι της προπόνησης ως τις ${hhmm} είναι κοινό με το πλήρωμα (σύνοψη και σημειώσεις). Η αναψυχή δεν μοιράζεται. Το ίχνος μένει μόνο σε αυτό το κινητό.`,
   sharedTag: ' · κοινή με το πλήρωμα',
+} as const;
+
+/**
+ * Manual wind inside a session (P-053): the final texts of design/manual-wind-2026-11/HANDOFF.md §7
+ * (copywriter 17/11/2026), with their ids. ⟨…⟩ are filled in by the code.
+ */
+/**
+ * Where the wind of the small Live labels comes from, in the card's words (W03/W04):
+ * «TWA · άνεμος χειροκίνητα», «TWS kt · χειροκίνητα»; nothing for instruments or no wind.
+ */
+export function liveWindTags(from: 'manual' | 'instruments' | 'quick' | 'none'): { twa: string; tws: string } {
+  if (from === 'manual') return { twa: ' · άνεμος χειροκίνητα', tws: ' · χειροκίνητα' };
+  if (from === 'quick') return { twa: ' · άνεμος Γρήγορης ματιάς', tws: ' · Γρήγορη ματιά' };
+  return { twa: '', tws: '' };
+}
+
+export const WIND_TEXT = {
+  // Card and Live
+  title: 'Άνεμος', // W01
+  fromInst: 'όργανα', // W02
+  fromQuick: 'από τη Γρήγορη ματιά', // W03
+  manual: (age: string) => `χειροκίνητα · ${age}`, // W04
+  check: ' · έλεγξέ τον', // W05
+  change: 'Αλλαγή', // W06
+  set: 'Βάλε', // W07
+  tapToSet: 'Πάτα για να βάλεις άνεμο', // W08
+  /** W09 */
+  aria: (tws: string, twd: string, src: string, stale: boolean) => `Άνεμος: TWS ${tws} kt, TWD ${twd}, ${src}${stale ? ', παλιός, έλεγξέ τον' : ''}. Αλλαγή`,
+  ariaInst: 'από τα όργανα',
+  ariaQuick: 'από τη Γρήγορη ματιά',
+  ariaManual: (ageWords: string) => `χειροκίνητα, ${ageWords}`,
+  ariaNone: 'Άνεμος: κανένας. Βάλε άνεμο', // W09b
+  manualStrip: 'Άνεμος χειροκίνητα: χωρίς ειδοποιήσεις στροφής ανέμου και «κάτω από 90%».', // L01
+  noWindLead: 'Χωρίς άνεμο:', // L02 (bold part)
+  noWindText: 'δεν υπάρχουν όργανα και δεν έχεις βάλει άνεμο. Δεν βγαίνουν στόχοι και %.', // L02
+  setWind: 'Βάλε άνεμο', // L03
+  needsWind: 'χρειάζεται άνεμο', // L04
+  needsSog: 'χρειάζεται SOG 2,5 kt', // L05
+  layManual: 'άνεμος χειροκίνητα · χωρίς πρόσπτωση/ρεύμα', // L06
+  layStale: (age: string) => `άνεμος ${age} · χωρίς πρόσπτωση/ρεύμα`, // L07
+  layForecast: 'άνεμος από την πρόγνωση', // L08
+  // Sheet
+  nowInst: 'Τώρα: από τα όργανα', // S02
+  nowQuick: 'Τώρα: από τη Γρήγορη ματιά', // S03
+  nowNone: 'Τώρα: χωρίς άνεμο', // S04
+  sheetManual: (age: string) => `Χειροκίνητα · ${age}`, // S05
+  instConnected: 'Όργανα συνδεδεμένα. Ο άνεμος μένει χειροκίνητος.', // S06
+  fromInstPrefill: 'Αρχικές τιμές από τα όργανα. Διόρθωσέ τις.', // S07
+  fromForecast: (hhmm: string) => `Αρχικές τιμές από την πρόγνωση των ${hhmm}. Διόρθωσέ τις.`, // S08
+  emptyHint: 'Πάτα ± για να αλλάξεις. Η TWA βγαίνει από την πορεία GPS.', // S09
+  twdLabel: 'TWD · από πού φυσάει', // S10 (+ «(°M)»)
+  decl0: 'Απόκλιση 0°: σωστό; Στον Σαρωνικό είναι περίπου +5°. Άλλαξέ τη στις Ρυθμίσεις.', // S12
+  twsLabel: 'TWS · ένταση αληθούς ανέμου', // S13 (+ «(kt)»)
+  twsHint: 'Στην όρτσα νιώθεις περισσότερο (φαινόμενος άνεμος). Βάλε τον αληθή.', // S14
+  use: 'Χρήση χειροκίνητου ανέμου', // S15
+  onSession: 'Ανοιχτό: στόχοι και laylines με αυτόν τον άνεμο.', // S16
+  onBasic: 'Ανοιχτό: η TWA βγαίνει από αυτόν τον άνεμο.', // S17
+  ifOff: (to: string) => `Αν το κλείσεις: ${to}.`, // S18
+  off: (to: string) => `Κλειστό: ${to}.`, // S19
+  offToInst: 'άνεμος από τα όργανα',
+  offToQuick: 'άνεμος από τη Γρήγορη ματιά',
+  offToNone: 'χωρίς άνεμο',
+  needValues: 'Βάλε TWD και TWS.', // S20
+  twaHdg: (twa: string, side: string, hdg: string) => `TWA ${twa}° ${side} · από πλώρη οργάνων ${hdg}`, // S21
+  twaCog: (twa: string, side: string, cog: string) => `TWA ${twa}° ${side} · από πορεία GPS ${cog}`, // S22
+  twaHold: ' · τελευταία τιμή (κράτημα 30″)', // S23
+  cogNote: 'Από την πορεία GPS: στην όρτσα η πραγματική TWA είναι περίπου 5° μικρότερη (πρόσπτωση, ρεύμα).', // S24
+  twaNone: 'TWA: — · χρειάζεται πορεία GPS (SOG 2,5 kt και πάνω)', // S25
+  help: 'Πώς βρίσκεις την TWD: στην όρτσα, ο μέσος όρος της πλώρης με δεξιές και με αριστερές. Ή, πριν από την εκκίνηση, πλώρη στον άνεμο και διάβασε την πυξίδα.', // S26
+  stillValid: '✓ Ισχύει ακόμα', // S27
+  done: 'Έτοιμο', // S28
+  close: 'Κλείσιμο', // S29
+  ariaTwd: (unit: string) => `TWD σε ${unit}, γράψε τιμή`, // S30
+  ariaTws: 'TWS σε kt, γράψε τιμή', // S30
+  stbd: 'δεξιές',
+  port: 'αριστερές',
+  // Messages and screen reader
+  nOn: 'Χειροκίνητος άνεμος: ανοιχτός', // N01
+  nOff: 'Χειροκίνητος άνεμος: κλειστός', // N02
+  nInst: 'Ο άνεμος έρχεται ξανά από τα όργανα', // N03
+  nValid: 'Ο άνεμος ισχύει ακόμα', // N04
+  undo: 'Αναίρεση', // N05
+  staleSay: 'Ο χειροκίνητος άνεμος μπήκε πριν από 15 λεπτά. Έλεγξέ τον.', // A04
 } as const;

@@ -147,3 +147,38 @@ export function useOnline(): boolean {
   }, []);
   return online;
 }
+
+export type SheetMode = 'bottom' | 'center' | 'side';
+
+/**
+ * Where a sheet opens (P-053 HANDOFF §5), in em of the text size setting (17 / 20 / 23 px), so
+ * «Πολύ μεγάλα» keeps the phone layout longer: a side panel on wide screens (≥ 60em) or a
+ * low landscape screen (≤ 30em high); a centred sheet from 34em; else from the bottom.
+ */
+export function sheetMode(width: number, height: number, fontPx: number): SheetMode {
+  const w = width / fontPx;
+  const h = height / fontPx;
+  if (w >= 60 || (width > height && h <= 30)) return 'side';
+  return w >= 34 ? 'center' : 'bottom';
+}
+
+/** `sheetMode` for this window, kept up to date on resize and rotation. */
+export function useSheetMode(): SheetMode {
+  const calc = () => {
+    if (typeof window === 'undefined') return 'bottom' as SheetMode;
+    const fs = parseFloat(getComputedStyle(document.documentElement).fontSize) || 17;
+    return sheetMode(window.innerWidth, window.innerHeight, fs);
+  };
+  const [mode, setMode] = useState<SheetMode>(calc);
+  useEffect(() => {
+    const on = () => setMode(calc());
+    on();
+    window.addEventListener('resize', on);
+    window.addEventListener('orientationchange', on);
+    return () => {
+      window.removeEventListener('resize', on);
+      window.removeEventListener('orientationchange', on);
+    };
+  }, []);
+  return mode;
+}

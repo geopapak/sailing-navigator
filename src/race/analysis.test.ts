@@ -76,7 +76,7 @@ describe('post-race analysis', () => {
     expect(g).toContain('Αίγινα &lt;κίτρινη&gt;');
     expect(g).toContain('Δοκιμή &amp; &quot;test&quot;');
     const c = toCsv(race).trim().split('\n');
-    expect(c[0]).toBe('time,lat,lon,sog,cog,tws,twa,twd,bsp,targetBsp,targetTwa,pct,sail,src');
+    expect(c[0]).toBe('time,lat,lon,sog,cog,tws,twa,twd,bsp,targetBsp,targetTwa,pct,sail,src,wind');
     expect(c).toHaveLength(race.track.length + 1);
     expect(c[1]).toContain('"J1"');
   });

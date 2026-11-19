@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { SheetMode } from './hooks';
 import { UPDATE_TEXT } from '../pwa/updateText';
 import { useUpdatePhase } from './AppUpdater';
 import { useApp } from './AppContext';
@@ -338,17 +339,69 @@ function SessionStrip({ r, now, flash, onFlash }: { r: Race; now: number; flash?
   );
 }
 
-export function SheetFrame({ label, onClose, children, testId }: { label: string; onClose: () => void; children: React.ReactNode; testId?: string }) {
+/**
+ * A sheet of the session. `mode` (P-053): 'bottom' / 'center' keep the focus inside and close on a
+ * tap outside; 'side' is a panel next to the Live, not modal, closed only by its own buttons or Escape.
+ */
+export function SheetFrame({
+  label,
+  onClose,
+  children,
+  testId,
+  mode,
+  className,
+  labelledBy,
+  style,
+}: {
+  label: string;
+  onClose: () => void;
+  children: React.ReactNode;
+  testId?: string;
+  mode?: SheetMode;
+  className?: string;
+  labelledBy?: string;
+  style?: React.CSSProperties;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const k = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', k);
     return () => window.removeEventListener('keydown', k);
   }, [onClose]);
+  const trap = mode !== undefined && mode !== 'side';
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (!trap || e.key !== 'Tab' || !ref.current) return;
+    const f = [...ref.current.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])')];
+    if (!f.length) return;
+    const [first, last] = [f[0], f[f.length - 1]];
+    if (e.shiftKey && (document.activeElement === first || !ref.current.contains(document.activeElement))) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
+  const sheet = (
+    <div
+      ref={ref}
+      className={`sheet session-sheet${className ? ` ${className}` : ''}${mode ? ` mode-${mode}` : ''}`}
+      data-testid={testId}
+      role="dialog"
+      aria-modal={mode === 'side' ? 'false' : 'true'}
+      aria-label={labelledBy ? undefined : label}
+      aria-labelledby={labelledBy}
+      style={style}
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={onKeyDown}
+    >
+      {children}
+    </div>
+  );
+  if (mode === 'side') return sheet;
   return (
-    <div className="sheet-backdrop" onClick={onClose}>
-      <div className="sheet session-sheet" data-testid={testId} role="dialog" aria-modal="true" aria-label={label} onClick={(e) => e.stopPropagation()}>
-        {children}
-      </div>
+    <div className={`sheet-backdrop${mode ? ` mode-${mode}` : ''}`} onClick={onClose}>
+      {sheet}
     </div>
   );
 }

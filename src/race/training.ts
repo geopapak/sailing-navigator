@@ -2,6 +2,7 @@ import type { Helm, Lap, Manoeuvre, Race, SessionKind, TrackPoint, TrainingGoal 
 import { countManoeuvres, sailed } from './analysis';
 import { kindOf } from './session';
 import { activeSpans, intersect, inSpans, overlapMs, pausedMs, pointsPerSpan, type Span } from './pauses';
+import { manualMinutes } from './manualWind';
 
 /**
  * Training v1 (P-035): laps, % of target per point of sail and wind band, manoeuvres
@@ -316,6 +317,8 @@ export interface TrainingSummary {
   avgPct: number | null;
   pausedSec: number;
   indicative: boolean;
+  /** P-053: minutes with the manual wind on, of the minutes counted; never sent to the crew. */
+  windManual?: { minutes: number; ofMinutes: number };
   /** Set when the session later became a cruise: the training part ends here (ms). */
   trainingUntil?: number;
   laps: LapRow[];
@@ -346,6 +349,7 @@ export function trainingSummary(r: Race, o: Opts = {}): TrainingSummary {
   const lastTraining = trainings[trainings.length - 1];
   const afterTraining = !!lastTraining && kinds.some((k) => k.kind !== 'training' && k.from >= lastTraining.to);
   const man = manoeuvresOf(r).filter((m) => inSpans(spans, m.t));
+  const windManual = manualMinutes(r, spans, end);
   const s: TrainingSummary = {
     durationSec: Math.round(sum(spans) / 1000),
     distanceNm: moved ? Math.round(segs.reduce((d, g) => d + sailed(g), 0) * 10) / 10 : null,
@@ -353,12 +357,14 @@ export function trainingSummary(r: Race, o: Opts = {}): TrainingSummary {
     twsMax: tws.length ? Math.round(Math.max(...tws)) : null,
     avgPct: pctOf(pctPoints(r, spans)),
     pausedSec: Math.round(pausedMs(r, end) / 1000),
-    indicative: !pts.some((p) => p.src === 'instruments') || man.some((m) => m.indicative),
+    // A manual wind (P-053) makes the targets indicative even with the instruments' speed.
+    indicative: !pts.some((p) => p.src === 'instruments') || man.some((m) => m.indicative) || !!windManual,
     laps: lapStats(r, { now: o.now }),
     pctTable: pctByLegAndBand(r, o),
     manoeuvres: manoeuvreStats(r, o),
   };
   if (o.kindOnly === 'training' && afterTraining) s.trainingUntil = lastTraining.to;
+  if (windManual) s.windManual = windManual;
   return s;
 }
 
@@ -369,7 +375,9 @@ const bytes = (x: unknown) => new TextEncoder().encode(JSON.stringify(x)).length
  * of the oldest laps go first; still too big, the lap rows are cut from the oldest.
  */
 export function trainingShare(r: Race, o: Pick<Opts, 'now'> = {}): TrainingShare {
-  const summary = trainingSummary(r, { ...o, kindOnly: 'training' });
+  // The crew gets no manual wind (P-053): only «ενδεικτικό».
+  const summary = { ...trainingSummary(r, { ...o, kindOnly: 'training' }) };
+  delete summary.windManual;
   const note = r.crewNote?.trim().slice(0, 500);
   const share: TrainingShare = {
     kind: 'training',

@@ -21,13 +21,18 @@ const P = {
   training: 'M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM12 13V9M9 2h6',
   cruise: 'M12 3v13M12 4l7 11h-7M3 18h18l-2 3H5z',
   eye: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
+  // Manual wind (P-053), from design/manual-wind-2026-11. «warn» replaces the «⚠» emoji (red at night).
+  warn: 'M12 3L2 21h20zM12 10v5M12 18v.01',
+  pen: 'M4 20h4L19 9l-4-4L4 16zM14 6l4 4',
+  wind: 'M3 8h11a3 3 0 1 0-3-3M3 12h16a3 3 0 1 1-3 3M3 16h8',
+  close: 'M6 6l12 12M18 6L6 18',
 } as const;
 
 export type IconName = keyof typeof P;
 
-export function Icon({ name, size = 24 }: { name: IconName; size?: number }) {
+export function Icon({ name, size = 24, stroke = 2, className }: { name: IconName; size?: number | string; stroke?: number; className?: string }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d={P[name]} />
     </svg>
   );

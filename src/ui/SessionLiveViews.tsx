@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useApp } from './AppContext';
+import { fmtDir } from '../race/manualWind';
 import { useRace } from './RaceContext';
 import { useTraining } from './TrainingContext';
 import { SheetFrame, useNow } from './SessionBar';
@@ -12,7 +13,8 @@ import { useAlerts } from './RaceAlerts';
 import { useLiveNumbers, usePublishCruise, usePublishLive } from './useSession';
 import { PolarTrimPanel } from './PolarTrimPanel';
 import { requestKindSheet, hhmm } from './SessionBar';
-import { CRUISE_TEXT, LIVE_TEXT, TRAINING_TEXT as TT } from './sessionText';
+import { CRUISE_TEXT, LIVE_TEXT, TRAINING_TEXT as TT, WIND_TEXT as WT, liveWindTags } from './sessionText';
+import { CruiseNoWind, NoWindPrompt, WindReading, useSessionWindSheet } from './WindReading';
 import { legOf, nextChange, trainingHint, type WindAt } from '../race/liveNumbers';
 import { DestSheet, DestTile, depthNum, useCruiseDepth, useOnline } from './CruiseViews';
 import { gridField } from '../weather/field';
@@ -28,23 +30,27 @@ const Ind = ({ on }: { on: boolean }) => (on ? <span className="ind">{LIVE_TEXT.
  * undo and notes, the laps, the polar panel and «⇄ Άλλαξε σε Αναψυχή».
  */
 export function TrainingLive() {
-  const { activeBoat } = useApp();
+  const { activeBoat, settings } = useApp();
   const race = useRace();
   const al = useAlerts();
   const tr = useTraining();
   const nb = useLiveNumbers();
   usePublishLive(nb);
+  const wind = useSessionWindSheet(nb);
   const now = useNow(1000);
   const [noteFor, setNoteFor] = useState<number>();
   const s = race.session;
   if (!s) return null;
   const r = nb.result;
   const ind = !nb.withInst;
+  // P-053: no wind at all → «—» with «χρειάζεται άνεμο», never the 10 kt / 42° defaults.
+  const none = nb.windFrom === 'none';
   const goal = goalOf(s);
   const paused = race.paused;
   const pct = nb.bsp === undefined ? undefined : al.pct15;
-  const hint = trainingHint(pct, r ?? undefined);
-  const twa = r ? r.twa : undefined;
+  const hint = none ? WT.needsWind : trainingHint(pct, r ?? undefined);
+  const twa = r ? r.twa : nb.windFrom === 'manual' && nb.twa !== undefined ? Math.abs(nb.twa) : undefined;
+  const twaSub = none ? WT.needsWind : nb.windFrom === 'manual' && nb.twa === undefined ? WT.needsSog : undefined;
   const laps = liveLaps(s, now);
   const best = bestLap(laps.done);
   const lastDone = laps.done[laps.done.length - 1];
@@ -58,7 +64,9 @@ export function TrainingLive() {
         </span>
         <span className={`sub ${pct !== undefined && pct > 95 ? 'good' : 'fair'}`}>{hint}</span>
       </span>
-      {pct === undefined ? (
+      {none ? (
+        <span className="val wait">—</span>
+      ) : pct === undefined ? (
         <span className="val wait" aria-label={LIVE_TEXT.waitingSpeed}>
           …
         </span>
@@ -75,13 +83,14 @@ export function TrainingLive() {
       <span>
         <span className="lab">{LIVE_TEXT.windAngle}</span>
         <span className="ab">
-          TWA{nb.windManual ? ` · ${LIVE_TEXT.manualWind}` : ''} <Ind on={ind} />
+          TWA{liveWindTags(nb.windFrom).twa} <Ind on={ind} />
         </span>
         {r?.targetTwa !== undefined && (
           <span className="sub">
             {LIVE_TEXT.target} {Math.round(r.targetTwa)}°
           </span>
         )}
+        {twaSub && <span className="sub">{twaSub}</span>}
       </span>
       <span className="val">{twa === undefined ? '—' : `${Math.round(twa)}°`}</span>
     </div>
@@ -120,9 +129,7 @@ export function TrainingLive() {
         <span className="ab">
           {TT.vmgAb} <Ind on={ind} />
         </span>
-        <span className="sub">
-          {LIVE_TEXT.target} {f1(r?.targetVmg)} kt · % {vmgPct ?? '—'}
-        </span>
+        <span className="sub">{none ? WT.needsWind : `${LIVE_TEXT.target} ${f1(r?.targetVmg)} kt · % ${vmgPct ?? '—'}`}</span>
       </span>
       <span className="val">
         {f1(r?.vmg)}
@@ -133,17 +140,23 @@ export function TrainingLive() {
 
   let tiles: React.ReactNode;
   if (goal === 'starts') tiles = [<StartTile key="start" />, pctTile(false), twaTile];
-  else if (goal === 'tacks' || goal === 'gybes') tiles = [<RecoveryTile key="rec" kind={goal === 'tacks' ? 'tack' : 'gybe'} now={now} />, pctTile(false), twaTile];
+  else if (goal === 'tacks' || goal === 'gybes') tiles = [<RecoveryTile key="rec" kind={goal === 'tacks' ? 'tack' : 'gybe'} now={now} noWind={none} />, pctTile(false), twaTile];
   else if (goal === 'downwind') tiles = [vmgTile, twaTile, pctTile(false)];
   else tiles = [pctTile(true), twaTile, speedTile];
 
   return (
     <div className="session-live">
-      {ind && <p className="msg warn">{LIVE_TEXT.noInstTraining}</p>}
+      {nb.windFrom === 'manual' ? (
+        <p className="msg info">{WT.manualStrip}</p>
+      ) : (
+        ind && !none && <p className="msg warn">{LIVE_TEXT.noInstTraining}</p>
+      )}
       {!activeBoat?.polar && <p className="msg warn">{LIVE_TEXT.noPolar}</p>}
-      {activeBoat?.polar && !r && <p className="msg warn">{LIVE_TEXT.noWind}</p>}
+      {activeBoat?.polar && !r && (nb.windFrom === 'instruments' || nb.windFrom === 'quick') && <p className="msg warn">{LIVE_TEXT.noWind}</p>}
+      {none && <NoWindPrompt onOpen={wind.openSheet} />}
       <section className="card race-screen">
         {tiles}
+        <WindReading w={wind.view} dir={settings} onOpen={wind.openSheet} />
         <div className="bl-mini train">
           {goal === 'downwind' ? (
             <div>
@@ -159,9 +172,9 @@ export function TrainingLive() {
             </div>
           )}
           <div>
-            <b>{f1(r?.tws)}</b>
+            <b data-testid="tws-mini">{f1(nb.tws ?? r?.tws)}</b>
             <span className="small muted">
-              TWS kt{nb.windManual ? ` ${LIVE_TEXT.manualShort}` : ''}
+              TWS kt{liveWindTags(nb.windFrom).tws}
             </span>
           </div>
           <div>
@@ -212,12 +225,13 @@ export function TrainingLive() {
         {LIVE_TEXT.toCruise}
       </button>
       {noteFor !== undefined && <LapNoteSheet n={noteFor} sec={laps.done.find((l) => l.n === noteFor)?.sec ?? 0} onClose={() => setNoteFor(undefined)} />}
+      {wind.sheet}
     </div>
   );
 }
 
 /** «Ανάκαμψη στο 90%» (AC 7): the last tack or gybe, with count, mean and best. */
-function RecoveryTile({ kind, now }: { kind: 'tack' | 'gybe'; now: number }) {
+function RecoveryTile({ kind, now, noWind }: { kind: 'tack' | 'gybe'; now: number; noWind?: boolean }) {
   const race = useRace();
   const al = useAlerts();
   const s = race.session!;
@@ -236,9 +250,7 @@ function RecoveryTile({ kind, now }: { kind: 'tack' | 'gybe'; now: number }) {
         <span className="ab">
           {TT.last(w)} <Ind on={ind} />
         </span>
-        <span className="sub">
-          {st.count} {many} · μέση {t(st.avgRecoverSec)} · καλύτερη {t(st.bestRecoverSec)}
-        </span>
+        <span className="sub">{noWind ? WT.needsWind : `${st.count} ${many} · μέση ${t(st.avgRecoverSec)} · καλύτερη ${t(st.bestRecoverSec)}`}</span>
       </span>
       {pending ? (
         <span className="val wait">…</span>
@@ -357,7 +369,9 @@ export function CruiseLive() {
   const depth = sounder ?? chart?.d?.depth;
   const shallowOn = settings.cruiseAlerts?.shallow !== false;
   // «Σύμβουλος» sees the cruise Live (SOG, COG, depth, destination and ETA).
-  usePublishCruise(useLiveNumbers(), { m: depth, from: sounder !== undefined ? 'sounder' : 'chart' });
+  const nb = useLiveNumbers();
+  usePublishCruise(nb, { m: depth, from: sounder !== undefined ? 'sounder' : 'chart' });
+  const wind = useSessionWindSheet(nb);
   return (
     <div className="session-live">
       <section className="card race-screen">
@@ -387,17 +401,20 @@ export function CruiseLive() {
           </span>
         </div>
       </section>
+      {nb.windFrom === 'none' ? <CruiseNoWind onOpen={wind.openSheet} /> : <WindReading w={wind.view} dir={settings} onOpen={wind.openSheet} cruise />}
       <CruiseWeather online={online} />
       <button type="button" className="btn big-btn wide swap-btn" onClick={requestKindSheet}>
         {LIVE_TEXT.toTraining}
       </button>
       {sheet && <DestSheet onClose={() => setSheet(false)} />}
+      {wind.sheet}
     </div>
   );
 }
 
 /** «Καιρός» of the cruise: wind, gusts and when it changes, from the forecast the app already has. */
 function CruiseWeather({ online }: { online: boolean }) {
+  const { settings } = useApp();
   const nav = useNav();
   const f = nav.forecast;
   const [flash, setFlash] = useState<string>();
@@ -425,7 +442,7 @@ function CruiseWeather({ online }: { online: boolean }) {
         <div className="bl-mini">
           <div>
             <b>
-              {Math.round(w.tws)} · {Math.round(w.twd)}°
+              {Math.round(w.tws)} · {fmtDir(w.twd, settings)}
             </b>
             <span className="small muted">άνεμος kt</span>
           </div>

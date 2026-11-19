@@ -86,13 +86,15 @@ test.describe('άδεια θέσης «denied»', () => {
 test.describe('χωρίς όργανα', () => {
   test.use({ scenario: { boats: [boatItem()] } });
 
-  test('προπόνηση μόνο με το GPS του κινητού: ξεκινά, λέει «Χωρίς όργανα» και γράφει ίχνος', async ({ app, context }) => {
+  test('προπόνηση μόνο με το GPS του κινητού: ξεκινά, λέει «Χωρίς άνεμο» και γράφει ίχνος', async ({ app, context }) => {
     await context.grantPermissions(['geolocation']);
     await app.open();
     await app.signIn();
     await expect(app.page.getByRole('combobox', { name: 'Ενεργό σκάφος' })).toHaveValue('e2e-astarti');
     await app.startTraining();
-    await expect(app.page.getByText(/^Χωρίς όργανα: ταχύτητα από GPS/)).toBeVisible();
+    // P-053 AC 47: no instruments and no wind typed → «Χωρίς άνεμο» and «Βάλε άνεμο», never the 10 kt / 42° defaults.
+    await expect(app.page.getByText('Χωρίς άνεμο:')).toBeVisible();
+    await expect(app.page.getByTestId('wind-prompt')).toBeVisible();
     await expect(app.page.getByTestId('inst-pill')).toHaveCount(0);
     // The boat moves north a little every 15″.
     for (let i = 1; i <= 8; i++) {
