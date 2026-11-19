@@ -1,6 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { deleteRace as dbDelete, listRaces, saveRace } from '../boat/store';
-import type { Race, RaceFix, SessionKind, TrackPoint } from '../race/types';
+import { deleteEvent as dbDeleteEvent, deleteRace as dbDelete, listEvents, listRaces, saveEvent as dbSaveEvent, saveRace } from '../boat/store';
+import type { Race, RaceEvent, RaceFix, SessionKind, TrackPoint } from '../race/types';
+import { MAX_ACCURACY_M, finishStep, type Pos } from '../race/finishLine';
+import { finishTones } from './sound';
 import { kindOf, recordFrom, shouldWritePoint, stallMinutes, trackEveryMs } from '../race/session';
 import { estimateRace, type EstimateRow, type Wind } from '../race/estimate';
 import { getLiveSnapshot, getSessionSnapshot } from '../ai/snapshot';
@@ -67,6 +69,10 @@ interface RaceState {
   /** Saving to the device failed (the session goes on in memory). */
   saveError?: string;
   retrySave: () => void;
+  /** Multi-race events of this account (P-040), on this device. */
+  events: RaceEvent[];
+  saveEvent: (e: RaceEvent) => Promise<void>;
+  removeEvent: (id: string) => Promise<void>;
 }
 
 const Ctx = createContext<RaceState | null>(null);
@@ -103,6 +109,26 @@ export function RaceProvider({ children }: { children: ReactNode }) {
       .then(setRaces)
       .finally(() => setLoaded(true));
   }, [account?.id]);
+
+  // Events (P-040): per account, like the races.
+  const [events, setEvents] = useState<RaceEvent[]>([]);
+  useEffect(() => {
+    listEvents(account?.id)
+      .then(setEvents)
+      .catch(() => setEvents([]));
+  }, [account?.id]);
+  const saveEvent = useCallback(
+    async (e0: RaceEvent) => {
+      const e = e0.owner || !account?.id ? e0 : { ...e0, owner: account.id };
+      setEvents((list) => [e, ...list.filter((x) => x.id !== e.id)]);
+      await dbSaveEvent(e);
+    },
+    [account?.id],
+  );
+  const removeEvent = useCallback(async (id: string) => {
+    await dbDeleteEvent(id);
+    setEvents((list) => list.filter((e) => e.id !== id));
+  }, []);
 
   // A running session always opens again (after a reload or when the app was closed).
   useEffect(() => {
@@ -301,6 +327,32 @@ export function RaceProvider({ children }: { children: ReactNode }) {
     return () => window.clearInterval(t);
   }, [recording, update]);
 
+  // Finish line (P-040 AC 17): on every new position, not on the 5″ track timer. The previous
+  // position is kept in memory; after a reload it is the last track point. One `put` only when
+  // the arming or a crossing changes.
+  const prevPos = useRef<{ id: string; p: Pos }>();
+  const alertsRef = useRef(settings.alerts);
+  alertsRef.current = settings.alerts;
+  const gpsFix = nav.gps.fix;
+  useEffect(() => {
+    const r = activeRef.current;
+    const f = gpsFix;
+    if (!r || r.status !== 'running' || kindOf(r) !== 'race' || !f) return;
+    if (Number.isFinite(f.accuracy) && f.accuracy > MAX_ACCURACY_M) return;
+    const now = Date.now();
+    // A device clock far off the fix time (or a replayed fix): use the time it came in.
+    const cur: Pos = { lat: f.lat, lon: f.lon, t: Math.abs(f.t - now) > 60_000 ? now : f.t };
+    const last = r.track[r.track.length - 1];
+    const prev = prevPos.current?.id === r.id ? prevPos.current.p : last ? { lat: last.lat, lon: last.lon, t: last.t } : undefined;
+    prevPos.current = { id: r.id, p: cur };
+    const step = finishStep(r, prev, cur, now);
+    if (step.patch) patchRace(r.id, step.patch).catch(() => undefined); // the strip offers «Ξανά»
+    if (step.crossed) {
+      const a = alertsRef.current;
+      finishTones({ sound: a.sound, vibrate: a.vibrate, volume: a.volume });
+    }
+  }, [gpsFix, patchRace]);
+
   // aisstream.io (over the internet) for entries with an MMSI, every 2 minutes.
   const mmsiKey = active?.entries.filter((e) => e.mmsi && !e.own).map((e) => e.mmsi).join(',') ?? '';
   useEffect(() => {
@@ -402,6 +454,9 @@ export function RaceProvider({ children }: { children: ReactNode }) {
           dirty.current = true;
           flushRef.current();
         },
+        events,
+        saveEvent,
+        removeEvent,
       }}
     >
       {children}

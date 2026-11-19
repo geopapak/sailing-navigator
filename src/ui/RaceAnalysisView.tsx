@@ -211,8 +211,11 @@ function OpponentResults({ race, a, onSave }: { race: Race; a: RaceAnalysis; onS
                     const results = { ...(race.results ?? {}) };
                     if (Number.isFinite(sec) && sec > 0) results[e.id] = sec;
                     else delete results[e.id];
+                    // Typed here, not from the committee's sheet: no longer «επίσημο» (P-040).
+                    const resultSrc = { ...(race.resultSrc ?? {}) };
+                    delete resultSrc[e.id];
                     setEdit(undefined);
-                    await onSave({ ...race, results });
+                    await onSave({ ...race, results, resultSrc });
                   }}
                 />
               ) : (

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { SheetMode } from './hooks';
 import { UPDATE_TEXT } from '../pwa/updateText';
 import { useUpdatePhase } from './AppUpdater';
@@ -9,7 +9,11 @@ import { Icon } from './Icons';
 import { THEME_INFO } from './Appearance';
 import { getLiveSail, setLiveSail } from './LiveView';
 import { selectableSails } from '../performance/sails';
-import { KIND_INFO, finishAt, finishNow, hasOwnBoat, kindOf, recordFrom, switchKind, trackEveryMs } from '../race/session';
+import { KIND_INFO, finishAt, finishCrossAt, finishNow, hasOwnBoat, kindOf, recordFrom, switchKind, trackEveryMs, withEstimates } from '../race/session';
+import { finishPending } from '../race/finishLine';
+import { EVENT_TEXT as ET, FINISH_TEXT as FT, mmss } from './eventText';
+import { useRaceEvent } from './eventHooks';
+import { flashSession } from './sessionFlash';
 import { forgottenPrompt, keepGoing, type ForgottenPrompt } from '../race/idle';
 import type { Race, SessionKind } from '../race/types';
 import type { Theme } from './settings';
@@ -45,6 +49,8 @@ export const dayStr = (t: number) => {
   return `${DAYS[d.getDay()]} ${d.getDate()}/${d.getMonth() + 1}`;
 };
 export const hhmm = (t: number) => new Date(t).toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit', hour12: false });
+/** «14:32:07» (P-040: the time of a finish). */
+export const hhmmss = (t: number) => new Date(t).toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
 
 export function useNow(ms = 1000) {
   const [now, setNow] = useState(Date.now());
@@ -72,6 +78,8 @@ export interface Ended {
   until: number;
   /** Ended at the last movement: a race got no result. */
   atLastMove?: boolean;
+  /** Ended on a crossing of the finish line (P-040 AC 20): its time, approximate or not. */
+  line?: { t: number; approx?: boolean };
 }
 
 export function SessionBar({ onEnded }: { onEnded: (e: Ended) => void }) {
@@ -81,10 +89,18 @@ export function SessionBar({ onEnded }: { onEnded: (e: Ended) => void }) {
   const [sheet, setSheet] = useState<Sheet>();
   const [flash, setFlash] = useState<string>();
   const [promptOff, setPromptOff] = useState(false);
+  // An unanswered crossing of the finish line outranks every other sheet (P-040 AC 19, Π15).
+  const pending = finishPending(r);
+  const pendingRef = useRef(pending);
+  pendingRef.current = pending;
+  useEffect(() => {
+    if (pending) setSheet(undefined);
+  }, [pending]);
+  const { event, n: raceNo } = useRaceEvent(r);
 
   useEffect(() => {
-    const on = () => setSheet('end');
-    const onKind = () => setSheet('kind');
+    const on = () => !pendingRef.current && setSheet('end');
+    const onKind = () => !pendingRef.current && setSheet('kind');
     const onFlash = (e: Event) => setFlash((e as CustomEvent<string>).detail);
     window.addEventListener(END_EVENT, on);
     window.addEventListener(KIND_EVENT, onKind);
@@ -113,14 +129,16 @@ export function SessionBar({ onEnded }: { onEnded: (e: Ended) => void }) {
   const paused = race.paused;
   const recording = now >= from && !paused;
   const dn = kind === 'cruise' ? destName(r) : undefined;
-  const what = kind === 'race' ? r.name || 'Αγώνας' : kind === 'training' ? goalSub(goalOf(r)) : dn ? CRUISE_TEXT.toward(dn) : CRUISE_TEXT.noDestSmall;
+  const what = kind === 'race' ? (event && raceNo ? ET.running(raceNo, r.name) : r.name || 'Αγώνας') : kind === 'training' ? goalSub(goalOf(r)) : dn ? CRUISE_TEXT.toward(dn) : CRUISE_TEXT.noDestSmall;
   const sub = now < from ? `καταγραφή από ${hhmm(from)}` : `${paused ? 'σε παύση' : 'σε εξέλιξη'} · ${what}`;
   // Training and cruise: the clock leaves the pauses out (P-039 AC 16).
   const time = before ? `−${hms(r.start - now)}` : hms(kind === 'race' ? now - r.start : activeMs(r, now));
 
-  const end = async (o: { at?: number } = {}) => {
+  const end = async (o: { at?: number; cross?: number } = {}) => {
     const t = Date.now();
-    let out = o.at !== undefined ? finishAt(r, o.at, t) : finishNow(r, t);
+    let out = o.cross !== undefined ? finishCrossAt(r, o.cross, t) : o.at !== undefined ? finishAt(r, o.at, t) : finishNow(r, t);
+    // The estimates of the opponents as the Live shows them now (P-040 AC 26).
+    out = withEstimates(out, race.rows);
     // A training shared with the crew: its summary goes only when the 10″ undo is over
     // (or with the next connection), so an undone «Τέλος» never reaches the crew.
     if (out.crewShared && out.crewId) {
@@ -134,7 +152,14 @@ export function SessionBar({ onEnded }: { onEnded: (e: Ended) => void }) {
       /* the strip offers «Ξανά» */
     }
     race.setFreshId(r.id);
-    onEnded({ id: r.id, before: r, until: t + ENDED_UNDO_MS, atLastMove: o.at !== undefined });
+    const fc = r.finishCross;
+    onEnded({
+      id: r.id,
+      before: r,
+      until: t + ENDED_UNDO_MS,
+      atLastMove: o.at !== undefined,
+      line: o.cross !== undefined ? { t: out.finish ?? o.cross, approx: fc?.approx } : undefined,
+    });
   };
 
   return (
@@ -144,7 +169,7 @@ export function SessionBar({ onEnded }: { onEnded: (e: Ended) => void }) {
         <button
           type="button"
           className="modeb"
-          onClick={() => setSheet('kind')}
+          onClick={() => !pending && setSheet('kind')}
           aria-label={`${info.name} ${sub}, ${time}. ${kind === 'race' ? 'Πληροφορίες τύπου' : 'Πάτα για αλλαγή τύπου'}`}
         >
           <b>
@@ -155,12 +180,14 @@ export function SessionBar({ onEnded }: { onEnded: (e: Ended) => void }) {
           <span className="t">{time}</span>
           <span className="s">{sub}</span>
         </button>
-        <button type="button" className="sb" aria-label="Γρήγορες ρυθμίσεις" onClick={() => setSheet('quick')}>
+        <button type="button" className="sb" aria-label="Γρήγορες ρυθμίσεις" aria-disabled={pending || undefined} onClick={() => !pending && setSheet('quick')}>
           <Icon name="gear" />
         </button>
-        <button type="button" className="sb end" data-testid="session-end" onClick={() => setSheet('end')}>
-          ■ Τέλος
-        </button>
+        {!pending && (
+          <button type="button" className="sb end" data-testid="session-end" onClick={() => setSheet('end')}>
+            ■ Τέλος
+          </button>
+        )}
       </div>
       <SessionStrip r={r} now={now} flash={flash} onFlash={setFlash} />
       <UpdateLine />
@@ -177,8 +204,12 @@ export function SessionBar({ onEnded }: { onEnded: (e: Ended) => void }) {
             </>
           ) : (
             <>
-              <h3>{kind === 'race' ? 'Τερματισμός αγώνα;' : kind === 'training' ? 'Τέλος προπόνησης;' : 'Τέλος αναψυχής;'}</h3>
-              <p className="small">Σταματά η καταγραφή και οι ειδοποιήσεις. Η οθόνη μπορεί πια να σβήσει. Θα έχεις 10″ για αναίρεση.</p>
+              <h3>
+                {kind === 'race' ? (event && raceNo ? ET.endTitle(raceNo) : 'Τερματισμός αγώνα;') : kind === 'training' ? 'Τέλος προπόνησης;' : 'Τέλος αναψυχής;'}
+              </h3>
+              <p className="small">
+                {kind === 'race' && event ? ET.endText : 'Σταματά η καταγραφή και οι ειδοποιήσεις. Η οθόνη μπορεί πια να σβήσει. Θα έχεις 10″ για αναίρεση.'}
+              </p>
             </>
           )}
           <button type="button" className="btn big-btn wide dangerfill" onClick={() => end()}>
@@ -189,11 +220,23 @@ export function SessionBar({ onEnded }: { onEnded: (e: Ended) => void }) {
           </button>
         </SheetFrame>
       )}
-      {!sheet && prompt && !promptOff && (
+      {pending && r.finishCross && (
+        <FinishSheet
+          cross={r.finishCross}
+          now={now}
+          onYes={() => end({ cross: r.finishCross!.t })}
+          onNo={() => {
+            race.patchRace(r.id, (x) => ({ finishCross: { ...(x.finishCross ?? r.finishCross!), answered: 'no', at: Date.now(), rearmed: false } })).catch(() => undefined);
+            flashSession(FT.goingOn);
+          }}
+        />
+      )}
+      {!sheet && !pending && prompt && !promptOff && (
         <ForgottenSheet
           r={r}
           p={prompt}
           now={now}
+          onLine={r.finishCross?.answered === 'no' ? () => end({ cross: r.finishCross!.t }) : undefined}
           onEnd={() => end({ at: prompt.lastMove })}
           onDismiss={() => setPromptOff(true)}
           onPause={
@@ -552,11 +595,14 @@ function ForgottenSheet({
   onKeep,
   onDismiss,
   onPause,
+  onLine,
 }: {
   r: Race;
   p: ForgottenPrompt;
   now: number;
   onEnd: () => void;
+  /** P-040 AC 24: a crossing of the line answered «Όχι» comes first. */
+  onLine?: () => void;
   onKeep: () => void;
   /** Training and cruise: «⏸ Παύση» instead of ending (P-039 AC 17). */
   onPause?: () => void;
@@ -586,7 +632,12 @@ function ForgottenSheet({
           </p>
         </>
       )}
-      <button type="button" className="btn primary big-btn wide" onClick={onEnd}>
+      {onLine && r.finishCross && (
+        <button type="button" className="btn primary big-btn wide" data-testid="forgotten-line" onClick={onLine}>
+          {FT.forgotten(hhmmss(r.finishCross.t))}
+        </button>
+      )}
+      <button type="button" className={`btn ${onLine ? '' : 'primary '}big-btn wide`} onClick={onEnd}>
         Τέλος στην τελευταία κίνηση ({yesterday ? `χθες ${at}` : at})
       </button>
       {p.kind === 'idle' && onPause && (
@@ -598,5 +649,57 @@ function ForgottenSheet({
         Όχι, συνεχίζω
       </button>
     </SheetFrame>
+  );
+}
+
+/**
+ * «Τερματίσατε στις …;» (P-040 AC 18, 23): an alert dialog over everything, closed only by its two
+ * answers (no ✕, no tap outside, no Escape). «πριν από m:ss» counts live.
+ */
+function FinishSheet({ cross, now, onYes, onNo }: { cross: NonNullable<Race['finishCross']>; now: number; onYes: () => void; onNo: () => void }) {
+  const titleId = useId();
+  const ref = useRef<HTMLDivElement>(null);
+  const yesRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    yesRef.current?.focus({ preventScroll: true });
+  }, []);
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') e.preventDefault();
+    if (e.key !== 'Tab' || !ref.current) return;
+    const f = [...ref.current.querySelectorAll<HTMLElement>('button')];
+    const [first, last] = [f[0], f[f.length - 1]];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
+  const approx = !!cross.approx;
+  return (
+    <div className="sheet-backdrop mode-center finish-backdrop">
+      <div
+        ref={ref}
+        className="sheet session-sheet finish-sheet"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        data-testid="finish-sheet"
+        onKeyDown={onKeyDown}
+      >
+        <p className="finish-tones" aria-hidden="true">
+          {FT.tones}
+        </p>
+        <h3 id={titleId}>{approx ? FT.approxTitle(hhmm(cross.t)) : FT.title(hhmmss(cross.t))}</h3>
+        <p className="small">{approx ? FT.approxBody(Math.max(1, Math.round((cross.gapSec ?? 60) / 60))) : FT.body(mmss((now - cross.t) / 1000))}</p>
+        <button ref={yesRef} type="button" className="btn primary big-btn wide" data-testid="finish-yes" onClick={onYes}>
+          {FT.yes}
+        </button>
+        <button type="button" className="btn big-btn wide" data-testid="finish-no" onClick={onNo}>
+          {FT.no}
+        </button>
+      </div>
+    </div>
   );
 }

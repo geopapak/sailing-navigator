@@ -1,0 +1,984 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" href="data:," />
+<title>Διοργάνωση: αποτελέσματα, κατάταξη, στήσιμο, προτεραιότητα φύλλων (P-040 · Φ5)</title>
+<style>
+  /* ---------- Canvas around the devices (not part of the design) ---------- */
+  body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:#dfe3e8; color:#111; }
+  .controls { position:sticky; top:0; z-index:50; background:#fff; border-bottom:1px solid #cfd4da; padding:8px 14px; display:flex; flex-wrap:wrap; gap:6px 14px; align-items:center; }
+  .controls .grp { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+  .controls label { font-size:.78rem; font-weight:700; color:#374151; }
+  .controls hr { flex-basis:100%; border:0; border-top:1px dashed #d1d5db; margin:2px 0; }
+  .pick { display:inline-flex; border:1px solid #9ca3af; border-radius:999px; overflow:hidden; flex-wrap:wrap; }
+  .pick button { border:0; background:#fff; padding:6px 10px; font:inherit; font-size:.8rem; font-weight:600; min-height:36px; cursor:pointer; }
+  .pick button + button { border-left:1px solid #d1d5db; }
+  .pick button.on { background:#0b2a4a; color:#fff; }
+  .fire { border:2px solid #b91c1c; background:#fee2e2; color:#7f1d1d; border-radius:999px; padding:6px 14px; font:inherit; font-size:.82rem; font-weight:800; min-height:36px; cursor:pointer; }
+  .page { display:flex; flex-wrap:wrap; gap:22px; padding:20px 14px 40px; justify-content:center; align-items:flex-start; }
+  .phones { display:flex; flex-wrap:wrap; gap:18px; justify-content:center; align-items:flex-start; }
+  .cap { text-align:center; font-size:.8rem; font-weight:700; color:#374151; margin:6px 0 0; }
+  .devwrap { width:calc(var(--fw) * var(--sc)); height:calc(var(--fh) * var(--sc)); }
+  .devwrap > .phone { transform:scale(var(--sc)); transform-origin:0 0; }
+  .notes { width:470px; max-width:100%; background:#fff; border-radius:16px; padding:16px 20px; line-height:1.5; font-size:.92rem; box-sizing:border-box; }
+  .notes h2 { margin:.1em 0 .4em; font-size:1.2rem; } .notes h3 { margin:1em 0 .3em; font-size:1rem; }
+  .notes ul, .notes ol { padding-left:1.2em; margin:.3em 0; }
+  .notes code { font-size:.85em; background:#f3f4f6; padding:0 3px; border-radius:4px; }
+  .notes table { border-collapse:collapse; width:100%; font-size:.82rem; margin:.4em 0; }
+  .notes td, .notes th { border:1px solid #d1d5db; padding:4px 6px; text-align:left; vertical-align:top; }
+  .tag { display:inline-block; font-size:.72rem; font-weight:800; padding:2px 7px; border-radius:6px; background:#dcfce7; color:#14532d; margin-right:4px; }
+  .tag.same { background:#e5e7eb; color:#374151; } .tag.ask { background:#fef3c7; color:#78350f; }
+
+  /* =====================================================================
+     DESIGN TOKENS: same as the approved design/refresh-2026-11 (P-049) and
+     design/manual-wind-2026-11 (P-053). No new colour tokens.
+     ===================================================================== */
+  .phone[data-theme='day'] {
+    --bg:#ffffff; --surface:#f2f4f7; --surface-2:#e4e8ee; --fg:#05080f; --muted:#475467; --line:#667085; --line-soft:#d0d5dd;
+    --accent:#0b2a4a; --accent-fg:#ffffff; --accent-cont:#dbe7f5; --on-accent-cont:#0b2a4a;
+    --good:#047857; --good-cont:#d1fae5; --fair:#b45309; --fair-cont:#fef3c7; --bad:#b91c1c; --bad-cont:#fee2e2;
+    --scrim:rgba(5,8,15,.40);
+    --shadow-1:0 1px 2px rgba(16,24,40,.10),0 1px 3px rgba(16,24,40,.10); --shadow-2:0 8px 24px rgba(16,24,40,.18);
+  }
+  .phone[data-theme='dark'] {
+    --bg:#0b1220; --surface:#152033; --surface-2:#1e2b42; --fg:#f8fafc; --muted:#a3b1c6; --line:#6b7c96; --line-soft:#2a3a55;
+    --accent:#7cb4ff; --accent-fg:#0b1220; --accent-cont:#1e3a5f; --on-accent-cont:#dbeafe;
+    --good:#34d399; --good-cont:#0f3b2e; --fair:#fbbf24; --fair-cont:#3d2e0a; --bad:#f87171; --bad-cont:#3f1616;
+    --scrim:rgba(0,0,0,.55);
+    --shadow-1:none; --shadow-2:0 8px 24px rgba(0,0,0,.5);
+  }
+  .phone[data-theme='night'] {
+    --bg:#000000; --surface:#120202; --surface-2:#1c0403; --fg:#ff3b30; --muted:#d8372c; --line:#b02a20; --line-soft:#4a0b07;
+    --accent:#ff3b30; --accent-fg:#000000; --accent-cont:#2a0503; --on-accent-cont:#ff3b30;
+    --good:#ff6b5e; --good-cont:#2a0503; --fair:#d1342a; --fair-cont:#2a0503; --bad:#ff3b30; --bad-cont:#2a0503;
+    --scrim:rgba(0,0,0,.72);
+    --shadow-1:none; --shadow-2:none;
+  }
+  .phone {
+    --font:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,'Noto Sans',sans-serif;
+    --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px;
+    --r-s:10px; --r-m:14px; --r-l:20px; --r-xl:28px; --r-pill:999px;
+    --hit:48px; --hit-main:56px;
+    --dur-1:120ms; --dur-2:220ms; --ease:cubic-bezier(.2,0,0,1);
+  }
+
+  /* ---------- Device frame ---------- */
+  .phone { box-sizing:content-box; width:var(--dw); height:var(--dh); border:10px solid #111; border-radius:34px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,.28); position:relative; display:flex; flex-direction:column; background:var(--bg); color:var(--fg); font-family:var(--font); font-size:17px; font-weight:500; line-height:1.35; container:dev / size; }
+  .phone.k-tablet { border-width:14px; border-radius:26px; }
+  .phone.k-laptop { border-width:12px 12px 26px; border-radius:12px 12px 4px 4px; }
+  .phone.sz-l { font-size:20px; } .phone.sz-xl { font-size:23px; }
+  .phone * { box-sizing:border-box; }
+  .phone button, .phone input, .phone select { font:inherit; color:inherit; }
+  .phone button { cursor:pointer; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
+  .phone :focus-visible { outline:3px solid var(--fg); outline-offset:2px; }
+  .phone h2:focus, .phone h3:focus { outline:none; }
+  .num { font-variant-numeric:tabular-nums; letter-spacing:-.01em; }
+  .muted { color:var(--muted); }
+  .cap2 { font-size:.8em; font-weight:600; color:var(--muted); }
+  .sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+  .new { outline:2px dashed #c026d3; outline-offset:2px; }
+  .hide-new .new { outline:0; }
+
+  /* ---------- App shell ---------- */
+  .app { flex:1; min-height:0; display:grid; grid-template-areas:"bar" "strip" "main" "nav"; grid-template-columns:minmax(0,1fr); grid-template-rows:auto auto minmax(0,1fr) auto; }
+  .app > header { grid-area:bar; } .strips { grid-area:strip; } .scr { grid-area:main; } .nav { grid-area:nav; }
+  .scr { overflow-y:auto; overflow-x:hidden; padding:var(--s3) var(--s4) var(--s5); position:relative; container:main / inline-size; }
+  .top { display:flex; align-items:center; gap:var(--s2); padding:var(--s2) var(--s3); min-height:64px; background:var(--bg); border-bottom:1px solid var(--line-soft); }
+  .top .ttl { flex:1; min-width:0; font-weight:800; font-size:1.1em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .iconbtn { min-width:var(--hit); min-height:var(--hit); border-radius:var(--r-pill); border:0; background:none; display:inline-flex; align-items:center; justify-content:center; font-weight:900; font-size:1.3em; }
+  .strip { display:flex; gap:var(--s2); align-items:flex-start; padding:8px var(--s4); min-height:44px; font-size:.84em; font-weight:700; background:var(--surface); border-bottom:1px solid var(--line-soft); }
+  .strip .d { width:10px; height:10px; border-radius:5px; background:var(--line); flex-shrink:0; margin-top:.35em; }
+
+  .b { min-height:var(--hit); padding:0 16px; border-radius:var(--r-m); border:2px solid transparent; font-weight:800; display:inline-flex; align-items:center; justify-content:center; gap:8px; text-align:center; line-height:1.15; transition:transform var(--dur-1) var(--ease); }
+  .b:active { transform:scale(.98); filter:brightness(.92); }
+  .b.main { min-height:var(--hit-main); font-size:1.05em; }
+  .b.wide { width:100%; }
+  .b.fill { background:var(--accent); color:var(--accent-fg); }
+  .b.tonal { background:var(--accent-cont); color:var(--on-accent-cont); }
+  .b.out { background:var(--bg); border-color:var(--line); color:var(--fg); }
+  .b.danger { background:var(--bg); border-color:var(--bad); color:var(--bad); }
+  .b.dangerfill { background:var(--bad); color:var(--bg); border-color:var(--bad); }
+  .b:disabled { opacity:.45; cursor:default; transform:none; filter:none; }
+  .phone[data-theme='night'] .b.fill, .phone[data-theme='night'] .b.dangerfill { background:#000; color:var(--fg); border-color:var(--fg); box-shadow:inset 0 0 0 1px var(--fg); }
+  .phone[data-theme='night'] .b.tonal { border-color:var(--line); }
+  .brow { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:var(--s2); }
+  .brow .b { padding:0 8px; }
+  .stack { display:grid; gap:var(--s3); max-width:60em; margin:0 auto; }
+  .stack > * { min-width:0; }
+
+  .nav { display:grid; grid-template-columns:repeat(var(--n,4),minmax(0,1fr)); background:var(--surface); border-top:1px solid var(--line-soft); padding:6px 4px 14px; }
+  .nav button { background:none; border:0; min-height:60px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; font-size:.74em; font-weight:700; color:var(--muted); min-width:0; }
+  .nav button .pill { width:60px; max-width:100%; height:32px; border-radius:16px; display:flex; align-items:center; justify-content:center; font-size:1.2em; }
+  .nav button.on { color:var(--fg); font-weight:800; }
+  .nav button.on .pill { background:var(--accent-cont); color:var(--on-accent-cont); }
+  .phone[data-theme='night'] .nav button.on .pill { background:#000; border:2px solid var(--fg); color:var(--fg); }
+  .nav button span.l { max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+  .c { background:var(--surface); border-radius:var(--r-l); padding:var(--s3) var(--s4); border:1px solid var(--line-soft); min-width:0; }
+  .c h2 { margin:0 0 4px; font-size:1.2em; font-weight:900; overflow-wrap:anywhere; }
+  .c h3 { margin:0 0 4px; font-size:1em; font-weight:900; overflow-wrap:anywhere; }
+  .c p { margin:0; }
+  .c .meta { font-size:.84em; font-weight:700; color:var(--muted); }
+  .badge { display:inline-flex; align-items:center; min-height:28px; padding:2px 10px; border-radius:var(--r-pill); border:2px solid var(--line); font-weight:800; font-size:.8em; vertical-align:middle; }
+  .badge.solid { background:var(--fg); color:var(--bg); border-color:var(--fg); }
+  .info { display:flex; gap:10px; align-items:flex-start; background:var(--bg); border-radius:var(--r-m); padding:10px 12px; font-size:.86em; font-weight:700; border:2px solid var(--line-soft); }
+  .info.warn { background:var(--fair-cont); border-color:var(--fair); }
+  .phone[data-theme='night'] .info.warn { background:#000; border:2px dashed var(--fg); }
+  .info .ix { font-weight:900; flex-shrink:0; }
+  .foot-note { font-size:.8em; font-weight:600; color:var(--muted); margin-top:8px !important; }
+
+  /* ---------- Standing table (data-testid="event-standing") ---------- */
+  .tw { position:relative; margin:8px calc(-1 * var(--s4)) 0; overflow-x:auto; overflow-y:hidden; overscroll-behavior-x:contain; -webkit-overflow-scrolling:touch; border-top:1px solid var(--line-soft); border-bottom:1px solid var(--line-soft); }
+  .tw:focus-visible { outline-offset:-3px; }
+  table.stt { border-collapse:separate; border-spacing:0; min-width:100%; font-variant-numeric:tabular-nums; font-size:.92em; }
+  .stt th, .stt td { padding:9px 6px; text-align:center; white-space:nowrap; border-bottom:1px solid var(--line-soft); background:var(--surface); min-width:2.9em; }
+  .stt tr:last-child td { border-bottom:0; }
+  .stt tr.hd th { font-size:.8em; font-weight:800; color:var(--muted); }
+  .stt th.c1 { font-weight:700; }
+  .stt .c0 { position:sticky; left:0; z-index:2; width:2.4em; min-width:2.4em; max-width:2.4em; text-align:right; padding:9px 4px 9px 0; }
+  .stt .c1 { position:sticky; left:2.4em; z-index:2; text-align:left; white-space:normal; min-width:6.6em; max-width:7.6em; overflow-wrap:normal; hyphens:none; line-height:1.15; padding-left:8px; border-right:2px solid var(--line-soft); }
+  .stt .cz { position:sticky; right:0; z-index:2; border-left:2px solid var(--line-soft); font-weight:900; min-width:3.2em; }
+  .stt.time td:not(.c0):not(.c1) { min-width:4.9em; }
+  .stt.time .cz { min-width:5.2em; }
+  .stt tr.me td { font-weight:900; background:var(--surface-2); }
+  .stt tr.me .c1 { box-shadow:inset 5px 0 0 var(--fg); padding-left:12px; }
+  .stt .dr { font-weight:500; color:var(--muted); }
+  .stt tr.me .dr { font-weight:600; }
+  .stt .k { font-size:.78em; font-weight:800; margin-left:3px; letter-spacing:.02em; }
+  .stt .eq { font-weight:900; }
+  .stt .cz .k { display:block; margin:0; }
+  .tw.more::after { content:''; position:sticky; } /* reserved */
+  .swipe { display:none; font-size:.8em; font-weight:800; color:var(--muted); margin-top:6px; }
+  .tw-ov + .swipe { display:block; }
+
+  /* Race card (one per race) */
+  .rc-h { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:start; }
+  .rc-toggle { width:100%; min-height:56px; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:center; text-align:left; background:none; border:0; padding:0; }
+  .rc-toggle .chev { font-weight:900; font-size:1.2em; min-width:32px; text-align:center; }
+  .mini-t { width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; font-size:.92em; margin:8px 0 10px; }
+  .mini-t th, .mini-t td { padding:6px 4px; border-bottom:1px solid var(--line-soft); text-align:left; }
+  .mini-t th { font-size:.8em; color:var(--muted); font-weight:800; }
+  .mini-t td:first-child, .mini-t th:first-child { width:2.6em; text-align:right; padding-right:10px; }
+  .mini-t td:last-child, .mini-t th:last-child { text-align:right; white-space:nowrap; }
+  .mini-t tr.me td { font-weight:900; }
+  .mini-t tr.me td:nth-child(2)::before { content:'▸ '; }
+  .mini-t .k { font-size:.78em; font-weight:800; margin-left:3px; }
+
+  /* ---------- Results editor (data-testid="results-editor") ---------- */
+  .er { display:grid; grid-template-columns:auto minmax(0,1fr) auto auto; align-items:center; gap:10px; width:100%; min-height:68px; padding:8px 8px 8px 10px; border:2px solid var(--line-soft); border-radius:var(--r-m); background:var(--surface); text-align:left; }
+  .er:active { filter:brightness(.95); }
+  .er.me { border:3px solid var(--fg); }
+  .er .pos { min-width:2.5em; height:2.5em; border-radius:var(--r-s); border:2px solid var(--line); display:flex; align-items:center; justify-content:center; font-weight:900; font-variant-numeric:tabular-nums; }
+  .er .nm { min-width:0; }
+  .er .nm b { display:block; font-weight:900; overflow-wrap:normal; line-height:1.15; }
+  .er .nm .cap2 { display:block; }
+  .er.est { border-style:dashed; border-color:var(--line); }
+  .er .v { text-align:right; font-weight:900; font-size:1.2em; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .er .v .cap2 { display:block; font-size:.66em; white-space:nowrap; }
+  .er .v.est { font-style:italic; }
+  .er-list .er.est .nm .cap2 { color:var(--fg); font-weight:800; }
+  .er .go { font-weight:900; font-size:1.3em; color:var(--muted); }
+  .er-list { display:grid; gap:8px; }
+
+  /* ---------- Sheets ---------- */
+  .scrim { position:absolute; inset:0; background:var(--scrim); z-index:20; display:flex; align-items:flex-end; justify-content:center; animation:fade var(--dur-2) var(--ease); }
+  .sheet { width:100%; max-height:88%; overflow-y:auto; overflow-x:hidden; background:var(--bg); border-radius:var(--r-xl) var(--r-xl) 0 0; padding:0 var(--s4); box-shadow:var(--shadow-2); animation:up var(--dur-2) var(--ease); container:sheet / inline-size; }
+  .phone[data-theme='night'] .sheet { border:2px solid var(--line); border-bottom:0; }
+  .sheet .hdl { display:flex; justify-content:center; align-items:center; height:22px; }
+  .sheet .hdl i { width:40px; height:5px; border-radius:3px; background:var(--line); }
+  .sheet .sh { display:flex; align-items:center; gap:8px; padding-bottom:4px; }
+  .sheet .sh h3 { flex:1; min-width:0; margin:0; font-size:1.15em; font-weight:900; overflow-wrap:anywhere; }
+  .sheet .sh .b { flex-shrink:0; padding:0 12px; }
+  .sheet p { margin:0 0 10px; }
+  .sheet .foot { position:sticky; bottom:0; background:var(--bg); padding:var(--s3) 0 var(--s4); margin-top:var(--s3); border-top:1px solid var(--line-soft); display:grid; gap:8px; }
+  @keyframes up { from { transform:translateY(40px); opacity:.4; } to { transform:none; opacity:1; } }
+  @keyframes fade { from { opacity:0; } }
+
+  /* The «Τερματίσατε;» dialog: always above everything, never closes on a tap outside. */
+  .scrim.top { z-index:40; }
+  .sheet.finish h3 { font-size:1.5em; font-weight:900; margin:4px 0 8px; }
+  .sheet.finish { border-top:4px solid var(--fg); }
+  .ring { display:inline-flex; align-items:center; gap:6px; font-weight:900; font-size:.85em; padding:4px 10px; border:2px solid var(--fg); border-radius:var(--r-pill); margin-top:10px; }
+
+  /* Time entry: one big readout, own keypad (no phone keyboard over the list) */
+  .seg { display:grid; grid-auto-flow:column; grid-auto-columns:minmax(0,1fr); background:var(--surface-2); border-radius:var(--r-m); padding:4px; gap:4px; }
+  .seg button { min-height:var(--hit); border:0; border-radius:11px; background:none; font-weight:800; color:var(--muted); padding:4px 6px; line-height:1.1; }
+  .seg button.on { background:var(--bg); color:var(--fg); box-shadow:var(--shadow-1); }
+  .seg button span { display:block; font-size:.74em; font-weight:700; }
+  .phone[data-theme='dark'] .seg button.on { background:var(--accent-cont); color:var(--on-accent-cont); }
+  .phone[data-theme='night'] .seg button.on { background:#000; border:2px solid var(--fg); color:var(--fg); }
+  .readout { margin:6px 0 4px; border:2px solid var(--fg); border-radius:var(--r-m); padding:6px 8px 4px; text-align:center; }
+  .readout .rv { font-size:2.6em; font-weight:900; font-variant-numeric:tabular-nums; letter-spacing:.02em; line-height:1.05; }
+  .readout .rv i { font-style:normal; color:var(--muted); }
+  .readout .rl { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); font-size:.76em; font-weight:800; color:var(--muted); }
+  .calc { font-size:.9em; font-weight:800; min-height:2.6em; margin:6px 0 8px; }
+  .calc.err { color:var(--bad); }
+  .calc.err::before { content:'⚠ '; }
+  .kp { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+  .kp button { min-height:58px; border-radius:var(--r-m); border:2px solid var(--line); background:var(--surface); font-weight:900; font-size:1.45em; font-variant-numeric:tabular-nums; }
+  .kp button.fn { font-size:.95em; }
+  .kp button:active { background:var(--accent); color:var(--accent-fg); }
+  .codes { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:12px; }
+  .codes button { min-height:62px; border-radius:var(--r-m); border:2px solid var(--line); background:var(--surface); text-align:left; padding:6px 12px; line-height:1.15; }
+  .codes button b { display:block; font-size:1.2em; font-weight:900; letter-spacing:.03em; }
+  .codes button span { font-size:.8em; font-weight:700; color:var(--muted); }
+  .codes button.on { border:3px solid var(--fg); background:var(--accent-cont); }
+  .codes button.on b::after { content:'  ✓'; }
+  .phone[data-theme='night'] .codes button.on { background:#000; }
+  .linkb { min-height:var(--hit); background:none; border:0; font-weight:800; text-decoration:underline; padding:0 4px; color:var(--fg); }
+
+  /* ---------- Setup (same blocks as today's RaceSetup: card form-grid, «Συμμετοχές») ---------- */
+  .fg { display:grid; gap:12px; }
+  .f { display:grid; gap:4px; font-weight:800; font-size:.9em; }
+  .f input, .f select, .fake { min-height:var(--hit); border:2px solid var(--line); border-radius:var(--r-m); background:var(--bg); padding:0 12px; font-size:17px; font-weight:600; width:100%; min-width:0; }
+  .phone.sz-l .f input, .phone.sz-l .fake { font-size:20px; } .phone.sz-xl .f input, .phone.sz-xl .fake { font-size:23px; }
+  .f .hint { font-weight:600; font-size:.9em; color:var(--muted); }
+  .fake { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .flab { font-weight:800; font-size:.9em; }
+  .opt { display:grid; grid-template-columns:auto minmax(0,1fr); gap:10px; align-items:center; width:100%; min-height:56px; border:2px solid var(--line-soft); border-radius:var(--r-m); background:var(--bg); padding:8px 12px; text-align:left; font-weight:800; }
+  .opt .dot { width:22px; height:22px; border-radius:11px; border:2px solid var(--line); display:flex; align-items:center; justify-content:center; }
+  .opt.on { border:3px solid var(--fg); }
+  .opt.on .dot::after { content:''; width:10px; height:10px; border-radius:5px; background:var(--fg); }
+  .opt span.s { display:block; font-size:.8em; font-weight:700; color:var(--muted); }
+  .opts { display:grid; gap:8px; }
+  .inset { border-left:4px solid var(--line); padding:4px 0 4px 12px; display:grid; gap:12px; }
+  .stp { display:grid; grid-template-columns:56px minmax(0,1fr) 56px; gap:8px; align-items:stretch; }
+  .stp button { min-height:56px; border-radius:var(--r-m); border:2px solid var(--line); background:var(--surface); font-weight:900; font-size:1.3em; }
+  .stp .sv { display:flex; flex-direction:column; align-items:center; justify-content:center; border:2px solid var(--line-soft); border-radius:var(--r-m); background:var(--bg); padding:2px 6px; text-align:center; min-width:0; }
+  .stp .sv b { font-size:1.4em; font-weight:900; line-height:1.1; }
+  .stp .sv span { font-size:.76em; font-weight:700; color:var(--muted); }
+  .entries { list-style:none; margin:8px 0 0; padding:0; display:grid; gap:6px; }
+  .entries li { display:flex; justify-content:space-between; gap:8px; padding:8px 0; border-bottom:1px solid var(--line-soft); font-size:.92em; }
+  .entries li b { overflow-wrap:anywhere; }
+  .sticky-actions { position:sticky; bottom:-24px; background:var(--bg); padding:12px 0 16px; display:grid; gap:8px; margin-top:4px; }
+  .errs { color:var(--bad); font-weight:800; font-size:.88em; margin:0; padding-left:1.2em; }
+  .compare { display:flex; gap:6px; align-items:center; font-size:.8em; font-weight:800; color:var(--muted); }
+
+  /* ---------- Live (session) ---------- */
+  .sbar { display:flex; align-items:center; gap:var(--s2); padding:var(--s2) var(--s3); background:var(--accent); color:var(--accent-fg); min-height:72px; }
+  .phone[data-theme='night'] .sbar { background:#000; color:var(--fg); border-bottom:2px solid var(--line); }
+  .sbar .mode2 { flex:1; min-width:0; line-height:1.15; }
+  .sbar .mode2 b { display:flex; align-items:center; gap:6px; font-size:.82em; font-weight:800; letter-spacing:.04em; }
+  .sbar .mode2 .clk { display:block; font-size:1.4em; font-weight:900; }
+  .sbar .mode2 .s { display:block; font-size:.74em; font-weight:700; opacity:.92; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .rec { flex-shrink:0; width:12px; height:12px; border-radius:6px; background:#ef4444; box-shadow:0 0 0 2px currentColor; animation:pulse 1.6s infinite; }
+  .phone[data-theme='night'] .rec { background:var(--fg); box-shadow:none; }
+  @keyframes pulse { 50% { opacity:.35; } }
+  .sb { min-width:52px; min-height:52px; border-radius:var(--r-m); border:2px solid currentColor; background:none; color:inherit; font-weight:900; padding:0 10px; display:inline-flex; align-items:center; justify-content:center; gap:4px; white-space:nowrap; }
+  .live { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:var(--s2); max-width:72em; margin:0 auto; }
+  .live > * { min-width:0; margin:0; }
+  .s-full { grid-column:1 / -1; }
+  .t { background:var(--surface); border-radius:var(--r-l); padding:10px 14px; border:1px solid var(--line-soft); min-width:0; }
+  .t .lab { font-weight:800; font-size:.86em; }
+  .t .val { font-weight:900; line-height:1; white-space:nowrap; font-size:2.4em; margin-top:4px; font-variant-numeric:tabular-nums; }
+  .t .val small { font-size:.42em; font-weight:800; margin-left:2px; }
+  .t .sub { font-size:.82em; font-weight:700; color:var(--muted); margin-top:4px; }
+  .t.hero { border:2px solid var(--line); } .t.hero .val { font-size:3.6em; }
+  .evline { display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; font-weight:800; font-size:.9em; padding:8px 12px; border:2px solid var(--line-soft); border-radius:var(--r-m); }
+  .wind { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:2px 10px; width:100%; min-height:64px; padding:8px 8px 8px 14px; text-align:left; background:var(--surface); border:2px solid var(--line); border-radius:var(--r-l); }
+  .wind .wv { font-weight:900; font-size:1.4em; }
+  .wind .go2 { min-width:56px; min-height:56px; border-radius:var(--r-m); background:var(--accent-cont); color:var(--on-accent-cont); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:.8em; }
+  .phone[data-theme='night'] .wind .go2 { background:#000; border:2px solid var(--fg); color:var(--fg); }
+
+  /* Snackbar */
+  .snack { position:absolute; left:var(--s3); right:var(--s3); bottom:96px; z-index:45; background:var(--fg); color:var(--bg); border-radius:var(--r-m); padding:4px 4px 4px 16px; display:flex; align-items:center; gap:8px; font-weight:700; font-size:.9em; min-height:56px; box-shadow:var(--shadow-2); animation:up var(--dur-2) var(--ease); }
+  .snack.top { top:76px; bottom:auto; }
+  .snack span { flex:1; min-width:0; }
+  .snack button { background:none; border:0; color:inherit; font-weight:900; text-decoration:underline; min-height:var(--hit); min-width:var(--hit); padding:0 12px; }
+  .phone[data-theme='night'] .snack { background:#000; color:var(--fg); border:2px solid var(--fg); }
+
+  /* =====================================================================
+     RESPONSIVE (container queries in em, follow the text size)
+     ===================================================================== */
+  @container main (min-width: 44em) {
+    .evgrid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .evgrid > .full { grid-column:1 / -1; }
+    .fgw { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .fgw > .full { grid-column:1 / -1; }
+    .tw { margin-left:0; margin-right:0; border:1px solid var(--line-soft); border-radius:var(--r-m); }
+  }
+  @container sheet (max-width: 19em) {
+    .seg button span { display:none; }
+    .readout .rv { font-size:2.2em; }
+    .codes button { padding:6px 8px; }
+  }
+  /* Tablet portrait and wider: bottom sheet centred and capped; the finish dialog is centred. */
+  @container dev (min-width: 34em) {
+    .sheet { max-width:34em; }
+    .scrim.top { align-items:center; }
+    .scrim.top .sheet { border-radius:var(--r-xl); max-width:30em; }
+    .snack { left:50%; right:auto; transform:translateX(-50%); width:min(30em, calc(100% - 24px)); }
+  }
+  /* Rail layout (tablet landscape, laptop): left rail, sheets of the editor / wind become a right side panel (non-modal). */
+  @container dev (min-width: 60em) {
+    .app { grid-template-areas:"rail bar bar" "rail strip side" "rail main side"; grid-template-columns:auto minmax(0,1fr) auto; grid-template-rows:auto auto minmax(0,1fr); }
+    .nav { grid-area:rail; display:flex; flex-direction:column; justify-content:flex-start; gap:4px; width:max(84px, 5.2em); padding:10px 4px; border-top:0; border-right:1px solid var(--line-soft); }
+    .nav button { min-height:68px; }
+    .app > .scrim:not(.top) { grid-area:side; position:static; inset:auto; background:none; display:block; animation:none; z-index:1; min-height:0; overflow:hidden; }
+    .app > .scrim:not(.top) > .sheet { width:min(26em, 44cqw); max-width:none; height:100%; max-height:none; border-radius:0; border-left:1px solid var(--line-soft); box-shadow:none; animation:none; }
+    .app > .scrim:not(.top) > .sheet .hdl { display:none; }
+    .app > .scrim:not(.top) > .sheet .sh { padding-top:var(--s3); }
+    .phone[data-theme='night'] .app > .scrim:not(.top) > .sheet { border:0; border-left:2px solid var(--line); }
+    .snack { left:calc(max(84px, 5.2em) + 16px); transform:none; bottom:16px; }
+    .live { grid-template-columns:repeat(4,minmax(0,1fr)); }
+  }
+  /* Short portrait phones (320×640): keypad a bit lower, readout smaller, so the whole sheet fits. */
+  @container dev (max-height: 44em) and (orientation: portrait) {
+    .kp button { min-height:50px; font-size:1.3em; }
+    .readout { margin-top:8px; } .readout .rv { font-size:2.1em; }
+    .calc { min-height:0; margin:4px 0 6px; }
+    .sheet { max-height:94%; }
+    .sbar { min-height:60px; }
+    .t.hero .val { font-size:2.8em; } .t .val { font-size:2em; }
+    .sticky-actions { position:static; } /* 640 px high: the form needs the room; the buttons sit at the end */
+  }
+  .still .phone *, .still .phone *::after { animation:none !important; transition:none !important; }
+  @media (prefers-reduced-motion: reduce) { .phone *, .phone *::after { animation:none !important; transition:none !important; } }
+</style>
+</head>
+<body>
+<div class="controls" id="controls"></div>
+<div class="page">
+  <div class="phones" id="phones"></div>
+  <aside class="notes" id="notes"></aside>
+</div>
+
+<script>
+/* ===================== Fictional data (Saronic winter series) ===================== */
+const BOATS = [
+  { id: 'avra', name: 'Αύρα', sail: 'GRE 1517', tcc: 1.000, own: true },
+  { id: 'mel',  name: 'Μελτέμι', sail: 'GRE 2290', tcc: 1.021 },
+  { id: 'gal',  name: 'Γαλήνη', sail: 'GRE 1873', tcc: 0.985 },
+  { id: 'zef',  name: 'Ζέφυρος', sail: 'GRE 1988', tcc: 0.995 },
+  { id: 'alk',  name: 'Αλκυόνη', sail: 'GRE 2051', tcc: 1.010 },
+  { id: 'tha',  name: 'Θαλασσινή', sail: 'GRE 1604', tcc: 0.970 },
+  { id: 'pos',  name: 'Ποσειδώνας ΙΙ', sail: 'GRE 2412', tcc: 1.035 },
+];
+const EVENT_NAME = 'Χειμερινό Σαρωνικού 2025–26';
+// Corrected seconds per boat (or a code). src: line = own finish line, manual = «Τερμάτισε τώρα», official, est = estimate.
+const T = [
+  { name: 'Φάληρο – Φλέβες – Φάληρο', when: 'Κυρ 9/11', start: '11:00:00',
+    r: { avra: 9670, mel: 9605, gal: 9702, zef: 9655, alk: 9790, tha: 9840, pos: 'DNF' } },
+  { name: 'Πειραιάς – Αίγινα', when: 'Σάβ 22/11', start: '10:30:00',
+    r: { avra: 11080, mel: 11150, gal: 11020, zef: 11020, alk: 11300, tha: 'OCS', pos: 11420 } },
+  { name: 'Αίγινα – Πειραιάς', when: 'Κυρ 23/11', start: '11:45:00',
+    r: { avra: 10500, mel: 10560, gal: 10610, zef: 10700, alk: 10480, tha: 10800, pos: 'DNC' } },
+  { name: 'Σαλαμίνα · όρτσα–πρίμα', when: 'Κυρ 7/12', start: '11:00:00',
+    r: { avra: 7460, mel: 7450, gal: 7520, zef: 7480, alk: 'RET', tha: 7600, pos: 7700 } },
+  { name: 'Φάληρο – Πάτροκλος – Φάληρο', when: 'Κυρ 21/12', start: '11:00:00', est: ['mel', 'alk'],
+    r: { avra: 9300, mel: 9360, gal: 9250, zef: 9410, alk: 9500, tha: 'DNE', pos: 9550 } },
+  { name: 'Πειραιάς – Ψυττάλεια – Πειραιάς', when: 'Κυρ 11/1', start: '11:00:00',
+    r: { avra: 8200, mel: 8230, gal: 8300, zef: 8350, alk: 8400, tha: 'DNS', pos: 8500 } },
+  { name: 'Φάληρο – Αίγινα', when: 'Σάβ 24/1', start: '10:00:00',
+    r: { avra: 9100, mel: 9000, gal: 9050, zef: 9120, alk: 9300, tha: 9400, pos: 'RET' } },
+  { name: 'Αίγινα – Φάληρο', when: 'Κυρ 25/1', start: '11:00:00', r: null },
+];
+const CODES = [
+  ['DNC', 'δεν ήρθε στην εκκίνηση'], ['DNS', 'δεν ξεκίνησε'], ['OCS', 'πρόωρη εκκίνηση'], ['DNF', 'δεν τερμάτισε'],
+  ['RET', 'αποσύρθηκε'], ['DSQ', 'αποκλεισμός'], ['DNE', 'αποκλεισμός που δεν απορρίπτεται'],
+];
+const DEV = {
+  p375: { w: 375, h: 812, k: 'phone', label: 'Κινητό 375' },
+  p320: { w: 320, h: 640, k: 'phone', label: 'Κινητό 320' },
+  tp:   { w: 768, h: 1024, k: 'tablet', label: 'Tablet 768×1024' },
+  tl:   { w: 1024, h: 768, k: 'tablet', label: 'Tablet 1024×768' },
+  l1280:{ w: 1280, h: 800, k: 'laptop', label: 'Laptop 1280×800' },
+};
+const SCREENS = {
+  event: 'Διοργάνωση', results: 'Αποτελέσματα', setupNew: 'Στήσιμο · νέα διοργάνωση', setupNext: 'Στήσιμο · επόμενη ιστιοδρομία', live: 'Live · «Τερματίσατε;»',
+};
+
+/* ===================== Helpers ===================== */
+const pad = (n) => String(n).padStart(2, '0');
+const toSec = (s) => { const [h, m, x] = s.split(':').map(Number); return h * 3600 + m * 60 + x; };
+const hms = (s) => `${Math.floor(s / 3600)}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}`;
+const clk = (s) => { s = ((s % 86400) + 86400) % 86400; return `${pad(Math.floor(s / 3600))}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}`; };
+const ord = (n) => n + 'η', ordG = (n) => n + 'ης';
+const boat = (id) => BOATS.find((b) => b.id === id);
+const corr = (b, e) => Math.round(e * b.tcc);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function elapsedFor(b, c) { // integer elapsed whose corrected rounds exactly to c (demo data only)
+  const e0 = Math.round(c / b.tcc);
+  for (let d = 0; d < 4; d++) for (const e of [e0 + d, e0 - d]) if (corr(b, e) === c) return e;
+  return e0;
+}
+function buildRaces(n) {
+  return T.slice(0, n + (n < 8 ? 1 : 0)).map((t, i) => {
+    const done = i < n && !!t.r;
+    const res = {};
+    if (done) for (const b of BOATS) {
+      const v = t.r[b.id];
+      if (typeof v === 'string') res[b.id] = { code: v, src: 'official' };
+      else res[b.id] = { e: elapsedFor(b, v), src: b.own ? 'line' : (t.est || []).includes(b.id) ? 'est' : i === n - 1 ? 'manual' : 'official' };
+    }
+    return { id: 'r' + i, name: t.name, when: t.when, start: toSec(t.start), done, res };
+  });
+}
+
+/* ===================== State ===================== */
+const S = {
+  screen: 'event', theme: 'day', dev: 'p375', size: 'm', fit: 'fit', marks: true,
+  n: 5, scoring: 'points', disc: 1, K: 4, classN: 0, closed: false,
+  races: buildRaces(5), resIdx: 4, open: {},
+  sheet: null, draft: null, snack: null, undo: null, lastMode: 'clock',
+  setup: { ev: 'new', evName: '', scoring: 'points', disc: 1, K: 4, classN: 0, name: '', today: false, tried: false },
+  live: { before: 'none', approx: false, finish: false, done: false, held: null, firedAt: 0 },
+};
+let snackT;
+const N = () => S.classN || BOATS.length; // boats in the class
+const codePts = () => N() + 1;
+const doneRaces = () => S.races.filter((r) => r.done);
+
+/* ===================== Scoring (demo of the owner decisions 2026-11-19) ===================== */
+function raceScore(r) {
+  const fin = BOATS.filter((b) => r.res[b.id] && !r.res[b.id].code).map((b) => ({ id: b.id, c: corr(b, r.res[b.id].e) }));
+  fin.sort((a, b) => a.c - b.c);
+  const out = {};
+  fin.forEach((x) => {
+    const pos = fin.findIndex((y) => y.c === x.c) + 1;
+    out[x.id] = { pos, pts: pos, tie: fin.filter((y) => y.c === x.c).length > 1, c: x.c, est: r.res[x.id].src === 'est' };
+  });
+  for (const b of BOATS) if (!out[b.id]) out[b.id] = { code: r.res[b.id]?.code || 'DNC', pts: codePts() };
+  return out;
+}
+function standing() {
+  const done = doneRaces();
+  const D = done.length >= S.K ? S.disc : 0;
+  const scores = done.map(raceScore);
+  const rows = BOATS.map((b) => {
+    const per = scores.map((s) => ({ ...s[b.id], drop: false }));
+    const val = (q) => (S.scoring === 'points' ? q.pts : q.code ? Infinity : q.c);
+    per.map((q, i) => ({ q, i })).filter((x) => x.q.code !== 'DNE')
+      .sort((a, c) => val(c.q) - val(a.q) || c.i - a.i).slice(0, D).forEach((x) => (x.q.drop = true));
+    const kept = per.filter((q) => !q.drop);
+    return { b, per, sum: kept.reduce((a, q) => a + q.pts, 0), codes: kept.filter((q) => q.code).length,
+      sumT: kept.filter((q) => !q.code).reduce((a, q) => a + q.c, 0), keptPts: kept.map((q) => q.pts).sort((a, c) => a - c), est: per.some((q) => q.est) };
+  });
+  const a81 = (x, y) => { for (let i = 0; i < x.keptPts.length; i++) if (x.keptPts[i] !== y.keptPts[i]) return x.keptPts[i] - y.keptPts[i]; return 0; };
+  const a82 = (x, y) => { for (let i = x.per.length - 1; i >= 0; i--) if (x.per[i].pts !== y.per[i].pts) return x.per[i].pts - y.per[i].pts; return 0; };
+  const notes = [];
+  rows.sort((x, y) => {
+    if (S.scoring === 'time') return x.codes - y.codes || x.sumT - y.sumT || a82(x, y);
+    return x.sum - y.sum || a81(x, y) || a82(x, y);
+  });
+  if (S.scoring === 'points') for (let i = 1; i < rows.length; i++) {
+    const x = rows[i - 1], y = rows[i];
+    if (x.sum === y.sum) notes.push(`«${x.b.name}» και «${y.b.name}»: ${x.sum} βαθμοί. Πάνω: «${x.b.name}» (${a81(x, y) ? 'A8.1: καλύτερες θέσεις' : 'A8.2: τελευταία ιστιοδρομία'}).`);
+  }
+  return { done, D, rows, notes, me: rows.findIndex((x) => x.b.own) + 1, est: rows.some((x) => x.est) };
+}
+
+/* ===================== Shared pieces ===================== */
+const NAV_OUT = [['home', '⌂', 'Αρχική'], ['history', '☰', 'Ιστορικό'], ['boats', '⛵', 'Σκάφη'], ['settings', '⚙', 'Ρυθμίσεις']];
+const NAV_IN = [['live', '◉', 'Live'], ['map', '◇', 'Χάρτης'], ['chat', '✎', 'Σύμβουλος']];
+function nav(items, on) {
+  return `<nav class="nav" style="--n:${items.length}" aria-label="Καρτέλες">${items.map(([id, ic, l]) => `<button class="${id === on ? 'on' : ''}" aria-current="${id === on ? 'page' : 'false'}" data-act="toast" data-v="Καρτέλα «${l}» (όπως σήμερα)"><span class="pill" aria-hidden="true">${ic}</span><span class="l">${l}</span></button>`).join('')}</nav>`;
+}
+function topBar(title, back) {
+  return `<header class="top">${back ? `<button class="iconbtn" aria-label="Πίσω: ${back}" data-act="go" data-v="event">‹</button>` : ''}<div class="ttl">${title}</div></header>`;
+}
+function cellPts(q, time) {
+  const v = time ? (q.code ? `${q.code}` : `${hms(q.c)}`) : (q.code ? `${q.pts}<span class="k">${q.code}</span>` : `${q.tie ? '<span class="eq">=</span>' : ''}${q.pts}`);
+  const e = q.est ? '<span class="k">εκτ.</span>' : '';
+  const lab = time ? '' : '';
+  return q.drop ? `<span class="dr">(${v}${e})</span>` : `${v}${e}${lab}`;
+}
+function srLabel(q, n) {
+  return `${ord(n)}: ${q.code ? `${q.code}, ${q.pts} βαθμοί` : `${q.tie ? 'ισοβαθμία, ' : ''}${q.pts}${S.scoring === 'time' ? ', ' + hms(q.c) : ''}`}${q.est ? ', εκτίμηση' : ''}${q.drop ? ', απορρίπτεται' : ''}`;
+}
+
+/* ---------- Standing table ---------- */
+function standingCard() {
+  const st = standing();
+  if (!st.done.length) return `<section class="c full" data-testid="event-standing"><h3>Συνολική κατάταξη</h3><p class="meta">Καμία ιστιοδρομία ακόμα.</p></section>`;
+  const time = S.scoring === 'time';
+  const head = `<tr class="hd"><th class="c0" scope="col">#</th><th class="c1" scope="col">Σκάφος</th>${st.done.map((r, i) => `<th scope="col">${ord(i + 1)}</th>`).join('')}<th class="cz" scope="col">Σύνολο</th></tr>`;
+  const body = st.rows.map((x, i) => {
+    const tot = time ? (x.codes ? `—<span class="k">${x.codes === 1 ? '1 κωδικός' : x.codes + ' κωδικοί'}</span>` : hms(x.sumT)) : x.sum;
+    return `<tr class="${x.b.own ? 'me' : ''}"><td class="c0">${i + 1}</td><th class="c1" scope="row">${esc(x.b.name)}${x.b.own ? '<span class="sr"> (το σκάφος μας)</span>' : ''}</th>${x.per.map((q, n) => `<td aria-label="${srLabel(q, n + 1)}">${cellPts(q, time)}</td>`).join('')}<td class="cz">${tot}</td></tr>`;
+  }).join('');
+  const dtxt = S.disc === 0 ? 'χωρίς απορρίψεις' : `απορρίπτ${S.disc === 1 ? 'εται το χειρότερο αποτέλεσμα' : 'ονται τα 2 χειρότερα αποτελέσματα'} (σε παρένθεση) από ${S.K} ολοκληρωμένες ιστιοδρομίες`;
+  const waitD = S.disc && st.done.length < S.K ? `<p class="foot-note">Οι απορρίψεις ισχύουν από ${S.K} ολοκληρωμένες ιστιοδρομίες. Τώρα: ${st.done.length}.</p>` : '';
+  const foot = `${time ? 'Άθροισμα διορθωμένων χρόνων · σκάφη με κωδικό μετά από όσα έχουν όλους τους χρόνους' : 'Άθροισμα θέσεων'} · ${dtxt} · κωδικοί = ${codePts()} βαθμοί (${N()} σκάφη στην κλάση + 1) · ο DNE δεν απορρίπτεται · ισοβαθμία: Παράρτημα A8.`;
+  const estR = S.races.findIndex((r) => r.done && Object.values(r.res).some((v) => v.src === 'est'));
+  return `<section class="c full new" data-testid="event-standing">
+    <h3>${S.closed ? 'Τελική κατάταξη' : 'Συνολική κατάταξη'}</h3>
+    <p class="meta">Συνολικά: <b>${st.me}ος</b> από ${BOATS.length}${st.est ? ' (εκτ.)' : ''}</p>
+    <div class="tw" role="region" aria-label="Συνολική κατάταξη. Σύρε οριζόντια για όλες τις ιστιοδρομίες." tabindex="0"><table class="stt ${time ? 'time' : ''}">${head}${body}</table></div>
+    <p class="swipe" aria-hidden="true">⇆ Σύρε τον πίνακα για όλες τις ιστιοδρομίες</p>
+    <p class="foot-note">${foot}</p>${waitD}
+    ${st.notes.map((t) => `<p class="foot-note">${t}</p>`).join('')}
+    ${st.est ? `<div class="info warn" style="margin-top:10px"><span class="ix" aria-hidden="true">⚠</span><div>Περιέχει εκτιμήσεις (εκτ.). Βάλε τα επίσημα από τα «Αποτελέσματα».<br><button class="b out" style="margin-top:8px" data-act="results" data-v="${estR}">Αποτελέσματα ${ordG(estR + 1)}</button></div></div>` : ''}
+  </section>`;
+}
+
+/* ---------- Event screen ---------- */
+function eventScreen() {
+  const done = doneRaces();
+  const lastDone = S.races.map((r) => r.done).lastIndexOf(true);
+  const planned = S.races.find((r) => !r.done);
+  const head = `<section class="c full">
+    <h2>${EVENT_NAME} ${S.closed ? '<span class="badge solid">Έκλεισε</span>' : ''}</h2>
+    <p class="meta">${S.races.length} ιστιοδρομίες · ${S.scoring === 'points' ? 'άθροισμα θέσεων' : 'άθροισμα χρόνων'} · απορρίψεις ${S.disc}${S.disc ? ` από ${S.K}` : ''}${S.classN ? ` · ${S.classN} σκάφη στην κλάση` : ''}${S.closed ? '' : ' · σε εξέλιξη'}</p>
+    ${S.closed ? `<div class="info new" style="margin-top:10px"><span class="ix" aria-hidden="true">■</span><div>Η διοργάνωση έκλεισε · μένει στο Ιστορικό. Δεν προτείνεται πια στην αρχική. Τα αποτελέσματα διορθώνονται ακόμα, π.χ. μετά από ένσταση.</div></div>` : ''}
+  </section>`;
+  const cards = S.races.map((r, i) => {
+    const n = i + 1;
+    if (!r.done) {
+      return `<section class="c">
+        <h3>${ord(n)} ιστιοδρομία · ${esc(r.name)}</h3><p class="meta">${r.when}</p>
+        ${S.closed ? `<p style="margin-top:8px">Δεν έγινε · δεν μετρά.</p>` : `<p style="margin:8px 0">Δεν έγινε ακόμα.</p><button class="b fill main wide" data-act="go" data-v="setupNext">Στήσε την ${ord(n)} ιστιοδρομία</button>`}
+      </section>`;
+    }
+    const sc = raceScore(r);
+    const est = Object.values(r.res).filter((v) => v.src === 'est').length;
+    const open = S.open[r.id] ?? i === lastDone;
+    const me = sc.avra;
+    const sum = me.code ? me.code : `${me.tie ? '=' : ''}${me.pos}η · ${hms(me.c)}`;
+    const rows = BOATS.map((b) => ({ b, q: sc[b.id] })).sort((a, c) => a.q.pts - c.q.pts || (a.q.c || 0) - (c.q.c || 0));
+    return `<section class="c">
+      <button class="rc-toggle" data-act="tog" data-v="${r.id}" aria-expanded="${open}">
+        <span><h3 style="margin:0">${ord(n)} ιστιοδρομία · ${esc(r.name)}</h3><span class="meta">${r.when} · Αύρα ${sum}${est ? ` · ${est} εκτ.` : ''}</span></span><span class="chev" aria-hidden="true">${open ? '▴' : '▾'}</span></button>
+      ${open ? `<table class="mini-t"><tr><th>#</th><th>σκάφος</th><th>διορθωμένος</th></tr>${rows.map(({ b, q }) => `<tr class="${b.own ? 'me' : ''}"><td>${q.code ? '—' : (q.tie ? '=' : '') + q.pos}</td><td>${esc(b.name)}</td><td>${q.code ? `${q.code}<span class="k">${q.pts} β.</span>` : hms(q.c) + (q.est ? '<span class="k">εκτ.</span>' : '')}</td></tr>`).join('')}</table>
+      <div class="brow new"><button class="b tonal main" data-act="results" data-v="${i}">Αποτελέσματα</button><button class="b out main" data-act="toast" data-v="Ανοίγει η ανάλυση της ιστιοδρομίας (όπως σήμερα)">Ανάλυση</button></div>` : ''}
+    </section>`;
+  }).join('');
+  const close = S.closed
+    ? `<button class="b out main wide full new" data-act="reopen">Άνοιξε ξανά τη διοργάνωση</button>`
+    : `<button class="b out main wide full" data-act="sheet" data-v="close">Η διοργάνωση τελείωσε</button>`;
+  return `<div class="app">${topBar('Διοργάνωση', '')}<div class="strips"></div>
+    <main class="scr"><div class="stack evgrid">${head}${standingCard()}${cards}${close}</div></main>${S.sheet ? sheetHTML() : ''}${nav(NAV_OUT, 'history')}</div>`;
+}
+
+/* ---------- Results editor ---------- */
+const SRC = { line: 'από τη γραμμή', manual: 'χειροκίνητα', official: 'επίσημο', est: 'εκτίμηση' };
+function resultsScreen() {
+  const i = Math.min(S.resIdx, S.races.length - 1);
+  const r = S.races[i];
+  if (!r || !r.done) return eventScreen();
+  const sc = raceScore(r);
+  const st = standing();
+  const rows = BOATS.map((b) => {
+    const v = r.res[b.id], q = sc[b.id];
+    const pos = q.code ? '—' : (q.tie ? '=' : '') + q.pos;
+    const val = v.code ? `${v.code}<span class="cap2">${q.pts} βαθμοί</span>`
+      : `${hms(v.e)}<span class="cap2">${v.src === 'est' ? 'εκτ. · ' : ''}τερμ. ${clk(r.start + v.e)}</span>`;
+    const al = `${b.name}, ${b.sail}, θέση ${q.code ? 'καμία' : pos}, ${v.code ? v.code : (v.src === 'est' ? 'εκτίμηση ' : 'πραγματικός ') + hms(v.e)}. Άλλαξε.`;
+    return `<button class="er ${b.own ? 'me' : ''} ${v.src === 'est' ? 'est' : ''}" data-act="edit" data-v="${b.id}" aria-label="${al}">
+      <span class="pos" aria-hidden="true">${pos}</span>
+      <span class="nm"><b>${esc(b.name)}</b><span class="cap2">${b.own ? 'εμείς · ' : ''}${SRC[v.src]}</span></span>
+      <span class="v ${v.src === 'est' ? 'est' : ''}">${val}</span><span class="go" aria-hidden="true">›</span></button>`;
+  }).join('');
+  return `<div class="app">${topBar(`Αποτελέσματα · ${ord(i + 1)}`, 'Διοργάνωση')}<div class="strips"></div>
+    <main class="scr" data-testid="results-editor"><div class="stack" style="max-width:40em">
+      <section class="c"><h2>${ord(i + 1)} ιστιοδρομία · ${esc(r.name)}</h2>
+        <p class="meta">${r.when} · εκκίνηση ${clk(r.start)} · ORC Club · ToT Offshore</p>
+        <p class="meta" style="margin-top:6px">Γράψε τα επίσημα από τον πίνακα της επιτροπής. Η κατάταξη αλλάζει αμέσως. Συνολικά τώρα: <b>${st.me}ος</b>.</p></section>
+      <div class="er-list new">${rows}</div>
+      <p class="foot-note">Σκάφη στην κλάση: ${N()}${S.classN ? '' : ' (όσα είναι στις «Συμμετοχές»)'}. Κάθε κωδικός = ${codePts()} βαθμοί. Ίσος διορθωμένος = ίδια θέση με «=».</p>
+      <button class="b fill main wide" data-act="go" data-v="event">Έτοιμο</button>
+      <button class="b danger wide new" data-act="sheet" data-v="del">Διαγραφή ιστιοδρομίας</button>
+    </div></main>${S.sheet ? sheetHTML() : ''}${nav(NAV_OUT, 'history')}</div>`;
+}
+
+/* Time / code sheet for one boat */
+function draftCalc() {
+  const d = S.draft, r = S.races[S.resIdx], b = boat(d.boat);
+  if (d.mode === 'code') return d.code ? { ok: true, txt: `${d.code} = ${codePts()} βαθμοί${d.code === 'DNE' ? ' · δεν απορρίπτεται' : ''}` } : { ok: false, txt: 'Διάλεξε κωδικό.' };
+  const s = d.buf.padStart(6, '0');
+  const h = +s.slice(0, 2), m = +s.slice(2, 4), x = +s.slice(4, 6);
+  if (!d.buf.replace(/^0+/, '')) return { ok: false, txt: d.mode === 'clock' ? 'Γράψε την ώρα τερματισμού.' : 'Γράψε τον πραγματικό χρόνο.' };
+  if (m > 59 || x > 59) return { ok: false, err: true, txt: 'Λεπτά και δευτερόλεπτα έως 59.' };
+  let e, extra = '';
+  if (d.mode === 'clock') {
+    if (h > 23) return { ok: false, err: true, txt: 'Η ώρα είναι έως 23:59:59.' };
+    e = h * 3600 + m * 60 + x - r.start;
+    if (e <= 0) { e += 86400; extra = ' · την επόμενη μέρα'; }
+  } else e = h * 3600 + m * 60 + x;
+  const c = corr(b, e);
+  const tmp = { ...r, res: { ...r.res, [b.id]: { e, src: 'official' } } };
+  const q = raceScore(tmp)[b.id];
+  return { ok: true, e, txt: `${d.mode === 'clock' ? `Πραγματικός ${hms(e)}` : `Τερματισμός ${clk(r.start + e)}`}${extra} · διορθωμένος ${hms(c)} · ${q.tie ? '=' : ''}${q.pos}η θέση` };
+}
+function editSheet() {
+  const d = S.draft, b = boat(d.boat), r = S.races[S.resIdx];
+  const calc = draftCalc();
+  const s = d.buf.padStart(6, '0');
+  const shown = d.buf ? `${s.slice(0, 2)}:${s.slice(2, 4)}:${s.slice(4, 6)}` : '<i>––:––:––</i>';
+  const body = d.mode === 'code'
+    ? `<div class="codes" role="group" aria-label="Κωδικός αποτελέσματος">${CODES.map(([k, t]) => `<button class="${d.code === k ? 'on' : ''}" aria-pressed="${d.code === k}" data-act="code" data-v="${k}"><b>${k}</b><span>${t}</span></button>`).join('')}</div>`
+    : `<div class="readout" aria-live="polite"><div class="rv num" aria-label="${d.mode === 'clock' ? 'Ώρα τερματισμού' : 'Πραγματικός χρόνος'} ${shown.replace(/<[^>]+>/g, '')}">${shown}</div><div class="rl" aria-hidden="true"><span>${d.mode === 'clock' ? 'ΩΩ' : 'Ω'}</span><span>ΛΛ</span><span>ΔΔ</span></div></div>
+       <div class="kp" role="group" aria-label="Πληκτρολόγιο">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((k) => `<button data-act="key" data-v="${k}">${k}</button>`).join('')}<button class="fn" data-act="key" data-v="C" aria-label="Καθάρισμα">Καθάρισε</button><button data-act="key" data-v="0">0</button><button class="fn" data-act="key" data-v="B" aria-label="Σβήσε το τελευταίο ψηφίο">⌫</button></div>`;
+  const has = r.res[b.id];
+  return `<div class="sh"><h3 id="eh">${esc(b.name)} <span class="cap2">${b.sail}</span></h3><button class="b out" data-act="close">Καμία αλλαγή</button></div>
+    <div class="seg" role="tablist" aria-label="Τι γράφεις">
+      <button role="tab" aria-selected="${d.mode === 'clock'}" class="${d.mode === 'clock' ? 'on' : ''}" data-act="mode" data-v="clock">Ώρα<span>τερματισμού</span></button>
+      <button role="tab" aria-selected="${d.mode === 'elapsed'}" class="${d.mode === 'elapsed' ? 'on' : ''}" data-act="mode" data-v="elapsed">Χρόνος<span>πραγματικός</span></button>
+      <button role="tab" aria-selected="${d.mode === 'code'}" class="${d.mode === 'code' ? 'on' : ''}" data-act="mode" data-v="code">Κωδικός<span>DNF, DNS…</span></button></div>
+    ${d.mode === 'code' ? '' : `<p class="flab" style="margin:12px 0 0">${d.mode === 'clock' ? 'Ώρα τερματισμού (ΩΩ:ΛΛ:ΔΔ), όπως στον πίνακα της επιτροπής' : 'Πραγματικός χρόνος (Ω:ΛΛ:ΔΔ)'}</p>`}
+    ${body}
+    <p class="calc ${calc.err ? 'err' : ''}" role="status">${calc.txt}</p>
+    <p class="cap2" style="margin:0">Εκκίνηση ${clk(r.start)}. ${d.mode === 'code' ? `Κάθε κωδικός = ${codePts()} βαθμοί (${N()} σκάφη + 1).` : 'Τα ψηφία μπαίνουν από δεξιά.'}</p>
+    ${has && has.src !== 'est' && !b.own ? `<button class="linkb" data-act="clear">Σβήσε το αποτέλεσμα (μένει εκτίμηση)</button>` : ''}
+    <div class="foot"><div class="brow"><button class="b out main" data-act="save" ${calc.ok ? '' : 'disabled'}>Αποθήκευση</button><button class="b fill main" data-act="savenext" ${calc.ok ? '' : 'disabled'}>Αποθήκευση · επόμενο ›</button></div></div>`;
+}
+
+/* ---------- Setup ---------- */
+function setupScreen(next) {
+  const u = S.setup, today = u.today && !next;
+  const nextN = S.races.findIndex((r) => !r.done) + 1 || S.races.length + 1;
+  const ev = next ? 'ex' : today ? 'no' : u.ev;
+  const inEv = ev !== 'no';
+  const lastName = doneRaces().length;
+  const errs = [];
+  if (u.tried && ev === 'new' && !u.evName.trim()) errs.push('Γράψε όνομα διοργάνωσης.');
+  const opt = (v, t, s, act = 'ev') => `<button class="opt ${ev === v ? 'on' : ''}" role="radio" aria-checked="${ev === v}" data-act="${act}" data-v="${v}"><span class="dot" aria-hidden="true"></span><span>${t}<span class="s">${s}</span></span></button>`;
+  const evBlock = today ? '' : `<div class="full new" style="display:grid;gap:8px">
+      <span class="flab" id="evl">Μέρος διοργάνωσης</span>
+      <div class="opts" role="radiogroup" aria-labelledby="evl">
+        ${next ? opt('ex', EVENT_NAME, `${ord(nextN)} ιστιοδρομία`) : `${opt('no', 'Όχι', 'ένας αγώνας')}${opt('new', 'Νέα διοργάνωση', 'π.χ. διήμερος ή χειμερινό πρωτάθλημα')}${opt('ex', EVENT_NAME, `${ord(nextN)} ιστιοδρομία`)}`}
+      </div>
+      ${ev === 'new' ? `<div class="inset">
+        <label class="f">Όνομα διοργάνωσης<input data-in="evName" value="${esc(u.evName)}" placeholder="π.χ. Διήμερος Σαρωνικού" maxlength="50" ${u.tried && !u.evName.trim() ? 'aria-invalid="true"' : ''}></label>
+        <div style="display:grid;gap:6px"><span class="flab">Συνολική κατάταξη (όπως λένε οι οδηγίες πλου)</span>
+          <div class="seg" role="radiogroup" aria-label="Συνολική κατάταξη"><button role="radio" aria-checked="${u.scoring === 'points'}" class="${u.scoring === 'points' ? 'on' : ''}" data-act="sScoring" data-v="points">Άθροισμα θέσεων</button><button role="radio" aria-checked="${u.scoring === 'time'}" class="${u.scoring === 'time' ? 'on' : ''}" data-act="sScoring" data-v="time">Άθροισμα χρόνων<span>διορθωμένων</span></button></div></div>
+        <div style="display:grid;gap:6px"><span class="flab">Απορρίπτονται χειρότερα αποτελέσματα (όπως η οδηγία πλου)</span>
+          <div class="seg" role="radiogroup" aria-label="Απορρίψεις">${[0, 1, 2].map((d) => `<button role="radio" aria-checked="${u.disc === d}" class="${u.disc === d ? 'on' : ''}" data-act="sDisc" data-v="${d}">${d}</button>`).join('')}</div></div>
+        ${u.disc ? `<div style="display:grid;gap:6px"><span class="flab" id="kl">Ισχύουν από</span>
+          <div class="stp" role="group" aria-labelledby="kl"><button aria-label="Λιγότερες" data-act="sK" data-v="-1" ${u.K <= u.disc + 1 ? 'disabled' : ''}>−</button><div class="sv" aria-live="polite"><b class="num">${u.K}</b><span>ολοκληρωμένες ιστιοδρομίες</span></div><button aria-label="Περισσότερες" data-act="sK" data-v="1" ${u.K >= 12 ? 'disabled' : ''}>+</button></div>
+          <span class="cap2">Πριν από ${u.K} ιστιοδρομίες δεν απορρίπτεται τίποτα.</span></div>` : ''}
+        <div style="display:grid;gap:6px"><span class="flab" id="cl">Σκάφη στην κλάση <span class="muted">(προαιρετικό)</span></span>
+          <div class="stp" role="group" aria-labelledby="cl"><button aria-label="Λιγότερα" data-act="sN" data-v="-1" ${!u.classN ? 'disabled' : ''}>−</button><div class="sv" aria-live="polite"><b class="num">${u.classN || '—'}</b><span>${u.classN ? `κωδικοί = ${u.classN + 1} βαθμοί` : `όσα στις «Συμμετοχές» (${BOATS.length})`}</span></div><button aria-label="Περισσότερα" data-act="sN" data-v="1">+</button></div>
+          <span class="cap2">Αν η κλάση έχει σκάφη που δεν έβαλες στις «Συμμετοχές». Μετράει για τους βαθμούς των DNF, DNS κ.λπ.</span></div>
+      </div>` : ''}
+      ${ev === 'ex' ? `<div class="info"><span class="ix" aria-hidden="true">i</span><div>${S.scoring === 'points' ? 'Άθροισμα θέσεων' : 'Άθροισμα χρόνων'} · απορρίψεις ${S.disc}${S.disc ? ` από ${S.K}` : ''} · ${N()} σκάφη στην κλάση. Ίδια σε όλες τις ιστιοδρομίες.</div></div>` : ''}
+    </div>`;
+  const title = today ? 'Νέος αγώνας' : ev === 'ex' ? 'Νέα ιστιοδρομία' : 'Νέος αγώνας';
+  const nameLab = inEv && !today ? 'Όνομα ιστιοδρομίας' : 'Όνομα';
+  const namePh = inEv && !today ? (ev === 'ex' ? esc(S.races[nextN - 1]?.name || 'π.χ. Αίγινα – Φάληρο') : 'π.χ. Πειραιάς – Αίγινα') : 'π.χ. Χειμερινό · 3η';
+  return `<div class="app">${topBar('Αγώνας', '')}<div class="strips"></div>
+    <main class="scr"><div class="stack" style="max-width:44em">
+      ${S.setup.today && !next ? '<p class="compare">Σημερινό στήσιμο (0.17.0), για σύγκριση</p>' : ''}
+      <section class="c"><div class="fg fgw">
+        <h2 class="full" style="margin:0">${title}</h2>
+        ${evBlock}
+        <label class="f">${nameLab}<input data-in="name" value="${esc(u.name)}" placeholder="${namePh}" maxlength="80"></label>
+        <div class="f">Διαδρομή<div class="fake"><span>${ev === 'ex' ? 'Αίγινα – Φάληρο · 16,9 NM' : 'Πειραιάς – Αίγινα · 17,4 NM'}</span><span aria-hidden="true">›</span></div></div>
+        <label class="f">Εκκίνηση<input value="${ev === 'ex' ? 'Κυρ 25/1 · 11:00' : 'Σάβ 22/11 · 10:30'}" readonly></label>
+        <label class="f">Βαθμολογία<input value="ORC Club · Offshore — ToT" readonly>${ev === 'ex' ? `<span class="hint">Ίδια με την ${ord(lastName)}.</span>` : ''}</label>
+      </div></section>
+      <section class="c"><h3>Συμμετοχές</h3>
+        ${ev === 'ex' ? `<p class="meta new">Ίδιοι ${BOATS.length} με την ${ord(lastName)} ιστιοδρομία. Άλλαξε όπως πάντα· νέο σκάφος παίρνει DNC στις προηγούμενες.</p>` : ev === 'new' ? `<p class="meta new">Μία κλάση ανά διοργάνωση: βάλε μόνο τα σκάφη της κλάσης σου.</p>` : ''}
+        <ul class="entries">${BOATS.slice(0, ev === 'ex' ? 7 : 4).map((b) => `<li><b>${esc(b.name)}</b><span class="muted">${b.sail}</span></li>`).join('')}${ev === 'ex' ? '' : '<li class="muted">… όπως σήμερα: λίστα συμμετοχών (PDF), ORC, «Πρόσθεσε από τα σκάφη μου»</li>'}</ul>
+      </section>
+      <p class="cap2">Η καταγραφή ξεκινά μόνη της 10′ πριν από την εκκίνηση και η έξοδος κλείνει στον τερματισμό.${inEv && !today ? ' Κάθε ιστιοδρομία είναι δική της έξοδος: το βράδυ στο λιμάνι δεν καταγράφεται.' : ''} Ειδοποιήσεις: layline, στροφή ανέμου από 7°, σημαδούρα.</p>
+      ${errs.length ? `<ul class="errs" role="alert">${errs.map((e) => `<li>${e}</li>`).join('')}</ul>` : ''}
+      <div class="sticky-actions"><button class="b fill main wide" data-act="store">Αποθήκευση και έναρξη</button><button class="b out wide" data-act="store">Αποθήκευση για αργότερα</button></div>
+    </div></main>${nav(NAV_OUT, 'home')}</div>`;
+}
+
+/* ---------- Live with the finish crossing ---------- */
+const LIVE_START = toSec('11:00:00'), CROSS = toSec('14:32:07');
+function liveScreen() {
+  const L = S.live;
+  const nextN = S.races.findIndex((r) => !r.done) + 1 || S.races.length;
+  const name = S.races[nextN - 1]?.name || 'Αίγινα – Φάληρο';
+  if (L.done) {
+    return `<div class="app">${topBar('Η ιστιοδρομία τελείωσε', '')}<div class="strips"></div><main class="scr"><div class="stack">
+      <section class="c"><h2>Η ιστιοδρομία τελείωσε</h2><p class="meta">${ord(nextN)} ιστιοδρομία · ${esc(name)}</p>
+      <p style="margin-top:8px;font-weight:800">Τερματισμός ${L.approx ? clk(CROSS).slice(0, 5) + ' (περίπου)' : clk(CROSS)} · από το πέρασμα της γραμμής, για τον διορθωμένο χρόνο</p>
+      <p class="meta" style="margin-top:6px">Η σύνοψη συνεχίζει όπως στο εγκεκριμένο <code>session-home-2026-11</code>.</p></section>
+      <button class="b out main wide" data-act="liveReset">Ξανά από την αρχή</button></div></main>${nav(NAV_OUT, 'home')}</div>`;
+  }
+  const el = L.held === 'forgotten' || L.before === 'forgotten' ? '26:05:12' : hms(CROSS + 12 - LIVE_START);
+  const side = L.finish && L.held ? L.held : L.before;
+  const wide = DEV[S.dev].w >= 960;
+  // While «Τερματίσατε;» is up: bottom sheets / modal sheets are put on hold (not rendered);
+  // the non-modal side panel (wide screens) stays under the scrim.
+  let under = '';
+  const showUnder = !L.finish || (wide && side === 'wind');
+  if (showUnder && side === 'wind') under = sheetWrap(windSheet(), 'Άνεμος');
+  if (!L.finish && side === 'quick') under = sheetWrap(quickSheet(), 'Γρήγορες ρυθμίσεις');
+  if (!L.finish && side === 'forgotten') under = sheetWrap(forgotSheet(), 'Ξεχασμένη έξοδος', true, 'top');
+  return `<div class="app"><header class="sbar"><span class="rec" aria-hidden="true"></span><div class="mode2"><b>ΑΓΩΝΑΣ</b><span class="clk num">${el}</span><span class="s">σε εξέλιξη · ${ord(nextN)} ιστιοδρομία · ${esc(name)}</span></div>
+      <button class="sb" aria-label="Γρήγορες ρυθμίσεις" data-act="lopen" data-v="quick">⚙</button><button class="sb" data-act="toast" data-v="Φύλλο τέλους (εγκεκριμένο)">■ Τέλος</button></header>
+    <div class="strips"></div>
+    <main class="scr"><div class="live">
+      <div class="evline s-full"><span>${EVENT_NAME}</span><span>2ος συνολικά (εκτ.)</span></div>
+      <div class="t hero s-full"><div class="lab">Ταχύτητα · BSP</div><div class="val">6,4<small>kt</small></div><div class="sub">στόχος 6,6 kt</div></div>
+      <div class="t"><div class="lab">TWA · γωνία</div><div class="val">142°</div></div>
+      <div class="t"><div class="lab">Τερματισμός</div><div class="val">0,0<small>NM</small></div><div class="sub">γραμμή ±0,15 NM</div></div>
+      <button class="wind s-full" data-act="lopen" data-v="wind" aria-label="Άνεμος: 220°M, 12 kt, χειροκίνητα. Άλλαξε."><span><span class="cap2">Άνεμος · χειροκίνητα · πριν από 4′</span><span class="wv num" style="display:block">220°M · 12 kt</span></span><span class="go2" aria-hidden="true">✎</span></button>
+    </div></main>
+    ${under}${nav(NAV_IN, 'live')}</div>${L.finish ? finishDialog() : ''}`;
+}
+function sheetWrap(inner, label, modal = true, cls = '') {
+  return `<div class="scrim ${cls}" data-act="${modal && !cls ? 'scrimClose' : ''}"><div class="sheet" role="dialog" aria-modal="${DEV[S.dev].w >= 960 ? 'false' : 'true'}" aria-label="${label}"><div class="hdl" aria-hidden="true"><i></i></div>${inner}</div></div>`;
+}
+function windSheet() {
+  return `<div class="sh"><h3>Άνεμος</h3><button class="b out" data-act="lclose">Κλείσιμο</button></div>
+    <p class="cap2">Το φύλλο της P-053, όπως εγκρίθηκε. Εδώ μόνο για την προτεραιότητα.</p>
+    <div class="t" style="margin:8px 0"><div class="lab">TWD (°M)</div><div class="val num">${S.live.wdraft}°</div></div>
+    <div class="brow"><button class="b out main" data-act="wd" data-v="-5">−5</button><button class="b out main" data-act="wd" data-v="5">+5</button></div>
+    <div class="foot"><button class="b fill main wide" data-act="lclose">Έτοιμο</button></div>`;
+}
+function quickSheet() {
+  return `<div class="sh"><h3>Γρήγορες ρυθμίσεις</h3><button class="b out" data-act="lclose">Κλείσιμο</button></div><p class="cap2">⚙ όπως σήμερα (ειδοποιήσεις, ένταση, σίγαση).</p><div class="foot"><button class="b fill main wide" data-act="lclose">Έτοιμο</button></div>`;
+}
+function forgotSheet() {
+  return `<div class="sh"><h3>Ο αγώνας τρέχει 26 ώρες</h3></div>
+    <p>Η τελευταία κίνηση ήταν χθες στις 17:40. Μάλλον ξέχασες να τον κλείσεις. Η διάρκεια κόβεται στην τελευταία κίνηση.</p>
+    <div class="foot"><button class="b fill main wide" data-act="toast" data-v="Τέλος στην τελευταία κίνηση">Τέλος στην τελευταία κίνηση (χθες 17:40)</button><button class="b out main wide" data-act="lclose">Όχι, συνεχίζω</button></div>`;
+}
+function finishDialog() {
+  const L = S.live;
+  const ago = Math.max(0, Math.floor((Date.now() - L.firedAt) / 1000)) + (L.approx ? 190 : 12);
+  const t = L.approx ? `Τερματίσατε περίπου στις ${clk(CROSS).slice(0, 5)};` : `Τερματίσατε στις ${clk(CROSS)};`;
+  const p = L.approx
+    ? 'Η εφαρμογή ήταν στο παρασκήνιο και το ίχνος έχει κενό 3′ 10″. Η ώρα βγαίνει από το ίχνος, με ακρίβεια περίπου ±1′. Μετά βάλε την επίσημη στα «Αποτελέσματα».'
+    : 'Για τον διορθωμένο χρόνο κρατάμε την ώρα του περάσματος, όσο αργά κι αν πατήσεις.';
+  return `<div class="scrim top"><div class="sheet finish new" role="alertdialog" aria-modal="true" aria-labelledby="fh" aria-describedby="fd">
+    <div class="hdl" aria-hidden="true"><i></i></div><span class="ring" aria-hidden="true">♪ ♪ γραμμή τερματισμού</span>
+    <h3 id="fh" tabindex="-1">${t}</h3>
+    <p id="fd">Το σκάφος πέρασε τη γραμμή τερματισμού πριν από <b data-ago="${L.approx ? 190 : 12}" class="num">${Math.floor(ago / 60)}:${pad(ago % 60)}</b>. ${p}</p>
+    ${L.held && L.held !== 'none' ? `<p class="cap2">${{ wind: DEV[S.dev].w >= 960 ? 'Το πάνελ «Άνεμος» μένει δεξιά.' : 'Το φύλλο «Άνεμος» ξαναβγαίνει με το «Όχι», με ό,τι είχες γράψει.', quick: 'Οι γρήγορες ρυθμίσεις ξαναβγαίνουν με το «Όχι».', forgotten: 'Η ερώτηση για την ξεχασμένη έξοδο έρχεται μετά, αν πεις «Όχι».' }[L.held]}</p>` : ''}
+    <div class="foot"><div class="brow"><button class="b fill main" data-act="finYes">Ναι</button><button class="b out main" data-act="finNo">Όχι</button></div></div>
+  </div></div>`;
+}
+
+/* ---------- Event sheets (close / delete) ---------- */
+function sheetHTML() {
+  if (S.sheet === 'edit') return `<div class="scrim" data-act="scrimClose"><div class="sheet" role="dialog" aria-modal="${DEV[S.dev].w >= 960 ? 'false' : 'true'}" aria-labelledby="eh" data-testid="result-sheet"><div class="hdl" aria-hidden="true"><i></i></div>${editSheet()}</div></div>`;
+  if (S.sheet === 'del') {
+    const i = S.resIdx, r = S.races[i], n = i + 1, after = S.races.slice(i + 1).map((x, k) => `η ${ord(n + k + 1)} γίνεται ${ord(n + k)}`);
+    const only = doneRaces().length === 1 && S.races.length === 1;
+    return `<div class="scrim top" data-act="scrimClose"><div class="sheet" role="alertdialog" aria-modal="true" aria-labelledby="dh"><div class="hdl" aria-hidden="true"><i></i></div>
+      <div class="sh"><h3 id="dh">Διαγραφή ${ordG(n)} ιστιοδρομίας;</h3></div>
+      <p>«${esc(r.name)}» σβήνει μαζί με το ίχνος και τα αποτελέσματά της.${after.length ? ` Οι επόμενες αλλάζουν αριθμό: ${after.join(', ')}.` : ''} Η συνολική κατάταξη ξαναϋπολογίζεται.${only ? ' Ήταν η μόνη ιστιοδρομία: σβήνει και η διοργάνωση.' : ''} Θα έχεις 8″ για αναίρεση.</p>
+      <div class="foot"><button class="b dangerfill main wide" data-act="delYes">Ναι, διαγραφή</button><button class="b out main wide" data-act="close">Άκυρο</button></div></div></div>`;
+  }
+  if (S.sheet === 'close') {
+    const pl = S.races.filter((r) => !r.done).map((r) => ord(S.races.indexOf(r) + 1));
+    return `<div class="scrim top" data-act="scrimClose"><div class="sheet" role="alertdialog" aria-modal="true" aria-labelledby="ch"><div class="hdl" aria-hidden="true"><i></i></div>
+      <div class="sh"><h3 id="ch">Κλείσιμο διοργάνωσης;</h3></div>
+      <p>Δεν θα προτείνεται πια στην αρχική και μένει στο Ιστορικό με την τελική κατάταξη.${pl.length ? ` Η ${pl.join(', ')} δεν έγινε και δεν μετρά.` : ''} Τα αποτελέσματα διορθώνονται και μετά.</p>
+      <div class="foot"><button class="b fill main wide" data-act="closeYes">Ναι, η διοργάνωση τελείωσε</button><button class="b out main wide" data-act="close">Άκυρο</button></div></div></div>`;
+  }
+  return '';
+}
+
+/* ===================== Render ===================== */
+function screenHTML() {
+  if (S.screen === 'results') return resultsScreen();
+  if (S.screen === 'setupNew') return setupScreen(false);
+  if (S.screen === 'setupNext') return setupScreen(true);
+  if (S.screen === 'live') return liveScreen();
+  return eventScreen();
+}
+function phone(theme, sc) {
+  const d = DEV[S.dev];
+  const bw = d.k === 'tablet' ? 14 : d.k === 'laptop' ? 12 : 10;
+  const fw = d.w + 2 * bw, fh = d.h + (d.k === 'laptop' ? 38 : 2 * bw);
+  const sn = S.snack ? `<div class="snack ${S.sheet || S.live.finish ? 'top' : ''}" role="status"><span>${S.snack.t}</span>${S.snack.undo ? '<button data-act="undo">Αναίρεση</button>' : ''}</div>` : '';
+  return `<div><div class="devwrap" style="--fw:${fw}px;--fh:${fh}px;--sc:${sc}">
+    <div class="phone k-${d.k} sz-${S.size} ${S.marks ? '' : 'hide-new'}" data-theme="${theme}" style="--dw:${d.w}px;--dh:${d.h}px">${screenHTML()}${sn}</div></div>
+    <p class="cap">${{ day: 'Μέρα', dark: 'Σούρουπο', night: 'Νύχτα' }[theme]} · ${d.label} · ${{ m: 'Κανονικά', l: 'Μεγάλα', xl: 'Πολύ μεγάλα' }[S.size]}${sc < 1 ? ` · κλίμακα ${Math.round(sc * 100)}%` : ''}</p></div>`;
+}
+function render() {
+  const keep = [...document.querySelectorAll('.scr, .sheet, .tw')].map((e) => [e.scrollTop, e.scrollLeft]);
+  const themes = S.theme === 'all' ? ['day', 'dark', 'night'] : [S.theme];
+  const d = DEV[S.dev];
+  const fw = d.w + 30, avail = Math.max(320, window.innerWidth - 40);
+  const perRow = Math.max(1, Math.min(themes.length, Math.floor(avail / (fw * 0.5 + 18))));
+  const sc = S.fit === 'real' ? 1 : Math.min(1, (avail - 18 * (perRow - 1)) / perRow / fw);
+  document.getElementById('phones').innerHTML = themes.map((t) => phone(t, sc)).join('');
+  document.querySelectorAll('.scr, .sheet, .tw').forEach((e, i) => { if (keep[i]) { e.scrollTop = keep[i][0]; e.scrollLeft = keep[i][1]; } });
+  document.querySelectorAll('.tw').forEach((e) => e.classList.toggle('tw-ov', e.scrollWidth > e.clientWidth + 2));
+  renderControls();
+  renderNotes();
+}
+function ctl(k, l, opts, obj = S) {
+  return `<div class="grp"><label>${l}</label><div class="pick">${opts.map(([v, t]) => `<button class="${String(obj[k]) === String(v) ? 'on' : ''}" data-ctl="${k}" data-v="${v}">${t}</button>`).join('')}</div></div>`;
+}
+function renderControls() {
+  const parts = [
+    ctl('screen', 'Οθόνη', Object.entries(SCREENS)),
+    '<hr>',
+    ctl('dev', 'Συσκευή', Object.entries(DEV).map(([id, x]) => [id, x.label])),
+    ctl('theme', 'Θέμα', [['day', 'Μέρα'], ['dark', 'Σούρουπο'], ['night', 'Νύχτα'], ['all', 'Και τα 3']]),
+    ctl('size', 'Γράμματα', [['m', 'Κανονικά'], ['l', 'Μεγάλα'], ['xl', 'Πολύ μεγάλα']]),
+    ctl('fit', 'Κλίμακα', [['fit', 'Να χωρά'], ['real', '100%']]),
+    ctl('marks', 'Νέο', [['true', 'Σήμανση'], ['false', 'Χωρίς']]),
+    '<hr>',
+  ];
+  if (S.screen === 'live') {
+    parts.push(ctl('before', 'Ανοιχτό πριν από το πέρασμα', [['none', 'Τίποτα'], ['wind', 'Άνεμος (P-053)'], ['quick', '⚙'], ['forgotten', 'Ξεχασμένη έξοδος']], S.live));
+    parts.push(ctl('approx', 'Πέρασμα', [['false', 'Ακριβές'], ['true', 'Περίπου (παρασκήνιο)']], S.live));
+    parts.push(`<button class="fire" data-cact="fire">♪ Πέρασμα γραμμής</button>`);
+  } else if (S.screen === 'setupNew') {
+    parts.push(ctl('today', 'Σύγκριση', [['false', 'Νέο'], ['true', 'Σημερινό']], S.setup));
+  } else if (S.screen !== 'setupNext') {
+    parts.push(ctl('n', 'Ιστιοδρομίες που έγιναν', [['2', '2'], ['5', '5'], ['7', '7']]));
+    parts.push(ctl('scoring', 'Κατάταξη', [['points', 'Θέσεις'], ['time', 'Χρόνοι']]));
+    parts.push(ctl('disc', 'Απορρίψεις', [['0', '0'], ['1', '1'], ['2', '2']]));
+    parts.push(ctl('classN', 'Σκάφη στην κλάση', [['0', '— (7)'], ['9', '9']]));
+    parts.push(ctl('closed', 'Κατάσταση', [['false', 'Σε εξέλιξη'], ['true', 'Έκλεισε']]));
+  }
+  document.getElementById('controls').innerHTML = parts.join('');
+}
+function renderNotes() {
+  document.getElementById('notes').innerHTML = `<h2>P-040 · Φ5: συμπλήρωμα πρωτοτύπου</h2>
+  <p><span class="tag ask">προς έγκριση</span> Συμπληρώνει το εγκεκριμένο <code>session-home-2026-11</code> μόνο σε όσα λείπουν (BA, <code>P-040-drift-2026-11.md</code> §8). Ροζ διακεκομμένο = νέο. Φανταστικά σκάφη και δεδομένα.</p>
+  <h3>1. «Αποτελέσματα» ανά ιστιοδρομία</h3>
+  <ul><li>Κουμπί «Αποτελέσματα» δίπλα στην «Ανάλυση» σε κάθε κάρτα ιστιοδρομίας της «Διοργάνωσης», και από το «Περιέχει εκτιμήσεις» κάτω από την κατάταξη.</li>
+  <li>Μία γραμμή 68 px ανά σκάφος: θέση, όνομα, χρόνος ή κωδικός, πηγή («από τη γραμμή», «επίσημο», «εκτίμηση»). Πάτημα → φύλλο.</li>
+  <li>Φύλλο: «Ώρα τερματισμού» / «Χρόνος» / «Κωδικός». Δικό του πληκτρολόγιο 58 px (τα ψηφία μπαίνουν από δεξιά), χωρίς πληκτρολόγιο του κινητού πάνω στη λίστα. Υπολογισμός αμέσως: πραγματικός, διορθωμένος, θέση. Ώρα πριν από την εκκίνηση = «την επόμενη μέρα».</li>
+  <li>«Καμία αλλαγή» πάνω δεξιά, «Αποθήκευση · επόμενο ›» για να περάσεις όλο τον πίνακα της επιτροπής χωρίς να κλείνεις.</li>
+  <li>Σε tablet οριζόντια / laptop το φύλλο είναι πάνελ δεξιά (όπως η P-053).</li></ul>
+  <h3>2. Συνολική κατάταξη</h3>
+  <ul><li>Σταθερές στήλες «#», «Σκάφος» αριστερά και «Σύνολο» δεξιά. Οι ιστιοδρομίες κυλούν μέσα στην κάρτα· η σελίδα δεν κυλά πλάγια.</li>
+  <li>«=2» ισοβαθμία στην ιστιοδρομία, «8 DNF» κωδικός, «(4)» απόρριψη, «εκτ.» εκτίμηση. Το σκάφος μας: έντονα, γραμμή αριστερά, «▸» στους μικρούς πίνακες. Όλα διαβάζονται χωρίς χρώμα (Νύχτα).</li>
+  <li>Ισοβαθμία στη γενική: γραμμή που λέει ποιος κανόνας την έλυσε (A8.1 / A8.2).</li></ul>
+  <h3>3. Στήσιμο</h3>
+  <p>Το μπλοκ «Μέρος διοργάνωσης» μπαίνει <b>πρώτο μέσα στην κάρτα του σημερινού «Νέος αγώνας»</b>, πριν από το «Όνομα», γιατί αλλάζει τον τίτλο και το «Όνομα ιστιοδρομίας». Η κάρτα «Συμμετοχές» μένει ίδια, με μία γραμμή πάνω.</p>
+  <h3>4. Καταστάσεις</h3>
+  <ul><li>Κλειστή: «Έκλεισε», «Τελική κατάταξη», όχι «Στήσε», «Άνοιξε ξανά τη διοργάνωση».</li>
+  <li>Διαγραφή από τα «Αποτελέσματα», με την επαναρίθμηση γραμμένη στο φύλλο και αναίρεση 8″.</li>
+  <li>Προτεραιότητα: «Τερματίσατε;» &gt; φύλλο τέλους &gt; ξεχασμένη έξοδος &gt; ⚙ / Άνεμος. Στο κινητό τα άλλα φύλλα μπαίνουν σε αναμονή και ξαναβγαίνουν με το «Όχι». Στο laptop το πάνελ «Άνεμος» μένει κάτω από το παράθυρο.</li></ul>
+  <p>Λεπτομέρειες, κείμενα και ερωτήματα: <code>NOTES.md</code>.</p>`;
+}
+
+/* ===================== Events ===================== */
+function snack(t, undo) {
+  clearTimeout(snackT);
+  S.snack = { t, undo: !!undo }; S.undo = undo || null;
+  snackT = setTimeout(() => { S.snack = null; S.undo = null; render(); }, undo ? 8000 : 4000);
+}
+const snap = () => JSON.parse(JSON.stringify({ races: S.races, closed: S.closed }));
+function openEdit(id) {
+  const r = S.races[S.resIdx], v = r.res[id];
+  let mode = S.lastMode, buf = '', code = null;
+  if (v?.code) { mode = 'code'; code = v.code; }
+  else if (v && v.src !== 'est') { const s = mode === 'clock' ? clk(r.start + v.e) : hms(v.e).padStart(8, '0'); buf = s.replace(/:/g, '').replace(/^0+/, ''); if (mode === 'code') mode = 'clock'; }
+  if (mode === 'code' && !code) mode = 'clock';
+  S.draft = { boat: id, mode, buf, code, fresh: true };
+  S.sheet = 'edit';
+}
+function saveDraft() {
+  const d = S.draft, r = S.races[S.resIdx], c = draftCalc();
+  if (!c.ok) return false;
+  const before = snap();
+  r.res[d.boat] = d.mode === 'code' ? { code: d.code, src: 'official', edited: true } : { e: c.e, src: 'official', edited: true };
+  if (d.mode !== 'code') S.lastMode = d.mode;
+  const q = raceScore(r)[d.boat];
+  snack(`${boat(d.boat).name}: ${d.mode === 'code' ? d.code : hms(c.e)} · ${q.code ? q.pts + ' βαθμοί' : (q.tie ? '=' : '') + q.pos + 'η θέση'}`, before);
+  return true;
+}
+function act(a, v, el) {
+  const L = S.live;
+  switch (a) {
+    case 'go': S.screen = v; S.sheet = null; break;
+    case 'toast': snack(v); break;
+    case 'tog': { const i = S.races.findIndex((r) => r.id === v); const last = S.races.map((r) => r.done).lastIndexOf(true); S.open[v] = !(S.open[v] ?? i === last); break; }
+    case 'results': S.resIdx = +v; S.screen = 'results'; S.sheet = null; break;
+    case 'edit': openEdit(v); break;
+    case 'mode': if (S.draft.mode !== v) { S.draft.mode = v; S.draft.buf = ''; S.draft.fresh = false; } break;
+    case 'key': { const d = S.draft; if (v === 'C') d.buf = ''; else if (v === 'B') d.buf = d.buf.slice(0, -1); else { if (d.fresh) d.buf = ''; d.buf = (d.buf + v).replace(/^0+/, '').slice(-6); } d.fresh = false; break; }
+    case 'code': S.draft.code = v; break;
+    case 'clear': { const r = S.races[S.resIdx], b = S.draft.boat, before = snap(); const est = Math.round(10000 / boat(b).tcc); r.res[b] = { e: est, src: 'est' }; S.sheet = null; snack(`${boat(b).name}: μένει εκτίμηση`, before); break; }
+    case 'save': if (saveDraft()) S.sheet = null; break;
+    case 'savenext': if (saveDraft()) { const i = BOATS.findIndex((b) => b.id === S.draft.boat); if (i < BOATS.length - 1) openEdit(BOATS[i + 1].id); else S.sheet = null; } break;
+    case 'close': S.sheet = null; break;
+    case 'scrimClose': if (el.target === el.currentTarget) { if (S.screen === 'live') { if (DEV[S.dev].w < 960) L.before = 'none'; } else S.sheet = null; } else return; break;
+    case 'sheet': S.sheet = v; break;
+    case 'delYes': { const before = snap(); const r = S.races[S.resIdx]; const n = S.resIdx + 1; S.races.splice(S.resIdx, 1); S.sheet = null; S.screen = 'event'; snack(`Διαγράφηκε η ${ord(n)} ιστιοδρομία «${r.name}»`, before); break; }
+    case 'closeYes': { const before = snap(); S.closed = true; S.sheet = null; snack('Η διοργάνωση έκλεισε · μένει στο Ιστορικό', before); break; }
+    case 'reopen': { const before = snap(); S.closed = false; snack('Η διοργάνωση άνοιξε ξανά', before); break; }
+    case 'undo': if (S.undo) { S.races = S.undo.races; S.closed = S.undo.closed; S.snack = null; S.undo = null; } break;
+    // setup
+    case 'ev': S.setup.ev = v; break;
+    case 'sScoring': S.setup.scoring = v; break;
+    case 'sDisc': S.setup.disc = +v; if (S.setup.K <= +v) S.setup.K = +v + 1; break;
+    case 'sK': S.setup.K = Math.max(S.setup.disc + 1, Math.min(12, S.setup.K + +v)); break;
+    case 'sN': { const x = (S.setup.classN || BOATS.length) + +v; S.setup.classN = x <= BOATS.length ? 0 : Math.min(60, x); break; }
+    case 'store': S.setup.tried = true; if (S.setup.ev === 'new' && !S.setup.evName.trim() && S.screen === 'setupNew' && !S.setup.today) break; snack('Αποθηκεύτηκε (πρωτότυπο)'); break;
+    // live
+    case 'lopen': L.before = v; L.wdraft = L.wdraft || 220; break;
+    case 'lclose': L.before = 'none'; break;
+    case 'wd': L.wdraft = ((L.wdraft + +v) % 360 + 360) % 360; break;
+    case 'finYes': L.finish = false; L.done = true; L.held = null; L.before = 'none'; snack(`Τερματισμός ${L.approx ? clk(CROSS).slice(0, 5) : clk(CROSS)} · από το πέρασμα της γραμμής`, { races: S.races, closed: S.closed, live: true }); break;
+    case 'finNo': L.finish = false; L.before = L.held || 'none'; L.held = null; snack('Συνεχίζουμε · η καταγραφή συνεχίζει'); break;
+    case 'liveReset': Object.assign(L, { finish: false, done: false, held: null, before: 'none' }); break;
+    default: return;
+  }
+  render();
+}
+document.addEventListener('click', (e) => {
+  const c = e.target.closest('[data-ctl]');
+  if (c) {
+    const k = c.dataset.ctl, v = c.dataset.v;
+    if (k in S.live && S.screen === 'live') { S.live[k] = v === 'true' ? true : v === 'false' ? false : v; if (k === 'before') { S.live.wdraft = 220; } }
+    else if (k === 'today') S.setup.today = v === 'true';
+    else if (k === 'n') { S.n = +v; S.races = buildRaces(S.n); S.resIdx = S.n - 1; S.open = {}; }
+    else if (['disc', 'classN'].includes(k)) S[k] = +v;
+    else if (['closed', 'marks'].includes(k)) S[k] = v === 'true';
+    else { S[k] = v; if (k === 'screen') { S.sheet = null; if (v === 'results') S.resIdx = Math.min(S.resIdx, doneRaces().length - 1); } }
+    render(); return;
+  }
+  if (e.target.closest('[data-cact="fire"]')) {
+    const L = S.live;
+    if (L.done) Object.assign(L, { done: false });
+    L.held = L.before; L.finish = true; L.firedAt = Date.now();
+    if (L.before === 'forgotten') L.approx = true;
+    render();
+    document.querySelector('.phones #fh')?.focus();
+    return;
+  }
+  const el = e.target.closest('[data-act]');
+  if (!el || !el.closest('.phone')) return;
+  const a = el.dataset.act;
+  if (!a) return;
+  if (a === 'undo' && S.undo?.live) { Object.assign(S.live, { done: false, finish: true, firedAt: Date.now() }); S.snack = null; S.undo = null; render(); return; }
+  act(a, el.dataset.v, { target: e.target, currentTarget: el });
+});
+document.addEventListener('input', (e) => {
+  const k = e.target.dataset?.in;
+  if (!k) return;
+  S.setup[k] = e.target.value;
+});
+document.addEventListener('keydown', (e) => {
+  if (S.sheet === 'edit' && S.draft && S.draft.mode !== 'code' && !e.target.closest('input')) {
+    if (/^[0-9]$/.test(e.key)) { act('key', e.key, {}); e.preventDefault(); }
+    else if (e.key === 'Backspace') { act('key', 'B', {}); e.preventDefault(); }
+    else if (e.key === 'Enter') { act('save', '', {}); e.preventDefault(); }
+  }
+  if (e.key === 'Escape' && S.sheet && S.sheet !== 'finish') { S.sheet = null; render(); }
+});
+setInterval(() => {
+  if (!S.live.finish) return;
+  document.querySelectorAll('[data-ago]').forEach((b) => {
+    const s = Math.floor((Date.now() - S.live.firedAt) / 1000) + +b.dataset.ago;
+    b.textContent = `${Math.floor(s / 60)}:${pad(s % 60)}`;
+  });
+}, 1000);
+window.addEventListener('resize', render);
+S.live.wdraft = 220;
+// Deep link for reviews, e.g. ?screen=results&dev=p320&theme=night&n=7&sheet=edit
+(() => {
+  const q = new URLSearchParams(location.search);
+  if (q.get('still')) document.body.classList.add('still');
+  for (const k of ['screen', 'dev', 'theme', 'size', 'scoring', 'fit']) if (q.get(k)) S[k] = q.get(k);
+  for (const k of ['disc', 'classN']) if (q.get(k)) S[k] = +q.get(k);
+  if (q.get('closed')) S.closed = q.get('closed') === 'true';
+  if (q.get('n')) { S.n = +q.get('n'); S.races = buildRaces(S.n); S.resIdx = S.n - 1; }
+  if (q.get('sheet') === 'edit') openEdit(q.get('boat') || 'mel');
+  else if (q.get('sheet')) S.sheet = q.get('sheet');
+  if (q.get('before')) S.live.before = q.get('before');
+  if (q.get('finish')) { S.live.held = S.live.before; S.live.finish = true; S.live.firedAt = Date.now(); S.live.approx = q.get('finish') === 'approx'; }
+})();
+render();
+</script>
+</body>
+</html>

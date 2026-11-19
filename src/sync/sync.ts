@@ -3,7 +3,7 @@
  * The phone's database stays the working copy; changes are pushed when there
  * is a connection and the server's newer versions are pulled (last write wins).
  */
-import { LEGACY_SEED_BOAT_ID, db, getKV, setKV, tagRaces, type Course, type Tombstone } from '../boat/store';
+import { LEGACY_SEED_BOAT_ID, db, getKV, setKV, tagEvents, tagRaces, type Course, type Tombstone } from '../boat/store';
 import type { BoatProfile } from '../boat/types';
 import { accountApi, type SyncItem } from './api';
 
@@ -35,11 +35,12 @@ export async function getSyncState(): Promise<SyncState> {
 export async function adoptAccount(userId: string): Promise<void> {
   const st = await getSyncState();
   if (st.owner && st.owner !== userId) {
-    await db.transaction('rw', [db.boats, db.courses, db.kv, db.races, db.notes], async () => {
+    await db.transaction('rw', [db.boats, db.courses, db.kv, db.races, db.notes, db.events], async () => {
       await db.boats.clear();
       await db.courses.clear();
       // Races do not sync, so they are never deleted: they stay hidden under their account (P-014).
       await tagRaces(st.owner!);
+      await tagEvents(st.owner!);
       await db.notes.clear();
       await setKV('tombstones', []);
       await setKV<SyncState>(KEY, { since: 0, pushedAt: 0, owner: userId });

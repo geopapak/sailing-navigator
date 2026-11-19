@@ -22,6 +22,7 @@ import { EndedScreen, HistoryView } from './HistoryView';
 import { BoatsHub, SettingsHub } from './HubViews';
 import { SessionBar, requestSessionEnd, type Ended } from './SessionBar';
 import type { SessionKind } from '../race/types';
+import { EVENT_TEXT } from './eventText';
 import { AppUpdater } from './AppUpdater';
 import { TestBadge } from './TestBadge';
 
@@ -52,7 +53,7 @@ const TITLE: Partial<Record<AppTab, string>> = {
 };
 
 /** Screens over the tabs: a session's setup (no tab bar, «←») or the end of a session. */
-type Screen = { s: 'setup'; kind: SessionKind; id?: string } | { s: 'ended'; e: Ended };
+type Screen = { s: 'setup'; kind: SessionKind; id?: string; eventId?: string } | { s: 'ended'; e: Ended };
 
 function Shell() {
   const { ready, error, activeBoat, boats, settings, updateSettings, account, syncStatus } = useApp();
@@ -87,6 +88,11 @@ function Shell() {
     } else setTab((t) => (isSessionTab(t) ? 'home' : t));
     setOpponent(undefined);
   }, [inSession, race.loaded]);
+  // Inside a session only Ρυθμίσεις / Σκάφη stay from the outside tabs; anything else (e.g. a tab set
+  // by a screen that was still finishing when the session started) goes to Live, never to an empty page.
+  useEffect(() => {
+    if (inSession && !isSessionTab(tab) && tab !== 'settings' && tab !== 'boats') setTab('session:live');
+  }, [inSession, tab]);
   // Right after signing in, start at «Νέα έξοδος».
   const prevAccount = useRef(account?.id);
   useEffect(() => {
@@ -133,6 +139,11 @@ function Shell() {
     setScreen(undefined);
     setTab('home');
   };
+  const openSetup = (kind: SessionKind, id?: string, eventId?: string) => {
+    if (id) race.setActiveId(id);
+    setScreen({ s: 'setup', kind, id, eventId });
+    window.scrollTo({ top: 0 });
+  };
   const pick = (t: AppTab) => {
     setScreen(undefined);
     setHistOpen(undefined);
@@ -149,7 +160,9 @@ function Shell() {
         ? 'Νέα προπόνηση'
         : 'Νέα έξοδος αναψυχής'
     : ended
-      ? 'Η έξοδος τελείωσε'
+      ? race.races.find((x) => x.id === ended.id)?.eventId
+        ? EVENT_TEXT.ended
+        : 'Η έξοδος τελείωσε'
       : (TITLE[tab] ?? 'Νέα έξοδος');
   const tabs = inSession ? TABS_IN : TABS_OUT;
   const tabClass = tab === 'session:map' ? 'map' : tab.replace(':', '-');
@@ -234,7 +247,7 @@ function Shell() {
               </>
             ) : setup ? (
               setup.kind === 'race' ? (
-                <RaceSetup id={setup.id} onDone={(started) => !started && goHome()} onCancel={goHome} />
+                <RaceSetup id={setup.id} eventId={setup.eventId} onDone={(started) => !started && goHome()} onCancel={goHome} />
               ) : (
                 <SessionSetup kind={setup.kind} onStarted={() => undefined} />
               )
@@ -255,10 +268,10 @@ function Shell() {
               <>
                 {tab === 'home' && (
                   <HomeView
-                    onSetup={(kind, id) => {
-                      if (id) race.setActiveId(id);
-                      setScreen({ s: 'setup', kind, id });
-                      window.scrollTo({ top: 0 });
+                    onSetup={openSetup}
+                    onEvent={(id) => {
+                      setHistOpen(`event:${id}`);
+                      setTab('history');
                     }}
                     onQuick={() => pick('quick')}
                     onHistory={() => pick('history')}
@@ -269,7 +282,7 @@ function Shell() {
                   />
                 )}
                 {tab === 'quick' && <QuickLook onHome={goHome} />}
-                {tab === 'history' && <HistoryView onHome={goHome} openId={histOpen} />}
+                {tab === 'history' && <HistoryView onHome={goHome} openId={histOpen} onSetup={openSetup} />}
                 {tab === 'boats' && <BoatsHub />}
                 {tab === 'settings' && <SettingsHub />}
               </>

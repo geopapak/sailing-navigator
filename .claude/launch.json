@@ -30,6 +30,12 @@
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "http.server", "8089", "--bind", "127.0.0.1", "--directory", "design/manual-wind-2026-11"],
       "port": 8089
+    },
+    {
+      "name": "proto-events",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8088", "--bind", "127.0.0.1", "--directory", "design/events-2026-11"],
+      "port": 8088
     }
   ]
 }
