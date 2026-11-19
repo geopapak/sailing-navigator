@@ -6,6 +6,7 @@ import { distanceNm } from '../nav/geo';
 import type { Race, TrackPoint } from './types';
 import { estimateRace, fmtGap } from './estimate';
 import { pausedMs, trackSegments } from './pauses';
+import { manualMinutes } from './manualWind';
 
 export interface LegStats {
   from: string;
@@ -189,10 +190,19 @@ const hm = (sec: number) => {
   return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
 };
 
+/** Minutes of the race sailed with the manual wind on (P-053), of the whole race; undefined: never. */
+export function raceManualWind(race: Race) {
+  const end = race.finish ?? race.track.reduce((m, p) => Math.max(m, p.t), race.start);
+  return manualMinutes(race, end > race.start ? [{ from: race.start, to: end }] : [], end);
+}
+
 /** Compact text-free summary sent to the AI for lessons (numbers only, no personal data). */
 export function analysisSummary(race: Race, a: RaceAnalysis) {
   const sinceStart = (t: number) => hm((t - race.start) / 1000);
+  const windManual = raceManualWind(race);
   return {
+    // P-053 AC 36: how long the wind was typed in by hand (no positions, no log).
+    ...(windManual ? { windManual } : {}),
     race: { name: race.name.slice(0, 80), method: race.method, scoring: race.scoringOptionId, boats: a.of, rank: a.rank },
     totals: {
       duration: hm(a.durationSec),
@@ -249,10 +259,14 @@ ${wpts}
 `;
 }
 
-/** CSV of the track; with pauses, a last column `segment` (1, 2, …) tells the stretches apart. */
+/**
+ * CSV of the track; with pauses, a last column `segment` (1, 2, …) tells the stretches apart.
+ * `wind`: «manual» where the crew typed the wind in (P-053), else empty.
+ */
 export function toCsv(race: Race): string {
-  const cols: (keyof TrackPoint)[] = ['t', 'lat', 'lon', 'sog', 'cog', 'tws', 'twa', 'twd', 'bsp', 'targetBsp', 'targetTwa', 'pct', 'sail', 'src'];
-  const cell = (v: unknown) => (v === undefined ? '' : typeof v === 'number' ? String(+v.toFixed(5)) : `"${String(v).replace(/"/g, '""')}"`);
+  const cols: (keyof TrackPoint)[] = ['t', 'lat', 'lon', 'sog', 'cog', 'tws', 'twa', 'twd', 'bsp', 'targetBsp', 'targetTwa', 'pct', 'sail', 'src', 'wind'];
+  const cell = (v: unknown) =>
+    v === undefined ? '' : typeof v === 'number' ? String(+v.toFixed(5)) : v === 'manual' ? 'manual' : `"${String(v).replace(/"/g, '""')}"`;
   const segs = trackSegments(race);
   const withSeg = segs.length > 1;
   const head = ['time', ...cols.slice(1), ...(withSeg ? ['segment'] : [])].join(',');

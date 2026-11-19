@@ -4,7 +4,8 @@ import { useRace } from './RaceContext';
 import { useNav } from './NavContext';
 import { DEFAULT_SERVER } from './settings';
 import { accountApi } from '../sync/api';
-import { analyseRace, analysisSummary, countManoeuvres, toCsv, toGpx, type RaceAnalysis } from '../race/analysis';
+import { analyseRace, analysisSummary, countManoeuvres, raceManualWind, toCsv, toGpx, type RaceAnalysis } from '../race/analysis';
+import { manualNote } from '../race/manualWind';
 import { fmtGap } from '../race/estimate';
 import { formatDuration, parseDuration } from '../scoring/corrected';
 import type { Race } from '../race/types';
@@ -32,6 +33,7 @@ export function RaceAnalysisView({ id, onBack, backLabel = 'Αγώνες' }: { i
   const nav = useNav();
   const race = races.find((r) => r.id === id);
   const a = useMemo(() => (race ? analyseRace(race) : undefined), [race]);
+  const windManual = useMemo(() => (race ? raceManualWind(race) : undefined), [race]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   if (!race || !a) return <p className="muted">Ο αγώνας δεν βρέθηκε.</p>;
@@ -90,6 +92,11 @@ export function RaceAnalysisView({ id, onBack, backLabel = 'Αγώνες' }: { i
             </div>
           )}
         </div>
+        {windManual && (
+          <p className="small muted" data-testid="wind-manual-note">
+            {manualNote(windManual)}
+          </p>
+        )}
       </section>
 
       <section className="card">

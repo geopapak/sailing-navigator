@@ -180,6 +180,8 @@ export interface Situation {
   instruments?: boolean;
   /** Cruise: latest depth for «ΡΗΧΑ ΜΠΡΟΣΤΑ» (sounder now, or the chart sample ahead). */
   depth?: DepthReading;
+  /** P-053: the manual wind is old (≥ 15′): its age goes on the layline alert, «πριν από 18′». */
+  windAge?: string;
   /** Cruise: distance left to the destination along the route (nm) … */
   destNm?: number;
   /** … and which destination it is («ΦΤΑΝΕΙΣ» once per destination). */
@@ -239,7 +241,7 @@ export function step(st: EngineState, s: AlertSettings, x: Situation, p: AlertPr
             type: 'lay',
             kind: reached === 6 ? 'now' : 'warn',
             big: training ? 'LAYLINE ΤΩΡΑ' : `${word} ${when}`,
-            sub: `Layline ${other} για ${x.isFinish ? 'τον τερματισμό' : x.markName} · πρόταση`,
+            sub: `Layline ${other} για ${x.isFinish ? 'τον τερματισμό' : x.markName} · πρόταση${x.windAge ? ` · άνεμος ${x.windAge}` : ''}`,
             say: reached === 6 ? `${cap(w2)} τώρα` : `${cap(w2)} σε ${reached === 120 ? 'δύο λεπτά' : 'ένα λεπτό'}`,
             at: x.now,
           });

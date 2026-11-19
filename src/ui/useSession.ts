@@ -2,9 +2,16 @@ import { useEffect, useMemo } from 'react';
 import { useApp } from './AppContext';
 import { useNav } from './NavContext';
 import { useInstruments } from './InstrumentsContext';
+import { currentCourse } from './courseTracker';
 import { useRace } from './RaceContext';
-import { computeLive, type LiveResult } from '../performance/targets';
-import { magToTrue, twaFromTwd } from '../performance/angles';
+import {
+  advisorWind,
+  liveNumbersOf,
+  quickWind,
+  type DirOpts,
+  type LiveNumbers,
+  type QuickWindState,
+} from '../race/manualWind';
 import { marksSource, nextMarkInfo, type MarksSource } from '../race/sessionMarks';
 import { sailOutlook } from '../performance/sails';
 import { adviceFor } from '../performance/advice';
@@ -28,61 +35,39 @@ export function useSessionMarks(): MarksSource & ReturnType<typeof nextMarkInfo>
   return { ...src, ...nextMarkInfo(src) };
 }
 
-/**
- * The wind typed in «Γρήγορη ματιά» (same `live-state` as LiveView), for the Live
- * inside a session without instruments: TWS and a signed TWA (port negative).
- */
-export function getManualWind(cogTrue: number | undefined, o: { manualMagnetic: boolean; declination: number }): { tws?: number; twa?: number } {
+/** `live-state` of «Γρήγορη ματιά» (LiveView), read as it is: never written from here. */
+export function readLiveState(): (QuickWindState & { sailId?: string; windAt?: number; windManualOn?: boolean }) | undefined {
   try {
-    const s = { windInput: 'twa', tws: 10, twa: 42, side: 'stbd', twd: null, ...JSON.parse(localStorage.getItem('live-state') ?? '{}') } as {
-      windInput: 'twa' | 'twd';
-      tws: number | null;
-      twa: number | null;
-      side: 'stbd' | 'port';
-      twd: number | null;
-    };
-    const tws = s.tws ?? undefined;
-    if (s.windInput === 'twa') return { tws, twa: s.twa === null ? undefined : s.side === 'port' ? -s.twa : s.twa };
-    if (s.twd === null || cogTrue === undefined) return { tws };
-    return { tws, twa: twaFromTwd(o.manualMagnetic ? magToTrue(s.twd, o.declination) : s.twd, cogTrue) };
+    const raw = localStorage.getItem('live-state');
+    return raw ? JSON.parse(raw) : undefined;
   } catch {
-    return {};
+    return undefined;
   }
 }
 
-export interface LiveNumbers {
-  /** Polar targets for the wind now; null without wind or polar. */
-  result: LiveResult | null;
-  /** Wind and speed come from the boat's instruments. */
-  withInst: boolean;
-  /** Speed: boat speed from the instruments, else speed over ground. */
-  bsp?: number;
-  bspFrom: 'BSP' | 'SOG';
-  /** The wind is the one typed in by hand. */
-  windManual: boolean;
+/**
+ * The wind typed in «Γρήγορη ματιά» (same `live-state` as LiveView), for the Live
+ * inside a session without instruments: TWS and a signed TWA (port negative).
+ * Nothing when the crew never typed a wind there (P-053 AC 46: no `windTypedAt`).
+ */
+export function getManualWind(cogTrue: number | undefined, o: DirOpts): { tws?: number; twa?: number } {
+  return quickWind(readLiveState(), cogTrue, o);
 }
+
+export type { LiveNumbers } from '../race/manualWind';
 
 /**
  * Numbers of the in-session Live (P-034): instruments first, else GPS speed and
- * the wind typed in «Γρήγορη ματιά».
+ * the wind typed in «Γρήγορη ματιά»; the session's manual wind before both (P-053).
  */
 export function useLiveNumbers(): LiveNumbers {
   const { activeBoat: boat, settings } = useApp();
   const inst = useInstruments();
   const fix = useNav().gps.fix;
-  const iv = inst.live ? inst.values : {};
-  const manual = getManualWind(fix?.cog, settings);
-  const tws = iv.tws ?? manual.tws;
-  const twa = iv.twa ?? manual.twa;
-  const bsp = iv.bsp ?? fix?.sog;
-  const result = boat?.polar && tws !== undefined && twa !== undefined ? computeLive(boat, { tws, twa, bsp }) : null;
-  return {
-    result,
-    withInst: inst.live && iv.tws !== undefined,
-    bsp,
-    bspFrom: iv.bsp !== undefined ? 'BSP' : 'SOG',
-    windManual: iv.tws === undefined,
-  };
+  const manual = useRace().session?.manualWind;
+  const now = Date.now();
+  const course = currentCourse(inst, fix, settings.declination, now);
+  return liveNumbersOf({ boat, inst, fix, manual, quick: readLiveState(), course, dir: settings, now });
 }
 
 /**
@@ -92,10 +77,24 @@ export function useLiveNumbers(): LiveNumbers {
 export function usePublishLive(n: LiveNumbers) {
   const { activeBoat: boat } = useApp();
   const fix = useNav().gps.fix;
+  const manual = useRace().session?.manualWind;
   const r = n.result;
-  const key = r ? `${r.tws.toFixed(1)}|${Math.round(r.twa)}|${r.bsp?.toFixed(1)}|${fix?.lat.toFixed(3)}|${fix?.lon.toFixed(3)}` : '';
+  // With the manual wind on, also once a minute so the advisor's `ageMin` stays true (AC 38).
+  const mKey = manual?.on ? `|m${manual.twdTrue}|${manual.tws}|${Math.floor(Date.now() / 60_000)}` : '';
+  const key = r ? `${r.tws.toFixed(1)}|${Math.round(r.twa)}|${r.bsp?.toFixed(1)}|${fix?.lat.toFixed(3)}|${fix?.lon.toFixed(3)}${mKey}` : `${n.windFrom}${mKey}`;
   useEffect(() => {
-    if (!boat || !r) return;
+    const r3 = (x: number) => Math.round(x * 1000) / 1000;
+    if (!boat) return;
+    if (!r) {
+      // No wind (P-053 AC 50): only `nav`, as the cruise does, so nothing comes from defaults.
+      if (n.windFrom !== 'none' && n.windFrom !== 'manual') return;
+      const nav: NavSnapshot = {};
+      if (fix) nav.position = { lat: r3(fix.lat), lon: r3(fix.lon), sog: fix.sog, cogTrue: fix.cog };
+      const w = advisorWind(manual, Date.now());
+      if (w) [nav.observedTwd, nav.windManual] = [w.twdTrue, w];
+      setLiveSnapshot({ kind: 'live', now: localIso(Date.now()), boat: boatInfo(boat), nav }, n.windFrom);
+      return;
+    }
     let sailId: string | undefined;
     try {
       sailId = (JSON.parse(localStorage.getItem('live-state') ?? '{}') as { sailId?: string }).sailId;
@@ -106,9 +105,11 @@ export function usePublishLive(n: LiveNumbers) {
     const advice = adviceFor(r, { ...outlook, currentSailId: sailId, currentSailName: boat.sails.find((x) => x.id === sailId)?.name });
     const nav: NavSnapshot = {};
     // Rounded to ~100 m (P-030): the advisor needs the area, not the exact spot.
-    const r3 = (x: number) => Math.round(x * 1000) / 1000;
     if (fix) nav.position = { lat: r3(fix.lat), lon: r3(fix.lon), sog: fix.sog, cogTrue: fix.cog };
-    setLiveSnapshot(buildLiveContext({ boat, result: r, outlook, advice, currentSailId: sailId, nav }));
+    // P-053 AC 37: the advisor knows the wind is typed in, and how old it is.
+    const w = advisorWind(manual, Date.now());
+    if (w) [nav.observedTwd, nav.windManual] = [w.twdTrue, w];
+    setLiveSnapshot(buildLiveContext({ boat, result: r, outlook, advice, currentSailId: sailId, nav }), n.windFrom);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boat?.id, key]);
 }
@@ -181,7 +182,9 @@ export function usePublishCruise(n: LiveNumbers, depth: { m?: number; from?: 'so
   const { activeBoat: boat } = useApp();
   const fix = useNav().gps.fix;
   const c = useCruiseNav();
-  const paused = useRace().paused;
+  const race = useRace();
+  const paused = race.paused;
+  const manual = race.session?.manualWind;
   const r = n.result;
   const r1 = (x?: number) => (x === undefined || !Number.isFinite(x) ? undefined : Math.round(x * 10) / 10);
   const key = [
@@ -196,6 +199,7 @@ export function usePublishCruise(n: LiveNumbers, depth: { m?: number; from?: 'so
     r1(depth.m),
     depth.from,
     r ? `${r.tws.toFixed(1)}|${Math.round(r.twa)}|${r.bsp?.toFixed(1)}` : '',
+    manual?.on ? `m${manual.twdTrue}|${manual.tws}|${Math.floor(Date.now() / 60_000)}` : '',
   ].join('|');
   useEffect(() => {
     const r3 = (x: number) => Math.round(x * 1000) / 1000;
@@ -209,11 +213,13 @@ export function usePublishCruise(n: LiveNumbers, depth: { m?: number; from?: 'so
       depthM: r1(depth.m),
       depthFrom: depth.m === undefined ? undefined : depth.from,
     };
+    const w = advisorWind(manual, Date.now());
+    if (w) [nav.observedTwd, nav.windManual] = [w.twdTrue, w];
     const ctx: AdvisorContext =
       boat && r
         ? { ...buildLiveContext({ boat, result: r, outlook: sailOutlook(boat, r.tws, r.twa), advice: [], nav }), nav }
         : { kind: 'live', now: localIso(Date.now()), boat: boat ? boatInfo(boat) : { name: '', performanceFactor: 1, sails: [] }, nav };
-    setLiveSnapshot(ctx);
+    setLiveSnapshot(ctx, n.windFrom);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boat?.id, key]);
 }

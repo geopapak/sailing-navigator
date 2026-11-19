@@ -1,13 +1,16 @@
 import { useApp } from './AppContext';
 import { useNav } from './NavContext';
 import { useRace } from './RaceContext';
-import { getLiveSnapshot } from '../ai/snapshot';
+import { getSessionSnapshot } from '../ai/snapshot';
 import { distanceNm } from '../nav/geo';
 import { words } from '../race/alerts';
 import { fmtGap } from '../race/estimate';
 import { mmss, useAlerts } from './RaceAlerts';
 import { useLiveNumbers, usePublishLive, useSessionMarks } from './useSession';
-import { LIVE_TEXT } from './sessionText';
+import { LIVE_TEXT, WIND_TEXT as WT } from './sessionText';
+import { Icon } from './Icons';
+import { NoWindPrompt, WindReading, useSessionWindSheet } from './WindReading';
+import { fmtAge } from '../race/manualWind';
 
 const f1 = (v: number) => v.toFixed(1).replace('.', ',');
 
@@ -31,7 +34,9 @@ export function RaceScreen() {
   usePublishLive(nb);
   const sm = useSessionMarks();
   const w = words(settings.alerts);
-  const snap = getLiveSnapshot(2)?.ctx.live;
+  const wind = useSessionWindSheet(nb);
+  // Never the «Γρήγορη ματιά» defaults nobody typed (P-053 AC 50); with the manual wind on, its own numbers only.
+  const snap = nb.windFrom === 'manual' ? undefined : getSessionSnapshot(2)?.ctx.live;
   const fix = nav.gps.fix;
 
   // Targets from the polar for the wind now; the advisor's last snapshot only as a fallback.
@@ -39,7 +44,17 @@ export function RaceScreen() {
   const bspFrom = nb.bsp !== undefined ? nb.bspFrom : 'BSP';
   const target = nb.result?.targetBsp ?? snap?.targetBsp;
   const pct = bsp !== undefined && target ? Math.round((bsp / target) * 100) : undefined;
-  const twa = nb.result ? (nb.result.tack === 'port' ? -nb.result.twa : nb.result.twa) : snap ? (snap.tack === 'port' ? -snap.twa : snap.twa) : undefined;
+  const twa = nb.result
+    ? nb.result.tack === 'port'
+      ? -nb.result.twa
+      : nb.result.twa
+    : nb.windFrom === 'manual'
+      ? nb.twa
+      : snap
+        ? snap.tack === 'port'
+          ? -snap.twa
+          : snap.twa
+        : undefined;
   const targetTwa = nb.result?.targetTwa;
 
   const lay = al.lay?.result;
@@ -54,6 +69,21 @@ export function RaceScreen() {
     else if (lay.leg === 'reach') nextSub = 'φτάνεις τη σημαδούρα χωρίς μανούβρα';
     else nextSub = 'η layline δεν είναι μπροστά';
   }
+  // The laylines' wind (AC 21, 26): manual (with its age when old) or the forecast.
+  const layNote =
+    lay && al.lay?.wind === 'manual' ? (
+      nb.stale && nb.manualAgeMin !== undefined ? (
+        <span className="sub lay-note stale">
+          <Icon name="warn" size="1em" stroke={2.2} className="wi" />
+          {WT.layStale(fmtAge(nb.manualAgeMin))}
+        </span>
+      ) : (
+        <span className="sub lay-note">{WT.layManual}</span>
+      )
+    ) : lay && al.lay?.wind === 'forecast' ? (
+      <span className="sub lay-note">{WT.layForecast}</span>
+    ) : null;
+  const twaSub = nb.windFrom === 'none' ? WT.needsWind : nb.windFrom === 'manual' && twa === undefined ? WT.needsSog : undefined;
   const idle = !al.banner && lay && !lay.overstood && al.layInSec !== undefined ? `${LIVE_TEXT.next}: ${man} στη layline ${laySide} σε ${mmss(al.layInSec)}` : undefined;
 
   const mark = sm.mark;
@@ -72,7 +102,11 @@ export function RaceScreen() {
           <span className="sub">{idle}</span>
         </div>
       )}
-      {!nb.withInst && <p className="msg warn">{LIVE_TEXT.noInstRace}</p>}
+      {nb.windFrom === 'manual' ? (
+        <p className="msg info">{WT.manualStrip}</p>
+      ) : (
+        nb.windFrom === 'quick' && <p className="msg warn">{LIVE_TEXT.noInstRace}</p>
+      )}
       <div className="rs-top">
         <h3>Οθόνη αγώνα</h3>
         <button type="button" className={`btn small-btn ${al.muteLeft ? 'on' : ''}`} aria-pressed={al.muteLeft > 0} onClick={al.toggleMute}>
@@ -99,6 +133,7 @@ export function RaceScreen() {
         </span>
         <span className="val">{bsp === undefined ? '—' : f1(bsp)}</span>
       </div>
+      {nb.windFrom === 'none' && <NoWindPrompt onOpen={wind.openSheet} />}
       <div className="rs-tile">
         <span>
           <span className="lab">{LIVE_TEXT.windAngle}</span>
@@ -110,6 +145,7 @@ export function RaceScreen() {
               {LIVE_TEXT.target} {Math.round(targetTwa)}°
             </span>
           )}
+          {twaSub && <span className="sub">{twaSub}</span>}
         </span>
         <span className="val">{twa === undefined ? '—' : `${Math.round(Math.abs(twa))}°`}</span>
       </div>
@@ -118,9 +154,11 @@ export function RaceScreen() {
           <span className="lab">Επόμενη {man}</span>
           <span className="ab">{up ? 'αναστροφή (τακ)' : 'υποσταύρωση (τζάιμπ)'}</span>
           <span className="sub">{nextSub}</span>
+          {layNote}
         </span>
         <span className={`val ${nextVal === 'ΤΩΡΑ' ? 'now' : ''}`}>{nextVal}</span>
       </div>
+      <WindReading w={wind.view} dir={settings} onOpen={wind.openSheet} />
       {markLine && (
         <div className="rs-next">
           <span>{markLine}</span>
@@ -136,6 +174,7 @@ export function RaceScreen() {
       <p className="muted small">
         Ενδεικτικό, όχι για ναυσιπλοΐα. Οι ειδοποιήσεις είναι προτάσεις και ακούγονται μόνο με την οθόνη ανοιχτή. Η απόφαση είναι του κυβερνήτη.
       </p>
+      {wind.sheet}
     </section>
   );
 }

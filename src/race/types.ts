@@ -48,6 +48,27 @@ export interface TrackPoint {
   sail?: string;
   /** 'instruments' or 'phone'. */
   src?: string;
+  /** The wind of this point was typed in by the crew inside the session (P-053). */
+  wind?: 'manual';
+}
+
+/** Wind typed in by the crew inside the session (P-053). TWD always true. */
+export interface ManualWind {
+  on: boolean;
+  /** 0–359, degrees true. */
+  twdTrue: number;
+  /** kt, 0–60, step 0.5. */
+  tws: number;
+  /** Last change of a value or «✓ Ισχύει ακόμα» (ms). */
+  at: number;
+}
+
+/** One change of the session's manual wind (P-053): on, off, a settled value, «Ισχύει ακόμα». */
+export interface WindLogEntry {
+  at: number;
+  ev: 'on' | 'off' | 'set' | 'confirm';
+  twdTrue?: number;
+  tws?: number;
 }
 
 /** What a session ("έξοδος") is: a race, a training sail or a cruise (P-033). */
@@ -138,5 +159,9 @@ export interface Race {
   arriveArmed?: string;
   /** Cruise: the destination (`destKey`) whose «ΦΤΑΝΕΙΣ» was shown (once, also after a reload). */
   arriveFired?: string;
+  /** P-053: the wind typed in inside this session; missing means off. Never carried to a new session. */
+  manualWind?: ManualWind;
+  /** P-053: changes of the manual wind (at most 500, the first and the latest kept). */
+  windLog?: WindLogEntry[];
   updatedAt: number;
 }

@@ -4,6 +4,7 @@ import { RaceScreen } from './RaceScreen';
 import { PolarTrimPanel } from './PolarTrimPanel';
 import { RaceCrew } from './CrewViews';
 import { useApp } from './AppContext';
+import { fmtWind } from '../race/manualWind';
 import { useNav, localToMs } from './NavContext';
 import { useRace } from './RaceContext';
 import { askConfirm, offerUndo } from './Dialogs';
@@ -449,7 +450,7 @@ export function RaceSetup({ id, onDone, onCancel }: { id?: string; onDone: (star
 const ordinal = (n: number) => `${n}ος`;
 const ago = (sec?: number) => (sec === undefined ? '' : sec < 90 ? 'τώρα' : sec < 3600 ? `πριν από ${Math.round(sec / 60)}′` : `πριν από ${Math.floor(sec / 3600)} ώρ.`);
 const FIX_LABEL = { own: 'GPS', ais: 'AIS', aisstream: 'AIS μέσω ίντερνετ', manual: 'χειροκίνητα', mark: 'σημαδούρα' } as const;
-const WIND_LABEL = { instruments: 'όργανα', live: 'Live', forecast: 'πρόγνωση' } as const;
+const WIND_LABEL = { manual: 'χειροκίνητα', instruments: 'όργανα', live: 'Live', forecast: 'πρόγνωση' } as const;
 
 function useClock(ms = 1000) {
   const [now, setNow] = useState(Date.now());
@@ -473,6 +474,7 @@ export function RaceLive({
   onEnd?: () => void;
 }) {
   const { active: r, rows, wind, ais, update, recording } = useRace();
+  const { settings } = useApp();
   const now = useClock();
   if (!r) return null;
   const elapsed = (now - r.start) / 1000;
@@ -568,7 +570,7 @@ export function RaceLive({
           </tbody>
         </table>
         <p className="muted small">
-          {wind ? `Άνεμος για την εκτίμηση: ${wind.tws.toFixed(0)} kt / ${Math.round(wind.twd)}° (${WIND_LABEL[wind.source]}). ` : 'Χωρίς άνεμο: βάλε TWS/TWD στο Live ή πάτα «Λήψη πρόγνωσης» στον Χάρτη. '}
+          {wind ? `Άνεμος για την εκτίμηση: ${fmtWind(wind.tws, wind.twd, settings)} (${WIND_LABEL[wind.source]}). ` : 'Χωρίς άνεμο: βάλε TWS/TWD στο Live ή πάτα «Λήψη πρόγνωσης» στον Χάρτη. '}
           {ais.status === 'ok' && `AIS μέσω ίντερνετ: ${ais.message}, ${ago((now - (ais.at ?? now)) / 1000)}. `}
           {ais.status === 'nokey' && `${ais.message} `}
           {ais.status === 'error' && `AIS μέσω ίντερνετ: ${ais.message} `}

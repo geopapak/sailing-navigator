@@ -18,7 +18,9 @@ interface ConfirmReq {
 interface UndoReq {
   id: number;
   text: string;
-  undo: () => void | Promise<void>;
+  /** Without it: a short message only (no button). */
+  undo?: () => void | Promise<void>;
+  ms: number;
 }
 
 type Listener = { confirm: (r: ConfirmReq) => void; undo: (r: UndoReq) => void };
@@ -45,9 +47,14 @@ export function showAlert(text: string): Promise<void> {
   });
 }
 
-/** Shows "<text> — Αναίρεση" for a few seconds; tapping it runs `undo`. */
-export function offerUndo(text: string, undo: () => void | Promise<void>) {
-  listener?.undo({ id: ++seq, text, undo });
+/** Shows "<text> — Αναίρεση" for a few seconds (`ms`, default 8″); tapping it runs `undo`. */
+export function offerUndo(text: string, undo: () => void | Promise<void>, ms = UNDO_MS) {
+  listener?.undo({ id: ++seq, text, undo, ms });
+}
+
+/** A short message in the same place, without «Αναίρεση» (e.g. «Ο άνεμος ισχύει ακόμα»). */
+export function showNote(text: string, ms = 4000) {
+  listener?.undo({ id: ++seq, text, ms });
 }
 
 export function Dialogs() {
@@ -66,7 +73,7 @@ export function Dialogs() {
       undo: (r) => {
         window.clearTimeout(timer.current);
         setSnack(r);
-        timer.current = window.setTimeout(() => setSnack((s) => (s?.id === r.id ? undefined : s)), UNDO_MS);
+        timer.current = window.setTimeout(() => setSnack((s) => (s?.id === r.id ? undefined : s)), r.ms);
       },
     };
     return () => {
@@ -111,15 +118,17 @@ export function Dialogs() {
       {snack && (
         <div className="snack" role="status">
           <span>{snack.text}</span>
-          <button
-            onClick={async () => {
-              window.clearTimeout(timer.current);
-              setSnack(undefined);
-              await snack.undo();
-            }}
-          >
-            Αναίρεση
-          </button>
+          {snack.undo && (
+            <button
+              onClick={async () => {
+                window.clearTimeout(timer.current);
+                setSnack(undefined);
+                await snack.undo?.();
+              }}
+            >
+              Αναίρεση
+            </button>
+          )}
         </div>
       )}
     </>

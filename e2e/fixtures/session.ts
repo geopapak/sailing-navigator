@@ -6,9 +6,12 @@ export interface StoredSession {
   id: string;
   status: string;
   kind?: string;
-  track: { t: number; lat: number; lon: number }[];
+  track: { t: number; lat: number; lon: number; tws?: number; twd?: number; twa?: number; bsp?: number; wind?: 'manual' }[];
   laps?: { t: number }[];
   pauses?: { from: number; to?: number }[];
+  /** P-053: the manual wind of this session (TWD in °T). */
+  manualWind?: { on: boolean; twdTrue: number; tws: number; at: number };
+  windLog?: { at: number; ev: 'on' | 'off' | 'set' | 'confirm'; twdTrue?: number; tws?: number }[];
 }
 
 /** The sessions as the app stored them in IndexedDB (written every 15″ while one runs). */
@@ -26,6 +29,11 @@ export function storedSessions(page: Page): Promise<StoredSession[]> {
     db.close();
     return all;
   });
+}
+
+/** The running session as stored (or undefined). */
+export async function runningSession(page: Page): Promise<StoredSession | undefined> {
+  return (await storedSessions(page)).find((x) => x.status === 'running');
 }
 
 export async function runningTrackLength(page: Page): Promise<number> {

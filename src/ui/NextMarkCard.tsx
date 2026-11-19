@@ -6,6 +6,7 @@ import type { WindSample } from '../weather/types';
 import { meanLabel, meanWind } from '../weather/windAverage';
 import { laylineText, nextManoeuvre } from '../nav/laylines';
 import { useLaylines } from './useLaylines';
+import { fmtWind } from '../race/manualWind';
 
 const f1 = (v: number) => v.toFixed(1);
 const f0 = (v: number) => Math.round(v).toString();
@@ -83,7 +84,7 @@ export function NextMarkCard({ observed, fromCog }: { observed?: WindSample; fro
         <div className={`nm-lay ${lay.result.overstood ? 'warn-text' : ''}`} role="status">
           <strong>{laylineText(lay.result)}</strong>
           <div className="muted small">
-            Ενδεικτικό · άνεμος {lay.wind === 'measured' ? 'μετρημένος (μέσος όρος)' : 'από την πρόγνωση'} {f0(lay.twd)}° / {f0(lay.tws)} kt
+            Ενδεικτικό · άνεμος {lay.wind === 'measured' ? 'μετρημένος (μέσος όρος)' : lay.wind === 'manual' ? 'χειροκίνητα' : 'από την πρόγνωση'} {fmtWind(lay.tws, lay.twd, settings)}
           </div>
         </div>
       )}

@@ -18,6 +18,10 @@
   --curve-hl: #0b2a4a;
   --opt: #f59e0b;
   --now: #dc2626;
+  /* P-053: an old manual wind (yellow in the sun, dark text). */
+  --stale-bg: #fde047;
+  --stale-fg: #05080f;
+  --stale-line: #a16207;
   color-scheme: light;
 }
 :root[data-theme='dark'] {
@@ -38,6 +42,9 @@
   --curve-hl: #93c5fd;
   --opt: #fbbf24;
   --now: #f87171;
+  --stale-bg: #d6a514;
+  --stale-fg: #0b1220;
+  --stale-line: #fbbf24;
   color-scheme: dark;
 }
 :root[data-theme='night'] {
@@ -58,6 +65,10 @@
   --curve-hl: #ff3b30;
   --opt: #ff8a80;
   --now: #ff8a80;
+  /* Night: no yellow, no white; the brighter red with an outline. */
+  --stale-bg: #000000;
+  --stale-fg: #ff8a80;
+  --stale-line: #ff8a80;
   color-scheme: dark;
 }
 
@@ -2781,3 +2792,151 @@ button.rs-tile {
 .next-line > span:last-child { margin-left: auto; text-align: right; }
 .next-line .nl-name { overflow-wrap: anywhere; }
 .cruise-map .plan-panel > * + * { margin-top: 6px; }
+
+/* Manual wind inside a session (P-053), as in design/manual-wind-2026-11. */
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.wi { width: 1em; height: 1em; flex-shrink: 0; vertical-align: -0.12em; margin-right: 0.2em; }
+.msg.info { border-left-color: var(--line); }
+.wind-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 2px 10px;
+  width: 100%;
+  min-height: 64px;
+  margin: 10px 0 0;
+  padding: 8px 8px 8px 14px;
+  text-align: left;
+  background: var(--card);
+  color: var(--fg);
+  border: 2px solid var(--line);
+  border-radius: 14px;
+  font: inherit;
+  cursor: pointer;
+}
+.wind-card:active { filter: brightness(0.95); }
+@media (hover: hover) { .wind-card:hover { border-color: var(--fg); } }
+.wind-card .wk { display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: baseline; font-size: 0.8rem; font-weight: 800; min-width: 0; }
+.wind-card .wsrc { color: var(--muted); overflow-wrap: anywhere; }
+.wind-card.manual .wsrc { color: var(--fg); }
+.wind-card .wv { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 14px; font-weight: 900; font-size: 1.55rem; line-height: 1.1; font-variant-numeric: tabular-nums; min-width: 0; }
+.wind-card .wv small { font-size: 0.55em; font-weight: 800; margin-left: 2px; }
+.wind-card .wv .wtap { font-size: 0.5em; font-weight: 700; align-self: center; }
+.wind-card .wgo {
+  grid-row: 1 / span 2;
+  grid-column: 2;
+  min-width: 56px;
+  min-height: 56px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 14%, var(--bg));
+  color: var(--fg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 4px 6px;
+}
+.wind-card .wgo .wgl { font-size: 0.72rem; font-weight: 800; line-height: 1.1; }
+:root[data-theme='night'] .wind-card .wgo { background: #000; border: 2px solid var(--fg); }
+.wind-card.stale { background: var(--stale-bg); color: var(--stale-fg); border-color: var(--stale-line); border-width: 3px; }
+.wind-card.stale .wsrc { color: var(--stale-fg); }
+.wind-card.stale .wgo { background: transparent; border: 2px solid currentColor; color: inherit; }
+.wind-card.empty { border-style: dashed; }
+.wind-card.cruise .wv { font-size: 1.3rem; }
+.basic-live .wind-card { margin: 8px 0 0; }
+.rs-tile .sub.lay-note { font-size: 0.75rem; color: var(--muted); }
+.rs-tile .sub.lay-note.stale { color: var(--fg); }
+.wind-prompt { margin: 10px 0 0; padding: 12px 14px; border: 2px dashed var(--line); border-radius: 14px; background: var(--bg); }
+.wind-prompt p { margin: 0 0 10px; font-size: 0.9rem; font-weight: 700; }
+.wind-prompt .btn { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0; white-space: normal; }
+.wind-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 8px 10px 8px 14px; border: 2px dashed var(--line); border-radius: 14px; }
+.wind-row b,
+.wind-row .small { display: block; }
+.wind-row .btn { min-height: 48px; min-width: 48px; }
+
+/* The sheet «Άνεμος»: from the bottom (phones), centred (from 34em), a side panel (from 60em, or a low landscape screen). */
+.sheet-backdrop.mode-bottom,
+.sheet-backdrop.mode-center { padding: 0; }
+.sheet.wind-sheet {
+  width: 100%;
+  max-width: none;
+  max-height: 84vh;
+  max-height: 84dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  margin-bottom: 0;
+  padding: 0 16px;
+  border-bottom: 0;
+  border-radius: 20px 20px 0 0;
+  container-type: inline-size;
+  container-name: wsheet;
+}
+.sheet.wind-sheet.mode-center { max-width: 34em; }
+.sheet.wind-sheet.mode-side {
+  position: fixed;
+  right: 0;
+  z-index: 45;
+  width: min(26em, 48vw);
+  max-height: none;
+  border: 0;
+  border-left: 2px solid var(--line);
+  border-radius: 0;
+}
+.ws-hdl { display: flex; justify-content: center; align-items: center; height: 24px; }
+.ws-hdl i { width: 40px; height: 5px; border-radius: 3px; background: var(--line); }
+.ws-head { display: flex; align-items: center; gap: 8px; }
+.mode-side .ws-head { padding-top: 12px; }
+.ws-head h3 { flex: 1; margin: 0; font-size: 1.2rem; font-weight: 800; }
+.ws-head h3:focus { outline: none; }
+.ws-x { min-width: 48px; min-height: 48px; border: 0; border-radius: 999px; background: none; color: var(--fg); display: inline-flex; align-items: center; justify-content: center; }
+.ws-stat { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; max-width: 100%; min-height: 36px; margin: 2px 0 4px; padding: 4px 12px; border: 2px solid var(--line); border-radius: 999px; font-size: 0.9rem; font-weight: 800; overflow-wrap: anywhere; }
+.ws-stat.off { border-style: dashed; color: var(--muted); }
+.ws-stat.stale { background: var(--stale-bg); color: var(--stale-fg); border-color: var(--stale-line); border-width: 3px; }
+.ws-info { margin: 8px 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); font-size: 0.84rem; font-weight: 700; overflow-wrap: anywhere; }
+.ws-info.warn { border-color: var(--fair); border-left-width: 6px; }
+.ws-label { margin: 12px 0 6px; font-size: 0.95rem; font-weight: 800; }
+.ws-label .u { color: var(--muted); font-weight: 700; }
+.ws-steps { display: grid; grid-template-columns: repeat(2, minmax(50px, 56px)) minmax(0, 1fr) repeat(2, minmax(50px, 56px)); gap: 8px; }
+.ws-sp { min-width: 0; min-height: 56px; padding: 0; border: 2px solid var(--line); border-radius: 12px; background: var(--card); color: var(--fg); font-size: 1.1rem; font-weight: 900; touch-action: manipulation; }
+.ws-sp:active { background: var(--accent); color: var(--accent-fg); }
+:root[data-theme='night'] .ws-sp:active { background: #000; color: var(--fg); border-color: var(--fg); }
+.ws-val { display: flex; align-items: center; justify-content: center; gap: 2px; min-width: 0; min-height: 56px; padding: 0 6px; border: 2px solid var(--line); border-radius: 12px; background: var(--bg); }
+.ws-val:focus-within { border-color: var(--fg); }
+.ws-val input { width: 100%; min-width: 0; min-height: 0; padding: 0; border: 0; background: none; text-align: center; font-size: 1.55rem; font-weight: 900; font-variant-numeric: tabular-nums; }
+.ws-val input:focus { outline: none; }
+.ws-val .u { flex-shrink: 0; color: var(--muted); font-size: 0.8rem; font-weight: 800; }
+.ws-conv { margin-top: 6px; font-size: 0.86rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.ws-hint { margin: 4px 0 0; color: var(--muted); font-size: 0.8rem; font-weight: 600; overflow-wrap: anywhere; }
+.toggle.ws-switch { min-height: 64px; margin: 16px 0 0; padding: 8px 12px; background: var(--card); }
+.toggle.ws-switch .tx { overflow-wrap: anywhere; }
+.toggle.ws-switch .tx .small { margin-top: 2px; color: var(--muted); font-size: 0.8rem; }
+.toggle.ws-switch .knob { width: 60px; height: 34px; border-radius: 17px; }
+.toggle.ws-switch .knob::after { top: 4px; left: 4px; width: 22px; height: 22px; border-radius: 11px; }
+.toggle.ws-switch.on { border-color: var(--accent); }
+.toggle.ws-switch.on .knob { background: var(--accent); }
+.toggle.ws-switch.on .knob::after { left: 30px; background: var(--accent-fg); }
+:root[data-theme='night'] .toggle.ws-switch.on .knob { background: #000; border-color: var(--fg); }
+:root[data-theme='night'] .toggle.ws-switch.on .knob::after { background: var(--fg); }
+.ws-twa { margin-top: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); font-weight: 700; overflow-wrap: anywhere; }
+.ws-twa b { font-weight: 900; }
+.ws-help { margin: 12px 0 0; color: var(--muted); font-size: 0.8rem; font-weight: 600; overflow-wrap: anywhere; }
+.ws-foot { position: sticky; bottom: 0; margin-top: 12px; padding: 12px 0 calc(16px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--bg); }
+.ws-foot .big-btn { margin: 0; white-space: normal; }
+/* Narrow sheet (320 px, or big text): the value on top, the four ± under it. */
+@container wsheet (max-width: 19em) {
+  .ws-steps { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  .ws-steps .ws-val { grid-column: 1 / -1; order: -1; min-height: 60px; }
+}
+/* The message with «Αναίρεση» stays clear of the sheet. */
+:root.wind-sheet-open .snack { top: calc(env(safe-area-inset-top) + 12px); bottom: auto; z-index: 60; }
+:root.wind-side-open .snack { top: auto; bottom: calc(76px + env(safe-area-inset-bottom)); left: 12px; right: calc(min(26em, 48vw) + 12px); margin: 0; }
+/* Side panel: the Live makes room for it, so nothing is covered. */
+:root.wind-side-open .content { margin-left: auto; margin-right: min(26em, 48vw); max-width: min(1100px, calc(100% - min(26em, 48vw))); }
+/* «Αναίρεση» never runs off the message at 320 px with big text: it moves under the text. */
+.snack { flex-wrap: wrap; }
+.snack button { max-width: 100%; }
+/* «Αναίρεση» of the switch, inside the sheet (it never covers the sheet). */
+.ws-undo { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0 0 10px; padding: 8px 10px 8px 12px; border: 2px solid var(--fg); border-radius: 12px; font-weight: 800; overflow-wrap: anywhere; }
+.ws-undo span { flex: 1 1 8em; min-width: 0; }
+.ws-undo .btn { margin: 0 0 0 auto; min-height: 48px; }

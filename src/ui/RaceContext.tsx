@@ -3,7 +3,13 @@ import { deleteRace as dbDelete, listRaces, saveRace } from '../boat/store';
 import type { Race, RaceFix, SessionKind, TrackPoint } from '../race/types';
 import { kindOf, recordFrom, shouldWritePoint, stallMinutes, trackEveryMs } from '../race/session';
 import { estimateRace, type EstimateRow, type Wind } from '../race/estimate';
-import { getLiveSnapshot } from '../ai/snapshot';
+import { getLiveSnapshot, getSessionSnapshot } from '../ai/snapshot';
+import { manualTwa } from '../race/manualWind';
+import type { ManualWind } from '../race/types';
+import type { InstrumentValues } from '../instruments/types';
+import type { BoatProfile } from '../boat/types';
+import type { Course } from '../race/manualWind';
+import { currentCourse } from './courseTracker';
 import { computeLive } from '../performance/targets';
 import { gridField } from '../weather/field';
 import { accountApi, ApiError } from '../sync/api';
@@ -15,7 +21,7 @@ import { useStoredState, useWakeLock } from './hooks';
 import { trackGap } from '../race/gaps';
 import { isPaused, pauseAt, resumeAt } from '../race/pauses';
 
-export type WindSource = 'instruments' | 'live' | 'forecast';
+export type WindSource = 'manual' | 'instruments' | 'live' | 'forecast';
 
 interface RaceState {
   races: Race[];
@@ -24,8 +30,8 @@ interface RaceState {
   setActiveId: (id: string | undefined) => void;
   save: (r: Race) => Promise<void>;
   update: (patch: Partial<Race> | ((r: Race) => Partial<Race>)) => void;
-  /** Changes one saved session (e.g. the crew share state after it reached the server) and stores it. */
-  patchRace: (id: string, patch: Partial<Race>) => Promise<void>;
+  /** Changes one saved session (e.g. the crew share state after it reached the server) and stores it at once. */
+  patchRace: (id: string, patch: Partial<Race> | ((r: Race) => Partial<Race>)) => Promise<void>;
   remove: (id: string) => Promise<void>;
   addFix: (f: RaceFix) => void;
   /** Live leaderboard of the active race. */
@@ -139,9 +145,14 @@ export function RaceProvider({ children }: { children: ReactNode }) {
   }, [setUi, ui.activeId]);
 
   const patchRace = useCallback(
-    async (id: string, patch: Partial<Race>) => {
+    async (id: string, patch: Partial<Race> | ((r: Race) => Partial<Race>)) => {
       const cur = racesRef.current.find((r) => r.id === id);
-      if (cur) await save({ ...cur, ...patch, updatedAt: Date.now() });
+      if (!cur) return;
+      const next = { ...cur, ...(typeof patch === 'function' ? patch(cur) : patch), updatedAt: Date.now() };
+      // Two patches before the next render must not undo each other.
+      racesRef.current = racesRef.current.map((r) => (r.id === id ? next : r));
+      if (activeRef.current?.id === id) activeRef.current = next;
+      await save(next);
     },
     [save],
   );
@@ -207,13 +218,16 @@ export function RaceProvider({ children }: { children: ReactNode }) {
   const waitingGps = !!recording && !!active && active.track.length === 0;
   const stalled = recording && active && !waitingGps ? trackGap(active, Date.now(), stallMinutes(everyMs)) : 0;
 
-  // Wind for the estimate: instruments, else what the crew has in Live, else the forecast here.
-  const live = getLiveSnapshot(5);
+  // Wind for the estimate: the session's manual wind (P-053), instruments, else what the crew
+  // has in Live, else the forecast here. A running session never takes a snapshot of defaults.
+  const live = running ? getSessionSnapshot(5) : getLiveSnapshot(5);
+  const mw = running ? active?.manualWind : undefined;
   const iv = inst.values;
   const fix = nav.gps.fix;
   const field = useMemo(() => (nav.forecast ? gridField(nav.forecast) : undefined), [nav.forecast]);
   let wind: RaceState['wind'];
-  if (inst.live && iv.tws !== undefined && iv.twd !== undefined) wind = { tws: iv.tws, twd: iv.twd, source: 'instruments' };
+  if (mw?.on) wind = { tws: mw.tws, twd: mw.twdTrue, source: 'manual' };
+  else if (inst.live && iv.tws !== undefined && iv.twd !== undefined) wind = { tws: iv.tws, twd: iv.twd, source: 'instruments' };
   else if (live?.ctx.live && live.ctx.nav?.observedTwd !== undefined) wind = { tws: live.ctx.live.tws, twd: live.ctx.nav.observedTwd, source: 'live' };
   else if (field && (fix || active?.marks[0])) {
     const p = fix ?? active!.marks[0];
@@ -224,8 +238,8 @@ export function RaceProvider({ children }: { children: ReactNode }) {
   // Recording: our track every 5 s, our fix every 30 s, opponents seen by the boat's AIS.
   const lastOwnFix = useRef(0);
   // Latest readings, read by the timer (so it does not restart on every reading).
-  const latest = useRef({ fix: nav.gps.fix, inst, boat: activeBoat, cruiseSec: settings.cruiseTrackSec });
-  latest.current = { fix: nav.gps.fix, inst, boat: activeBoat, cruiseSec: settings.cruiseTrackSec };
+  const latest = useRef({ fix: nav.gps.fix, inst, boat: activeBoat, cruiseSec: settings.cruiseTrackSec, declination: settings.declination });
+  latest.current = { fix: nav.gps.fix, inst, boat: activeBoat, cruiseSec: settings.cruiseTrackSec, declination: settings.declination };
   useEffect(() => {
     if (!recording) return;
     const t = window.setInterval(() => {
@@ -233,17 +247,21 @@ export function RaceProvider({ children }: { children: ReactNode }) {
       const r = activeRef.current;
       if (!r || r.status !== 'running' || isPaused(r)) return;
       const now = Date.now();
-      const { fix: f, inst, boat, cruiseSec } = latest.current;
-      const snap = getLiveSnapshot(2)?.ctx.live;
+      const { fix: f, inst, boat, cruiseSec, declination } = latest.current;
+      // Never a snapshot of the «Γρήγορη ματιά» defaults nobody typed (P-053 AC 50).
+      const snap = getSessionSnapshot(2)?.ctx.live;
       const add: Partial<Race> = {};
       const k = kindOf(r);
       const lastT = r.track.length ? r.track[r.track.length - 1].t : undefined;
       if (f && now >= recordFrom(r) && shouldWritePoint(lastT, now, trackEveryMs(k, cruiseSec))) {
         const v = inst.live ? inst.values : {};
+        const mw = r.manualWind?.on ? r.manualWind : undefined;
         // Targets from the polar with the instruments' numbers; else what Live last computed.
         const calc =
           boat?.polar && v.tws !== undefined && v.twa !== undefined ? computeLive(boat, { tws: v.tws, twa: v.twa, bsp: v.bsp }) : null;
-        const p: TrackPoint = {
+        const p: TrackPoint = mw
+          ? manualPoint(now, f, v, inst.live, mw, currentCourse(inst, f, declination, now), boat, snap?.currentSail)
+          : {
           t: now,
           lat: f.lat,
           lon: f.lon,
@@ -389,6 +407,42 @@ export function RaceProvider({ children }: { children: ReactNode }) {
       {children}
     </Ctx.Provider>
   );
+}
+
+/**
+ * A track point with the session's manual wind on (P-053 AC 33): TWS/TWD/TWA from it (never
+ * the instruments' wind), its targets, the BSP of the instruments (else SOG), `wind: 'manual'`.
+ */
+function manualPoint(
+  t: number,
+  f: { lat: number; lon: number; sog?: number; cog?: number },
+  v: InstrumentValues,
+  instLive: boolean,
+  mw: ManualWind,
+  course: Course,
+  boat: BoatProfile | undefined,
+  sail: string | undefined,
+): TrackPoint {
+  const twa = manualTwa(mw.twdTrue, course);
+  const bsp = v.bsp ?? f.sog;
+  const calc = boat?.polar && twa !== undefined ? computeLive(boat, { tws: mw.tws, twa, bsp }) : null;
+  return {
+    t,
+    lat: f.lat,
+    lon: f.lon,
+    sog: f.sog,
+    cog: f.cog,
+    tws: mw.tws,
+    twa,
+    twd: mw.twdTrue,
+    bsp,
+    targetBsp: calc?.targetBsp,
+    targetTwa: calc?.targetTwa,
+    pct: calc?.pctTarget,
+    sail,
+    src: instLive ? 'instruments' : 'phone',
+    wind: 'manual',
+  };
 }
 
 export function useRace(): RaceState {

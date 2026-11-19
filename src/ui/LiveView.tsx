@@ -22,6 +22,7 @@ import { useInstruments } from './InstrumentsContext';
 import { knowledgeHints } from '../knowledge/match';
 import { InstrumentBar, type LockField } from './InstrumentBar';
 import { MIN_SOG_FOR_COG, pushWind, type WindFrom } from '../weather/windAverage';
+import { markTyped } from '../race/manualWind';
 
 interface LiveState {
   windInput: 'twa' | 'twd';
@@ -34,6 +35,11 @@ interface LiveState {
   bsp: number | null;
   sailId?: string;
   showPolar: boolean;
+  /** P-053 AC 46: when the crew itself last changed the wind here (never the defaults or the instruments). */
+  windTypedAt?: number;
+  /** P-053 BasicLive: the manual wind's last change and whether it is on. */
+  windAt?: number;
+  windManualOn?: boolean;
 }
 
 const INITIAL: LiveState = {
@@ -125,7 +131,8 @@ export function LiveView() {
   const lock = (f: LockField) => inst.live && !locks[f] && setLocks({ ...locks, [f]: true });
   const setManual = (f: LockField, patch: Partial<LiveState>) => {
     lock(f);
-    set(patch);
+    // Only a change of the wind by the crew counts as «typed» (AC 46), not BSP.
+    set(markTyped(patch, Date.now()));
   };
   const iv = inst.values;
   useEffect(() => {
@@ -216,10 +223,12 @@ export function LiveView() {
 
   // Publish the latest numbers for the advisor chat (buildRef is set further down, after the early returns).
   const buildRef = useRef<(q?: string) => ReturnType<typeof buildLiveContext> | undefined>();
+  // Where the wind came from (P-053 AC 50): a session never uses a snapshot of the defaults nobody typed.
+  const snapWind = inst.live && !locks.tws && iv.tws !== undefined ? 'instruments' : s.windTypedAt !== undefined ? 'quick' : 'default';
   useEffect(() => {
     const c = buildRef.current?.();
-    if (c) setLiveSnapshot(c);
-  }, [result, s.sailId, gps.fix, nav.nextMark, nav.liveRoute, nav.course]);
+    if (c) setLiveSnapshot(c, snapWind);
+  }, [result, s.sailId, gps.fix, nav.nextMark, nav.liveRoute, nav.course, snapWind]);
 
   if (!boat) return <p className="card">Πρόσθεσε πρώτα το σκάφος σου στην καρτέλα «Σκάφη».</p>;
   if (!boat.polar)
@@ -440,7 +449,7 @@ export function LiveView() {
               hint="από πού φυσάει"
               unit="°"
               value={s.twd}
-              onChange={(v) => set({ twd: v })}
+              onChange={(v) => set(markTyped({ twd: v }, Date.now()))}
               small={5}
               big={10}
               wrap

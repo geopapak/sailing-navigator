@@ -5,7 +5,8 @@ import { newManoeuvres, recoveryDone, recoverySec } from '../race/training';
 import type { Manoeuvre } from '../race/types';
 import { stallMinutes } from '../race/session';
 import { distanceNm } from '../nav/geo';
-import { meanWind, pushWind, type WindReading } from '../weather/windAverage';
+import { clearWind, meanWind, pushWind, type WindReading } from '../weather/windAverage';
+import { fmtAge } from '../race/manualWind';
 import { useApp } from './AppContext';
 import { useNav } from './NavContext';
 import { useInstruments } from './InstrumentsContext';
@@ -84,6 +85,14 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
   const latest = useRef({ settings, inst, lay, markInSec, layInSec, marks, profile, numbers, stalled, waitingFor, known, cruise, fix, session: race.session });
   latest.current = { settings, inst, lay, markInSec, layInSec, marks, profile, numbers, stalled, waitingFor, known, cruise, fix, session: race.session };
 
+  // P-053 AC 26: the rolling mean starts afresh when the manual wind is switched on or off.
+  const manualOn = !!race.session?.manualWind?.on;
+  const wasManual = useRef(manualOn);
+  useEffect(() => {
+    if (wasManual.current !== manualOn) clearWind();
+    wasManual.current = manualOn;
+  }, [manualOn]);
+
   useEffect(() => {
     // A new kind (training ↔ cruise) starts the engine afresh and hides the alert (AC 17).
     engine.current = newEngine();
@@ -106,7 +115,13 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
       const now = Date.now();
       const lost = st || (wf !== undefined && now - since > wf);
       let instTwd: number | undefined;
-      if (i.live && i.values.twd !== undefined && i.values.tws !== undefined) {
+      const mw = latest.current.session?.manualWind;
+      if (mw?.on) {
+        // P-053: the manual wind feeds the mean (re-routing only, one reading per 10″); the
+        // instruments' wind does not, and no wind shift is judged (`instTwd` stays undefined).
+        pushWind({ t: now, tws: mw.tws, twd: mw.twdTrue, from: 'typed' });
+        instSamples.current = [];
+      } else if (i.live && i.values.twd !== undefined && i.values.tws !== undefined) {
         const r: WindReading = { t: now, tws: i.values.tws, twd: i.values.twd, from: 'instruments' };
         // Also feeds the few-minute mean used by laylines and re-routing, in every tab.
         pushWind(r);
@@ -167,6 +182,8 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
           gpsLost: lost,
           pct15: pm,
           instruments: nb.withInst,
+          // P-053 AC 21: an old manual wind says its age on the layline alert.
+          windAge: nb.windFrom === 'manual' && nb.stale && nb.manualAgeMin !== undefined ? fmtAge(nb.manualAgeMin) : undefined,
           depth,
           destNm,
           destKey,
@@ -229,9 +246,32 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
   // Browsers play sound only after a tap: the first tap during a race unlocks it.
   useEffect(() => {
     if (!on || !profile?.types.length || settings.alerts.sound === 'off' || audioOk) return;
-    const onTap = () => setAudioOk(unlockAudio() && audioReady());
+    // Unlock inside the tap (browsers need that), but hide the «Ενεργοποίηση ήχου» line only after
+    // the tap's click: removing it at pointerdown moves the screen up and the click misses its button.
+    let done = false;
+    let timer: number | undefined;
+    const apply = (ok: boolean) => {
+      if (done) return;
+      done = true;
+      window.clearTimeout(timer);
+      document.removeEventListener('click', afterClick);
+      setAudioOk(ok);
+    };
+    let ok = false;
+    const afterClick = () => window.setTimeout(() => apply(ok), 0);
+    const onTap = () => {
+      ok = unlockAudio() && audioReady();
+      document.addEventListener('click', afterClick, { once: true });
+      // A tap that never becomes a click (a scroll, a long press): hide it a moment later.
+      timer = window.setTimeout(() => apply(ok), 1000);
+    };
     document.addEventListener('pointerdown', onTap, { once: true });
-    return () => document.removeEventListener('pointerdown', onTap);
+    return () => {
+      done = true;
+      window.clearTimeout(timer);
+      document.removeEventListener('pointerdown', onTap);
+      document.removeEventListener('click', afterClick);
+    };
   }, [on, profile?.types.length, settings.alerts.sound, audioOk]);
 
   const now = Date.now();

@@ -40,6 +40,8 @@ export interface NavSnapshot {
   position?: { lat: number; lon: number; sog?: number; cogTrue?: number };
   /** Observed true wind direction (from), degrees true. */
   observedTwd?: number;
+  /** P-053: the wind was typed in by the crew inside the session (an estimate, not a measurement). */
+  windManual?: { twdTrue: number; tws: number; ageMin: number; stale: boolean; note: string };
   /** Forecast wind at the boat now, for comparison with what is observed. */
   forecastHere?: { tws: number; twd: number; model?: string };
   nextMark?: {

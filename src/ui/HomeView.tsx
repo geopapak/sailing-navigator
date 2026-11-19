@@ -10,7 +10,7 @@ import { ChatView } from './ChatView';
 import { CruiseLive, PauseCard, TrainingLive } from './SessionLiveViews';
 import { Toggle } from './AlertsCard';
 import { useCrews } from './CrewViews';
-import { TRAINING_TEXT as TT } from './sessionText';
+import { TRAINING_TEXT as TT, WIND_TEXT as WT } from './sessionText';
 import { GOALS } from '../race/training';
 import { DEFAULT_TRAINING_ALERTS } from '../race/alerts';
 import type { TrainingGoal } from '../race/types';
@@ -19,7 +19,9 @@ import { startNewBoat } from './WelcomeCard';
 import { entryBoat } from './RaceView';
 import { SessionCard } from './HistoryView';
 import { UpdateCard } from './AppUpdater';
-import { dayStr, hhmm } from './SessionBar';
+import { dayStr, hhmm, useNow } from './SessionBar';
+import { WindReading, useBasicWind } from './WindReading';
+import { fmtWindFrom, manualTwa } from '../race/manualWind';
 import { selectableSails } from '../performance/sails';
 import { gridField } from '../weather/field';
 import { KIND_INFO, SESSION_KINDS, newSession, trackEveryMs } from '../race/session';
@@ -150,12 +152,20 @@ export function HomeView({
 
 /** Speed, wind, COG, TWA and depth without a boat profile (cruise without a boat, «Γρήγορη ματιά»). */
 function BasicLive() {
+  const { settings } = useApp();
   const nav = useNav();
   const inst = useInstruments();
   const fix = nav.gps.fix;
   const v = inst.live ? inst.values : {};
+  useNow(5000); // the age and the 30″ hold of the TWA
+  const bw = useBasicWind();
   const n1 = (x?: number) => (x === undefined ? '—' : x.toFixed(1).replace('.', ','));
   const d0 = (x?: number) => (x === undefined ? '—' : `${Math.round(x)}°`);
+  // P-053 AC 39–40: the manual wind of this screen first, else the instruments, else none.
+  const m = bw.manual?.on ? bw.manual : undefined;
+  const from = m ? 'manual' : v.tws !== undefined ? 'instruments' : 'none';
+  const twa = m ? manualTwa(m.twdTrue, bw.course) : v.twa;
+  const twaSub = from === 'none' ? WT.needsWind : twa === undefined ? (m ? WT.needsSog : undefined) : twa >= 0 ? WT.stbd : WT.port;
   return (
     <section className="card basic-live">
       <div className="bl-tile">
@@ -168,30 +178,39 @@ function BasicLive() {
           <small> kt</small>
         </span>
       </div>
-      <div className="bl-tile">
-        <span>
-          <b>Άνεμος</b>
-          <span className="small muted">TWS · αληθής</span>
-        </span>
-        <span className="val">
-          {n1(v.tws)}
-          <small> kt</small>
-        </span>
-      </div>
+      {from === 'none' ? (
+        <button type="button" className="wind-card empty" data-testid="wind-reading" aria-label={WT.ariaNone} onClick={bw.openSheet}>
+          <span className="wk">
+            <span>{WT.title}</span>
+            <span className="wsrc">TWS · αληθής</span>
+          </span>
+          <span className="wv">
+            <span>—</span>
+            <span className="small muted wtap">{WT.tapToSet}</span>
+          </span>
+          <span className="wgo" aria-hidden="true">
+            <Icon name="pen" size={22} stroke={2.2} />
+            <span className="wgl">{WT.set}</span>
+          </span>
+        </button>
+      ) : (
+        <WindReading w={{ from, tws: m ? m.tws : v.tws, twdTrue: m ? m.twdTrue : v.twd, manual: m }} dir={settings} onOpen={bw.openSheet} />
+      )}
       <div className="bl-mini">
         <div>
           <b>{d0(fix?.cog)}</b>
           <span className="small muted">πορεία COG</span>
         </div>
         <div>
-          <b>{v.twa === undefined ? '—' : `${Math.round(Math.abs(v.twa))}°`}</b>
-          <span className="small muted">TWA</span>
+          <b>{twa === undefined ? '—' : `${Math.round(Math.abs(twa))}°`}</b>
+          <span className="small muted">TWA{twaSub ? ` · ${twaSub}` : ''}</span>
         </div>
         <div>
           <b>{v.depth === undefined ? '—' : `${n1(v.depth)} m`}</b>
           <span className="small muted">βάθος</span>
         </div>
       </div>
+      {bw.sheet}
     </section>
   );
 }
@@ -410,6 +429,7 @@ export function SessionSetup({ kind, onStarted }: { kind: 'training' | 'cruise';
 
 /** Wind now from the saved forecast; offline it says how old it is. */
 function WeatherCard() {
+  const { settings } = useApp();
   const nav = useNav();
   const f = nav.forecast;
   const online = typeof navigator === 'undefined' || navigator.onLine !== false;
@@ -422,7 +442,8 @@ function WeatherCard() {
       <br />
       {w ? (
         <span className="small">
-          {Math.round(w.tws)} kt από {Math.round(w.twd)}°{w.gust !== undefined ? `, ριπές ${Math.round(w.gust)}` : ''}
+          {fmtWindFrom(w.tws, w.twd, settings)}
+          {w.gust !== undefined ? `, ριπές ${Math.round(w.gust)}` : ''}
         </span>
       ) : (
         <span className="small muted">Δεν υπάρχει πρόγνωση για σήμερα.</span>
