@@ -6,6 +6,8 @@ import { useRace } from './RaceContext';
 import { Icon } from './Icons';
 import { useNow } from './SessionBar';
 import { ManualWindSheet, type WindCommit } from './ManualWindSheet';
+import { useSheetMode } from './hooks';
+import { finishPending } from '../race/finishLine';
 import { currentCourse } from './courseTracker';
 import { WIND_TEXT as WT } from './sessionText';
 import { gridField } from '../weather/field';
@@ -165,7 +167,12 @@ export function useSessionWindSheet(nb: LiveNumbers) {
     },
     [id, patchRace],
   );
+  // «Τερματίσατε στις …;» outranks the sheet (P-040 AC 19): a tap does nothing; an open sheet waits
+  // hidden with its draft (owner's answer 4) and comes back on «Όχι»; «Ναι» ends the session and drops it.
+  const hold = finishPending(s);
+  const sheetMode = useSheetMode();
   const openSheet = () => {
+    if (hold) return;
     if (!s?.manualWind) {
       const iv = inst.live ? inst.values : {};
       setFirst(prefill({ live: inst.live, twd: iv.twd, tws: iv.tws }, forecastNow(), settings));
@@ -189,8 +196,9 @@ export function useSessionWindSheet(nb: LiveNumbers) {
         onClose={() => setOpen(false)}
       />
     ) : null;
+  const shown = sheet && hold && sheetMode !== 'side' ? <div hidden>{sheet}</div> : sheet;
   const view: WindView = { from: nb.windFrom, tws: nb.tws, twdTrue: nb.twdTrue, manual: s?.manualWind };
-  return { openSheet, sheet, view };
+  return { openSheet, sheet: shown, view };
 }
 
 const hasTyped = () => {

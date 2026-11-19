@@ -2940,3 +2940,176 @@ button.rs-tile {
 .ws-undo { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0 0 10px; padding: 8px 10px 8px 12px; border: 2px solid var(--fg); border-radius: 12px; font-weight: 800; overflow-wrap: anywhere; }
 .ws-undo span { flex: 1 1 8em; min-width: 0; }
 .ws-undo .btn { margin: 0 0 0 auto; min-height: 48px; }
+
+/* ---- P-040: multi-race event («Διοργάνωση») and the finish line ---------------------------- */
+.event-pick { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.event-pick .opt { min-height: 56px; margin: 0; padding: 10px 14px; }
+.event-pick .opt > span { min-width: 0; overflow-wrap: anywhere; }
+.event-pick .opt b { display: inline; font-size: 1rem; }
+.event-fields { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; margin: 0 0 4px; padding: 4px 0 4px 12px; border-left: 4px solid var(--line); min-width: 0; }
+.event-fields .field-group { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.event-fields .seg.wrap button { flex: 1 1 12em; white-space: normal; line-height: 1.2; min-height: 48px; }
+.event-fields .k-pick { flex-wrap: wrap; font-weight: 600; }
+.event-fields .k-pick select { min-height: 48px; }
+.event-fields input[type='number'] { max-width: 10ch; }
+.event-note { margin: 8px 0; overflow-wrap: anywhere; }
+.event-line { margin: 4px 0 0; font-weight: 800; overflow-wrap: anywhere; }
+.event-card .ev-title { margin: 0 0 4px; overflow-wrap: anywhere; }
+.event-card .ev-next { margin: 0; font-weight: 800; font-size: 1.1rem; overflow-wrap: anywhere; }
+.event-card .big-btn { margin: 10px 0 4px; white-space: normal; }
+.event-card .link-btn { min-height: 48px; }
+.ev-top { list-style: none; padding: 0; margin: 8px 0; }
+.ev-top li { display: flex; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.ev-top li.own { font-weight: 800; }
+.ev-hist .ev-line { font-weight: 700; overflow-wrap: anywhere; }
+.ev-hist .ic { font-size: 1.3rem; }
+.ev-hist b { white-space: normal; overflow-wrap: anywhere; }
+.event-screen .ev-name { overflow-wrap: anywhere; min-width: 0; }
+.event-screen .btn-col { display: flex; flex-direction: column; gap: 10px; margin: 12px 0; }
+.event-screen .btn-col .big-btn { white-space: normal; }
+.ev-race.cancelled p { font-weight: 700; overflow-wrap: anywhere; }
+.ev-race .btn-row .btn { min-height: 48px; }
+.ev-results td:nth-child(2) { overflow-wrap: anywhere; }
+.ev-results tr.own td:nth-child(2) { font-weight: 800; }
+
+/* Standing: scrolls sideways inside its card; «#» and «σκάφος» stay left, «σύνολο» stays right. */
+.stand-wrap { margin: 8px -12px 0; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); max-width: calc(100% + 24px); }
+.stand-wrap:focus-visible { outline: 3px solid var(--fg); outline-offset: -3px; }
+table.stand { border-collapse: separate; border-spacing: 0; min-width: 100%; font-variant-numeric: tabular-nums; font-size: 0.92rem; }
+table.stand th, table.stand td { padding: 9px 6px; text-align: center; white-space: nowrap; border-bottom: 1px solid var(--line); background: var(--card); }
+table.stand thead th { font-size: 0.8rem; color: var(--muted); font-weight: 800; }
+table.stand tbody tr:last-child > * { border-bottom: 0; }
+table.stand .c-place { position: sticky; left: 0; z-index: 2; width: 2.2em; min-width: 2.2em; max-width: 2.2em; text-align: right; padding: 9px 4px 9px 0; }
+/* The boat's whole name, on up to 2 lines (prototype: 6.6–7.6em); a word longer than the column breaks only then. */
+table.stand .c-boat { position: sticky; left: 2.2em; z-index: 2; text-align: left; min-width: 6.6em; max-width: 7.6em; white-space: normal; overflow-wrap: break-word; hyphens: none; line-height: 1.15; border-right: 2px solid var(--line); font-weight: 600; }
+/* 320 px: a little narrower, still the whole name, so 1–2 races show between it and «σύνολο». */
+@media (max-width: 340px) {
+  table.stand { font-size: 0.85rem; }
+  table.stand .c-boat { min-width: 5.6em; max-width: 6.4em; }
+  table.stand th, table.stand td { padding-left: 4px; padding-right: 4px; }
+}
+table.stand .c-total { position: sticky; right: 0; z-index: 2; font-weight: 800; border-left: 2px solid var(--line); }
+table.stand tr.own > * { font-weight: 800; background: var(--bg); }
+table.stand tr.own .c-boat { box-shadow: inset 5px 0 0 var(--fg); padding-left: 10px; }
+table.stand td.est { font-style: italic; }
+.swipe-hint, .stand-foot { margin: 6px 0 0; overflow-wrap: anywhere; }
+
+/* Results editor: one 68 px row per boat; a tap opens its sheet (design/events-2026-11). */
+.results-editor > .card p + p { margin-top: 6px; }
+.er-list { display: grid; gap: 8px; margin: 0 0 10px; }
+.er {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 68px;
+  padding: 8px 8px 8px 10px;
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--fg);
+  text-align: left;
+  font: inherit;
+}
+.er.own { border-width: 3px; border-color: var(--fg); }
+.er.est { border-style: dashed; }
+.er .pos { min-width: 2.5em; height: 2.5em; padding: 0 2px; border-radius: 8px; border: 2px solid var(--line); display: flex; align-items: center; justify-content: center; font-weight: 900; font-variant-numeric: tabular-nums; }
+.er .nm { min-width: 0; }
+.er .nm b { display: block; font-weight: 900; line-height: 1.15; overflow-wrap: break-word; }
+.er .nm .small, .er .v .small { display: block; font-weight: 700; }
+.er.est .nm .small { font-weight: 800; }
+.er .v { text-align: right; font-weight: 900; font-size: 1.1rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.er .v .small { font-size: 0.75rem; }
+.er.est .v { font-style: italic; }
+.er .go { font-weight: 900; font-size: 1.3rem; color: var(--muted); }
+/* 320 px or big text: the value goes under the name. */
+@media (max-width: 360px) {
+  .er { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .er .v { grid-column: 2 / 3; text-align: left; white-space: normal; }
+  .er .go { grid-row: 1 / 3; grid-column: 3; }
+}
+:root[data-size='xl'] .er { grid-template-columns: auto minmax(0, 1fr) auto; }
+:root[data-size='xl'] .er .v { grid-column: 2 / 3; text-align: left; white-space: normal; }
+:root[data-size='xl'] .er .go { grid-row: 1 / 3; grid-column: 3; }
+.results-editor > .btn.danger { margin: 16px 0; }
+
+/* The sheet of one boat: own keypad, no phone keyboard over the list. */
+.sheet.result-sheet {
+  width: 100%;
+  max-width: 34em;
+  max-height: 94vh;
+  max-height: 94dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  margin-bottom: 0;
+  padding: 12px 16px 0;
+  border-bottom: 0;
+  border-radius: 20px 20px 0 0;
+  container-type: inline-size;
+  container-name: rsheet;
+  scroll-padding-bottom: 96px;
+}
+.sheet.result-sheet.mode-center { border-radius: 20px; border-bottom: 2px solid var(--line); }
+.rs-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 8px; }
+.rs-head h3 { flex: 1 1 9em; min-width: 0; margin: 0; font-size: 1.2rem; font-weight: 900; overflow-wrap: break-word; hyphens: none; }
+.rs-head h3:focus { outline: none; }
+.rs-head .btn { min-height: 48px; margin: 0; flex-shrink: 0; }
+.rs-seg { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; border: 2px solid var(--line); border-radius: 12px; }
+.rs-seg button { flex: 1 1 0; min-width: min-content; min-height: 52px; border: 0; border-radius: 9px; background: none; color: var(--fg); font: inherit; font-weight: 800; line-height: 1.1; padding: 4px 6px; overflow-wrap: normal; hyphens: none; }
+.rs-seg button span { display: block; font-size: 0.74em; font-weight: 700; }
+.rs-seg button.on { background: var(--accent); color: var(--accent-fg); }
+.rs-lab { margin: 12px 0 0 !important; font-size: 0.9rem !important; font-weight: 800 !important; }
+.rs-readout { margin: 6px 0 4px; border: 2px solid var(--fg); border-radius: 12px; padding: 6px 8px 4px; text-align: center; }
+.rs-readout .rv { font-size: 2.6rem; font-weight: 900; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; line-height: 1.05; }
+.rs-readout .rv i { font-style: normal; color: var(--muted); }
+.rs-readout .rl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); font-size: 0.76rem; font-weight: 800; color: var(--muted); }
+.rs-kp { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.rs-kp button { min-height: 58px; min-width: 0; border-radius: 12px; border: 2px solid var(--line); background: var(--card); color: var(--fg); font: inherit; font-weight: 900; font-size: 1.45rem; font-variant-numeric: tabular-nums; }
+.rs-kp button.fn { font-size: 0.85rem; overflow-wrap: break-word; hyphens: none; padding: 0 2px; }
+.rs-kp button:active { background: var(--accent); color: var(--accent-fg); }
+.rs-codes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.rs-codes button { min-height: 62px; min-width: 0; border-radius: 12px; border: 2px solid var(--line); background: var(--card); color: var(--fg); font: inherit; text-align: left; padding: 6px 10px; line-height: 1.15; overflow-wrap: break-word; hyphens: none; }
+.rs-codes button b { display: block; font-size: 1.15rem; font-weight: 900; letter-spacing: 0.03em; }
+.rs-codes button span { font-size: 0.8rem; font-weight: 700; }
+.rs-codes button.on { border: 3px solid var(--fg); background: var(--bg); }
+.rs-codes button.on b::after { content: '  ✓'; }
+.sheet .rs-calc { min-height: 2.6em; margin: 8px 0 6px; font-size: 0.95rem; font-weight: 800; overflow-wrap: anywhere; }
+.sheet .rs-calc.err { color: var(--bad, var(--fg)); }
+.sheet .rs-calc.err::before { content: '⚠ '; }
+.sheet .rs-note { margin: 0 0 6px; font-size: 0.85rem; }
+.result-sheet .link-btn { min-height: 48px; }
+.rs-foot { position: sticky; bottom: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(9em, 1fr)); gap: 8px; margin: 8px -16px 0; padding: 10px 16px calc(12px + env(safe-area-inset-bottom)); background: var(--bg); border-top: 1px solid var(--line); }
+.rs-foot .btn { min-height: 56px; margin: 0; white-space: normal; }
+:root[data-theme='night'] .rs-seg button.on { background: #000; color: var(--fg); box-shadow: inset 0 0 0 2px var(--fg); }
+:root[data-theme='night'] .rs-kp button:active { background: #000; color: var(--fg); box-shadow: inset 0 0 0 3px var(--fg); }
+@container rsheet (max-width: 19em) {
+  .rs-seg button span { display: none; }
+  .rs-readout .rv { font-size: 2.1rem; }
+  .rs-codes button { padding: 6px 8px; }
+  .rs-seg button { font-size: 0.9em; }
+}
+/* Short portrait phones (320×640): keys a bit lower so the whole sheet fits. */
+@media (max-height: 700px) and (orientation: portrait) {
+  .rs-kp button { min-height: 50px; font-size: 1.3rem; }
+  .rs-readout .rv { font-size: 2.1rem; }
+  .sheet .rs-calc { min-height: 0; }
+}
+/* While the sheet is open, «Αναίρεση» shows at the top, over the backdrop. */
+:root.result-sheet-open .snack { top: calc(12px + env(safe-area-inset-top)); bottom: auto; z-index: 60; }
+
+/* Event screen: older race cards fold to one 56 px line. */
+.rc-toggle { width: 100%; min-height: 56px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; text-align: left; background: none; border: 0; padding: 0; color: var(--fg); font: inherit; }
+.rc-toggle .rc-text { display: flex; flex-direction: column; min-width: 0; }
+.rc-toggle .rc-title { font-weight: 800; font-size: 1.05rem; overflow-wrap: anywhere; }
+.rc-toggle .small { overflow-wrap: anywhere; }
+.rc-toggle .chev { font-weight: 900; font-size: 1.2rem; min-width: 32px; text-align: center; }
+.ev-race.folded { padding-top: 6px; padding-bottom: 6px; }
+
+/* «Τερματίσατε στις …;»: over everything, the side wind panel included. */
+.sheet-backdrop.finish-backdrop { z-index: 70; align-items: center; padding: 12px; }
+.sheet.finish-sheet { max-width: 30em; border-width: 3px; }
+.finish-sheet h3 { font-size: 1.35rem; margin: 0 0 8px; overflow-wrap: anywhere; }
+.finish-sheet .finish-tones { margin: 0 0 4px; font-size: 0.85rem; color: var(--muted); }
+.finish-sheet .big-btn { white-space: normal; }
+:root[data-theme='night'] .sheet.finish-sheet { background: #000; border-color: var(--fg); }

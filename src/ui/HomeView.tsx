@@ -18,6 +18,8 @@ import { showAlert } from './Dialogs';
 import { startNewBoat } from './WelcomeCard';
 import { entryBoat } from './RaceView';
 import { SessionCard } from './HistoryView';
+import { HomeEventCard } from './EventView';
+import { openEvents } from '../race/event';
 import { UpdateCard } from './AppUpdater';
 import { dayStr, hhmm, useNow } from './SessionBar';
 import { WindReading, useBasicWind } from './WindReading';
@@ -44,22 +46,29 @@ export function HomeView({
   onQuick,
   onHistory,
   onOpen,
+  onEvent,
 }: {
-  onSetup: (kind: SessionKind, raceId?: string) => void;
+  onSetup: (kind: SessionKind, raceId?: string, eventId?: string) => void;
   onQuick: () => void;
   onHistory: () => void;
   onOpen: (r: Race) => void;
+  /** P-040: «Δες τη διοργάνωση». */
+  onEvent?: (eventId: string) => void;
 }) {
   const { boats } = useApp();
   const race = useRace();
+  // P-040 AC 10–11: up to 2 open events; their saved races show only in their card.
+  const evCards = openEvents(race.events, race.races).slice(0, 2);
+  const inEvent = (r: Race) => !!r.eventId && race.events.some((e) => e.id === r.eventId);
   const noBoat = boats.length === 0;
   const done = useMemo(
     () => race.races.filter((r) => r.status === 'finished').sort((a, b) => (b.finish ?? b.start) - (a.finish ?? a.start)),
     [race.races],
   );
-  const next = nextPlanned(race.races, Date.now());
+  const single = race.races.filter((r) => !inEvent(r));
+  const next = nextPlanned(single, Date.now());
   // The next one first; the others stay reachable under it.
-  const planned = next ? [next, ...race.races.filter((r) => r.status === 'planned' && r.id !== next.id).sort((a, b) => a.start - b.start)].slice(0, 3) : [];
+  const planned = next ? [next, ...single.filter((r) => r.status === 'planned' && r.id !== next.id).sort((a, b) => a.start - b.start)].slice(0, 3) : [];
 
   return (
     <div className="home">
@@ -104,6 +113,9 @@ export function HomeView({
           <span className="d">Live χωρίς καταγραφή</span>
         </span>
       </button>
+
+      {!noBoat &&
+        evCards.map((e) => <HomeEventCard key={e.id} event={e} onSetup={onSetup} onEvent={(id) => onEvent?.(id)} />)}
 
       {planned.length > 0 && (
         <>

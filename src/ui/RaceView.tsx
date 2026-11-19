@@ -7,7 +7,7 @@ import { useApp } from './AppContext';
 import { fmtWind } from '../race/manualWind';
 import { useNav, localToMs } from './NavContext';
 import { useRace } from './RaceContext';
-import { askConfirm, offerUndo } from './Dialogs';
+import { askConfirm } from './Dialogs';
 import { useInstruments } from './InstrumentsContext';
 import { CertificateImport, toBase64 } from './CertificateImport';
 import { NumberStepper } from './NumberStepper';
@@ -21,6 +21,11 @@ import type { CleanEntry } from '../race/entrylist';
 import type { Race, RaceEntry } from '../race/types';
 import { fmtGap, nextMarkOf, relativeFix } from '../race/estimate';
 import { formatDuration } from '../scoring/corrected';
+import { useRaceEvent } from './eventHooks';
+import { EVENT_TEXT as ET } from './eventText';
+import { eventBoats, eventRaces, liveStanding, nextRaceSetup, openEvents, placeText, raceNumbers, unifyEntries } from '../race/event';
+import { EventFields, deleteEventRace, newEventDraft, type EventDraft } from './EventView';
+import type { RaceEvent } from '../race/types';
 import type { ScoringMethod } from '../scoring/corrected';
 
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
@@ -42,13 +47,31 @@ const SOURCE_LABEL: Record<RaceEntry['source'], string> = { own: 'εμείς', b
 
 type Lookup = Record<string, 'searching' | 'notfound' | 'error' | undefined>;
 
-export function RaceSetup({ id, onDone, onCancel }: { id?: string; onDone: (started: boolean) => void; onCancel: () => void }) {
+export function RaceSetup({
+  id,
+  eventId: eventId0,
+  onDone,
+  onCancel,
+}: {
+  id?: string;
+  /** P-040: a new race of this event («Στήσε την <N>η ιστιοδρομία»): same boat, entries and crew. */
+  eventId?: string;
+  onDone: (started: boolean) => void;
+  onCancel: () => void;
+}) {
   const { activeBoat, boats, settings, account, saveBoat, refreshAccount } = useApp();
   const nav = useNav();
   const race = useRace();
   const existing = id ? race.races.find((r) => r.id === id) : undefined;
   // Race setup is unsaved input: a waiting app update waits for it (P-043).
   useHoldUpdate(true);
+  // «Μέρος διοργάνωσης» (P-040 AC 1–6): 'none', 'new' or the id of an event.
+  const [evSel, setEvSel] = useState<string>(() => existing?.eventId ?? eventId0 ?? 'none');
+  const [evDraft, setEvDraft] = useState<EventDraft>(newEventDraft);
+  const copyFrom = (evId: string) => {
+    const ev = race.events.find((e) => e.id === evId);
+    return ev ? nextRaceSetup(ev, race.races) : undefined;
+  };
   const [r, setR] = useState<Race>(
     () =>
       existing ?? {
@@ -66,9 +89,27 @@ export function RaceSetup({ id, onDone, onCancel }: { id?: string; onDone: (star
         track: [],
         fixes: [],
         updatedAt: Date.now(),
+        ...(eventId0 ? copyFrom(eventId0) : {}),
       },
   );
   const set = (p: Partial<Race>) => setR((x) => ({ ...x, ...p }));
+  // After the start the event is only text (AC 5).
+  const evLocked = !!existing && existing.status !== 'planned';
+  const selEvent: RaceEvent | undefined = evSel !== 'none' && evSel !== 'new' ? race.events.find((e) => e.id === evSel) : undefined;
+  const evChoices = openEvents(race.events, race.races).filter((e) => e.id !== selEvent?.id);
+  if (selEvent) evChoices.unshift(selEvent);
+  const others = selEvent ? eventRaces(selEvent.id, race.races).filter((x) => x.id !== r.id) : [];
+  const numberOf = (ev: RaceEvent) => raceNumbers([...eventRaces(ev.id, race.races).filter((x) => x.id !== r.id), { ...r, status: 'planned' as const }])[r.id] ?? 1;
+  const evNo = selEvent ? numberOf(selEvent) : evSel === 'new' ? 1 : undefined;
+  const prevRace = others.filter((x) => x.start <= r.start && x.status !== 'planned').pop() ?? others[others.length - 1];
+  const pickEvent = (v: string) => {
+    setEvSel(v);
+    // A new race of an existing event starts as a copy of the previous one (AC 3).
+    if (!existing && v !== 'none' && v !== 'new') {
+      const c = copyFrom(v);
+      if (c) set(c);
+    }
+  };
   const setEntry = (eid: string, p: Partial<RaceEntry>) => setR((x) => ({ ...x, entries: x.entries.map((e) => (e.id === eid ? { ...e, ...p } : e)) }));
   const server = settings.aiUrl || DEFAULT_SERVER;
 
@@ -166,14 +207,28 @@ export function RaceSetup({ id, onDone, onCancel }: { id?: string; onDone: (star
   const own = r.entries.find((e) => e.own);
   const options = own?.boat?.scoring ?? activeBoat?.scoring ?? [];
   const problems: string[] = [];
-  if (!r.name.trim()) problems.push('Δώσε όνομα αγώνα.');
+  if (!r.name.trim()) problems.push(evSel === 'none' ? 'Δώσε όνομα αγώνα.' : ET.noRaceName);
+  if (evSel === 'new' && !evDraft.name.trim()) problems.push(`${ET.noEventName}.`);
   if (r.marks.length < 2) problems.push('Διάλεξε ή φτιάξε διαδρομή με τουλάχιστον 2 σημεία.');
   if (!own) problems.push('Λείπει το σκάφος μας.');
   else if (!own.boat?.scoring.some((o) => o.id === r.scoringOptionId)) problems.push('Το σκάφος μας δεν έχει αυτή την επιλογή βαθμολογίας.');
 
   const store = async (start: boolean) => {
-    const out: Race = { ...r, name: r.name.trim(), status: start ? 'running' : r.status === 'running' ? 'running' : 'planned' };
+    const now = Date.now();
+    let evId: string | undefined = evSel === 'none' ? undefined : evSel;
+    // The event is saved together with its first race, never alone (AC 6).
+    if (evSel === 'new') {
+      const ev: RaceEvent = { id: uid(), ...evDraft, name: evDraft.name.trim(), status: 'open', createdAt: now, updatedAt: now };
+      await race.saveEvent(ev);
+      evId = ev.id;
+    } else if (selEvent) await race.saveEvent({ ...selEvent, updatedAt: now });
+    // A boat known in the event by its sail number keeps the event's id (AC 9).
+    const entries = evId ? unifyEntries(r.entries, eventBoats(eventRaces(evId, race.races).filter((x) => x.id !== r.id))) : r.entries;
+    const out: Race = { ...r, eventId: evId, entries, name: r.name.trim(), status: start ? 'running' : r.status === 'running' ? 'running' : 'planned' };
     await race.save(out);
+    // Moved out of an event it was the only race of: the event goes too.
+    const old = existing?.eventId;
+    if (old && old !== evId && !race.races.some((x) => x.eventId === old && x.id !== r.id)) await race.removeEvent(old);
     race.setActiveId(out.id);
     onDone(start || out.status === 'running');
   };
@@ -217,12 +272,45 @@ export function RaceSetup({ id, onDone, onCancel }: { id?: string; onDone: (star
   return (
     <div className="race-setup">
       <section className="card form-grid">
-        <div className="row between">
-          <h2>{existing ? 'Αγώνας' : 'Νέος αγώνας'}</h2>
+        <div className="row between full">
+          <div>
+            <h2>{selEvent ? (existing ? ET.race : ET.newRace) : existing ? 'Αγώνας' : 'Νέος αγώνας'}</h2>
+            {selEvent && evNo && (
+              <p className="small muted" data-testid="setup-event-sub">
+                {ET.existing(selEvent.name, evNo)}
+              </p>
+            )}
+          </div>
         </div>
+        {evLocked ? (
+          selEvent && evNo ? (
+            <p className="full small">
+              {ET.partOf}: {ET.existing(selEvent.name, evNo)}
+            </p>
+          ) : null
+        ) : (
+          <div className="field-group full event-pick" role="radiogroup" aria-label={ET.partOf}>
+            <span className="field-label" aria-hidden="true">
+              {ET.partOf}
+            </span>
+            {[
+              { v: 'none', t: ET.noneTitle, d: ET.noneSub },
+              { v: 'new', t: ET.newTitle, d: ET.newSub },
+              ...evChoices.map((e) => ({ v: e.id, t: e.name, d: ET.existingSub(numberOf(e)) })),
+            ].map((o) => (
+              <button key={o.v} type="button" role="radio" aria-checked={evSel === o.v} className={`opt ${evSel === o.v ? 'on' : ''}`} onClick={() => pickEvent(o.v)}>
+                <span>
+                  <b>{o.t}</b>
+                  <span className="small muted"> · {o.d}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+        {evSel === 'new' && !evLocked && <EventFields value={evDraft} onChange={setEvDraft} boats={r.entries.length} />}
         <label>
-          Όνομα
-          <input value={r.name} onChange={(e) => set({ name: e.target.value })} placeholder="π.χ. Χειμερινό · 3η" maxLength={80} />
+          {evSel === 'none' ? 'Όνομα' : ET.raceName}
+          <input value={r.name} onChange={(e) => set({ name: e.target.value })} placeholder={evSel === 'none' ? 'π.χ. Χειμερινό · 3η' : ET.raceNamePh} maxLength={80} />
         </label>
         <div className="field-group full">
           <span className="field-label">Διαδρομή</span>
@@ -235,6 +323,7 @@ export function RaceSetup({ id, onDone, onCancel }: { id?: string; onDone: (star
         <label>
           Βαθμολογία
           <select
+            aria-label="Βαθμολογία"
             value={`${r.scoringOptionId}|${r.method}`}
             onChange={(e) => {
               const [o, m] = e.target.value.split('|');
@@ -254,6 +343,11 @@ export function RaceSetup({ id, onDone, onCancel }: { id?: string; onDone: (star
 
       <section className="card">
         <h3>Συμμετοχές</h3>
+        {selEvent && prevRace && evNo && evNo > 1 && (
+          <p className="small muted" data-testid="same-entries">
+            {ET.sameEntries(prevRace.entries.length, evNo - 1)}
+          </p>
+        )}
         <input
           ref={fileRef}
           type="file"
@@ -384,6 +478,7 @@ export function RaceSetup({ id, onDone, onCancel }: { id?: string; onDone: (star
           Οι συντελεστές και τα polars κάθε σκάφους έρχονται από το επίσημο ORC με τον αριθμό πανιού. Όσα δεν βρεθούν, τα συμπληρώνεις με το πιστοποιητικό τους (PDF).
           MMSI για AIS: από το PDF αν υπάρχει, αλλιώς γράψ' το στο σκάφος.
         </p>
+        {evSel !== 'none' && <p className="small">{ET.onlyClass}</p>}
         <div className="row">
           <select value={addBoatId} onChange={(e) => setAddBoatId(e.target.value)} aria-label="Πρόσθεσε σκάφος από τα σκάφη μου">
             <option value="">Πρόσθεσε από τα σκάφη μου…</option>
@@ -411,6 +506,7 @@ export function RaceSetup({ id, onDone, onCancel }: { id?: string; onDone: (star
 
       {existing && <RaceCrew race={r} boat={activeBoat?.isOwn ? activeBoat : boats.find((b) => b.isOwn)} onChange={set} />}
 
+      {evSel !== 'none' && <p className="small muted event-note">{ET.setupNote(settings.raceShiftDeg)}</p>}
       {problems.length > 0 && (
         <ul className="errors">
           {problems.map((p) => (
@@ -432,8 +528,9 @@ export function RaceSetup({ id, onDone, onCancel }: { id?: string; onDone: (star
             className="btn danger"
             onClick={async () => {
               const gone = existing;
-              await race.remove(gone.id);
-              offerUndo(`Διαγράφηκε ο αγώνας «${gone.name}»`, () => race.save(gone));
+              const ev = gone.eventId ? race.events.find((e) => e.id === gone.eventId) : undefined;
+              const only = !!ev && !race.races.some((x) => x.eventId === ev.id && x.id !== gone.id);
+              await deleteEventRace(race, gone, ev, only);
               onCancel();
             }}
           >
@@ -473,10 +570,18 @@ export function RaceLive({
   onFinished?: (id: string) => void;
   onEnd?: () => void;
 }) {
-  const { active: r, rows, wind, ais, update, recording } = useRace();
+  const { active: r, rows, wind, ais, update, recording, races } = useRace();
   const { settings } = useApp();
   const now = useClock();
+  const { event } = useRaceEvent(r);
+  // P-040 AC 12: the place in the event's standing, with this race's estimates as they are now.
+  const live = useMemo(
+    () => (event && r && r.status === 'running' ? liveStanding(event, races, r, rows, now) : undefined),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [event, races, r, rows, Math.floor(now / 15_000)],
+  );
   if (!r) return null;
+  const liveOwn = live?.rows.find((x) => x.own);
   const elapsed = (now - r.start) / 1000;
   const own = rows.find((x) => x.own);
   const ranked = rows.filter((x) => x.rank !== undefined);
@@ -509,6 +614,11 @@ export function RaceLive({
             <p className="muted small">
               {optLabel(r.scoringOptionId)} {r.method} · {legText}
             </p>
+            {event && (
+              <p className="event-line" data-testid="event-live">
+                {liveOwn?.place !== undefined ? ET.live(event.name, placeText(liveOwn.place, liveOwn.tied)) : ET.liveNone(event.name)}
+              </p>
+            )}
           </div>
           {onBack && (
             <button className="btn small-btn" onClick={onBack}>

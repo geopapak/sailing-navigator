@@ -96,3 +96,24 @@ export function notify(a: Alert, how: { sound: 'beep' | 'voice' | 'off'; vibrate
     }
   }
 }
+
+/**
+ * Crossing the finish line (P-040 AC 18b): two rising tones, with the alerts' sound and volume.
+ * Muted (or audio not unlocked yet): vibration only, where the phone can (never on an iPhone).
+ */
+export function finishTones(how: { sound: 'beep' | 'voice' | 'off'; vibrate?: boolean; volume?: 'low' | 'high' }): void {
+  gain = how.volume === 'low' ? 0.35 : 1;
+  const played = how.sound !== 'off' && audioReady();
+  if (played && ac) {
+    const n = ac.currentTime + 0.03;
+    tone(784, n, 0.22);
+    tone(1175, n + 0.3, 0.34);
+  }
+  if ((how.vibrate !== false || !played) && canVibrate() && navigator.userActivation?.hasBeenActive !== false) {
+    try {
+      navigator.vibrate([300, 150, 300]);
+    } catch {
+      /* ignore */
+    }
+  }
+}

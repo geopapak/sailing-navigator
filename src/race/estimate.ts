@@ -81,6 +81,8 @@ export interface EstimateRow {
   /** Why there is no estimate. */
   missing?: string;
   rank?: number;
+  /** P-040: the elapsed time is the estimate frozen at the end of the race (`estAtFinish`). */
+  est?: boolean;
 }
 
 /** The performance a boat is assumed to have: its own polar, or ours scaled by GPH. */
@@ -100,7 +102,12 @@ export function estimateRace(race: Race, wind: Wind | undefined, now = Date.now(
     const finished = race.results?.[e.id];
     const opt = e.boat?.scoring?.find((o) => o.id === race.scoringOptionId);
     if (!opt) return { ...row, missing: 'χωρίς βαθμολογία' };
+    const code = race.resultCodes?.[e.id];
+    if (code && finished === undefined) return { ...row, missing: code };
     if (finished !== undefined) return { ...row, elapsed: finished, corrected: corrected(race.method, finished, opt, dist), nextMark: race.marks.length };
+    // An ended race keeps the estimate of its end (P-040 AC 26), never one made again without wind.
+    const frozen = race.status === 'finished' ? race.estAtFinish?.[e.id] : undefined;
+    if (frozen !== undefined) return { ...row, elapsed: frozen, corrected: corrected(race.method, frozen, opt, dist), est: true };
     if (!fix) return { ...row, missing: 'χωρίς θέση' };
     if (!wind) return { ...row, missing: 'χωρίς άνεμο' };
     const perf = perfOf(e, own);

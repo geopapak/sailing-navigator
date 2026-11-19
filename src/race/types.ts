@@ -163,5 +163,59 @@ export interface Race {
   manualWind?: ManualWind;
   /** P-053: changes of the manual wind (at most 500, the first and the latest kept). */
   windLog?: WindLogEntry[];
+  /** P-040: the multi-race event («Διοργάνωση») this race belongs to. Its number there is computed, never stored. */
+  eventId?: string;
+  /** P-040: official result codes per entry (DNF, DSQ …); a code and a time exclude each other. */
+  resultCodes?: Record<string, ResultCode>;
+  /** P-040: when the official results were typed in. */
+  resultsEdited?: number;
+  /** P-040: entries whose result or code was typed in the «Αποτελέσματα» editor («επίσημο»). */
+  resultSrc?: Record<string, 'official'>;
+  /** P-040: a cancelled race that was sailed without us («Η ιστιοδρομία έγινε χωρίς εμάς»): it counts. */
+  held?: boolean;
+  /** P-040: when the finish line detection was armed (every mark before the finish passed, or the start of a 2-point course). */
+  finishArmedAt?: number;
+  /** P-040: the last crossing of the finish line found from the GPS. */
+  finishCross?: FinishCross;
+  /** P-040: estimated elapsed seconds per opponent without a result, frozen when the race ended. */
+  estAtFinish?: Record<string, number>;
+  updatedAt: number;
+}
+
+/** P-040: where a result came from, for the «Αποτελέσματα» list. */
+export type ResultSource = 'line' | 'manual' | 'official' | 'est';
+
+/** P-040: official result codes (RRS A5.2: all score «boats in the class + 1»; DNE is never discarded). */
+export type ResultCode = 'DNC' | 'DNS' | 'OCS' | 'DNF' | 'RET' | 'DSQ' | 'DNE';
+
+/** P-040: a crossing of the finish line («Τερματίσατε στις …;»). */
+export interface FinishCross {
+  /** Interpolated time of the crossing (ms, whole seconds). */
+  t: number;
+  /** Found across a gap of more than 30″ (app in the background): the time is approximate. */
+  approx?: boolean;
+  /** Length of that gap (s), for «ήταν στο παρασκήνιο N′». */
+  gapSec?: number;
+  answered?: 'yes' | 'no';
+  /** When it was answered. */
+  at?: number;
+  /** After «Όχι»: the boat was back on the side of the previous mark, > 0,1 NM from the line. */
+  rearmed?: boolean;
+}
+
+/** P-040: a multi-race event («Διοργάνωση»), one class: the class of our boat. Stays on this device. */
+export interface RaceEvent {
+  id: string;
+  name: string;
+  /** «Παράρτημα A (θέσεις)» or «Άθροισμα διορθωμένων χρόνων». */
+  scoring: 'points' | 'time';
+  discards: 0 | 1 | 2;
+  /** K: discards apply from this many completed races. Always > discards. */
+  discardFrom: number;
+  /** «Σκάφη στην κλάση»: for the «+ 1» points when not every boat was entered. */
+  classSize?: number;
+  status: 'open' | 'closed';
+  owner?: string;
+  createdAt: number;
   updatedAt: number;
 }

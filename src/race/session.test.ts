@@ -5,6 +5,8 @@ import {
   isCancelled,
   finishAt,
   finishNow,
+  finishCrossAt,
+  withEstimates,
   kindOf,
   newSession,
   recordFrom,
@@ -164,5 +166,53 @@ describe('session stats', () => {
 
   it('has no mean speed for an empty or very short session', () => {
     expect(sessionStats(race({ finish: T0 + 30_000 })).avgKt).toBeUndefined();
+  });
+});
+
+describe('finish line end and estimate snapshot (P-040)', () => {
+  const r = race({
+    entries: [
+      { id: 'own', name: 'Εμείς', own: true, source: 'own' },
+      { id: 'b', name: 'Αύρα', source: 'boats' },
+      { id: 'c', name: 'Γαλήνη', source: 'boats' },
+    ],
+    track: [pt(60), pt(100), pt(102)],
+    fixes: [{ entryId: 'own', t: T0 + 101 * 60_000, lat: 37.9, lon: 23.6, source: 'own' }],
+    finishCross: { t: T0 + 100 * 60_000 },
+  });
+
+  it('«Ναι» 2′ later: the finish is the crossing, our time from it, later points dropped (AC 20)', () => {
+    const now = T0 + 102 * 60_000;
+    const out = finishCrossAt(r, T0 + 100 * 60_000, now);
+    expect(out.status).toBe('finished');
+    expect(out.finish).toBe(T0 + 100 * 60_000);
+    expect(out.results).toEqual({ own: 6000 });
+    expect(out.finishCross).toEqual({ t: T0 + 100 * 60_000, answered: 'yes', at: now });
+    expect(out.track.map((p) => p.t)).toEqual([T0 + 60 * 60_000, T0 + 100 * 60_000]);
+    expect(out.fixes).toEqual([]);
+  });
+
+  it('the snapshot keeps the opponents without a result, never us', () => {
+    const ended = { ...finishCrossAt(r, T0 + 100 * 60_000, T0 + 102 * 60_000), results: { own: 6000, c: 6100 } };
+    const out = withEstimates(ended, [
+      { entryId: 'own', own: true, elapsed: 6000 },
+      { entryId: 'b', own: false, elapsed: 6200.4 },
+      { entryId: 'c', own: false, elapsed: 6150 },
+      { entryId: 'x', own: false, elapsed: 5000 },
+    ]);
+    expect(out.estAtFinish).toEqual({ b: 6200 });
+    // Before the start (cancelled), or without estimates: unchanged.
+    const cancelled = { ...r, status: 'finished' as const, finish: T0 - 1000 };
+    expect(withEstimates(cancelled, [{ entryId: 'b', own: false, elapsed: 1 }])).toBe(cancelled);
+    expect(withEstimates(ended, [{ entryId: 'b', own: false }])).toBe(ended);
+  });
+
+  it('undo of an end on the line: running again, the crossing answered «Όχι», not re-armed (AC 37)', () => {
+    const back = reopen(r, T0 + 103 * 60_000);
+    expect(back.status).toBe('running');
+    expect(back.finish).toBeUndefined();
+    expect(back.finishCross).toEqual({ t: T0 + 100 * 60_000, answered: 'no', at: T0 + 103 * 60_000, rearmed: false });
+    const plain = race();
+    expect(reopen(plain, T0).finishCross).toBeUndefined();
   });
 });

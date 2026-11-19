@@ -100,9 +100,50 @@ export function finishAt(r: Race, at: number, now: number): Race {
   };
 }
 
-/** Undo of an end within 10″: back to running, without the finish. */
+/**
+ * «Ναι, τερματίσαμε» on a crossing of the finish line (P-040 AC 20): the finish is the time of the
+ * crossing, however late the tap; our elapsed time from it; later points are dropped.
+ */
+export function finishCrossAt(r: Race, t: number, now: number): Race {
+  const own = r.entries.find((e) => e.own);
+  const finish = Math.min(now, Math.max(t, r.start));
+  const results = own && finish > r.start ? { ...(r.results ?? {}), [own.id]: (finish - r.start) / 1000 } : r.results;
+  return {
+    ...r,
+    status: 'finished',
+    finish,
+    results,
+    finishCross: { ...(r.finishCross ?? { t }), t, answered: 'yes', at: now },
+    track: r.track.filter((p) => p.t <= finish),
+    fixes: r.fixes.filter((f) => f.t <= finish),
+    pauses: closePausesAt(r.pauses, finish),
+    updatedAt: now,
+  };
+}
+
+/**
+ * The estimate snapshot at the end of a race after its start (P-040 AC 26): the projected elapsed
+ * time of every opponent without a result, from the rows the Live shows at that moment (with the
+ * session's wind, the manual one too). The summary, the analysis and the event read it later.
+ */
+export function withEstimates(r: Race, rows: { entryId: string; own: boolean; elapsed?: number }[]): Race {
+  if (kindOf(r) !== 'race' || r.finish === undefined || r.finish <= r.start) return r;
+  const est: Record<string, number> = {};
+  for (const x of rows) {
+    if (x.own || x.elapsed === undefined || !(x.elapsed > 0) || r.results?.[x.entryId] !== undefined) continue;
+    if (!r.entries.some((e) => e.id === x.entryId)) continue;
+    est[x.entryId] = Math.round(x.elapsed);
+  }
+  return Object.keys(est).length ? { ...r, estAtFinish: est } : r;
+}
+
+/**
+ * Undo of an end within 10″: back to running, without the finish. A race ended on a crossing of
+ * the line comes back with that crossing answered «Όχι»: it re-arms only after the way back (AC 37).
+ */
 export function reopen(before: Race, now: number): Race {
-  return { ...before, status: 'running', finish: undefined, updatedAt: now };
+  const fc = before.finishCross && before.finishCross.answered !== 'no' ? { ...before.finishCross, answered: 'no' as const, at: now, rearmed: false } : before.finishCross;
+  return { ...before, status: 'running', finish: undefined, finishCross: fc, updatedAt: now };
 }
 
 export interface SessionStats {

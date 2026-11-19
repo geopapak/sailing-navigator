@@ -2,7 +2,7 @@ import Dexie, { type Table } from 'dexie';
 import type { BoatProfile } from './types';
 import { newBoatId } from './ids';
 import type { Mark } from '../routing/isochrones';
-import type { Race } from '../race/types';
+import type { Race, RaceEvent } from '../race/types';
 import type { KnowledgeNote } from '../knowledge/types';
 
 export interface KV {
@@ -25,6 +25,8 @@ export class NavDB extends Dexie {
   races!: Table<Race, string>;
   /** Local-knowledge notes (synced with the account). */
   notes!: Table<KnowledgeNote, string>;
+  /** Multi-race events (P-040), on this device only, like the races. */
+  events!: Table<RaceEvent, string>;
   constructor(name = 'sailing-navigator') {
     super(name);
     this.version(1).stores({ boats: 'id, name', kv: 'key' });
@@ -41,6 +43,15 @@ export class NavDB extends Dexie {
             if (!r.kind) r.kind = 'race';
           }),
       );
+    // Events (P-040): every table declared again (Dexie keeps only what the newest version lists), no data change.
+    this.version(5).stores({
+      boats: 'id, name',
+      kv: 'key',
+      courses: 'id, name',
+      races: 'id, start, kind, eventId',
+      notes: 'id, updatedAt',
+      events: 'id, updatedAt',
+    });
   }
 }
 
@@ -134,6 +145,27 @@ export async function tagRaces(owner: string): Promise<void> {
 }
 
 export const getRace = (id: string) => db.races.get(id);
+
+/** Events of one account (plus untagged ones), newest first (P-040). */
+export async function listEvents(owner?: string): Promise<RaceEvent[]> {
+  const all = await db.events.toArray();
+  return all.filter((e) => !e.owner || e.owner === owner).sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+/** Tags untagged events with an account, next to `tagRaces`. */
+export async function tagEvents(owner: string): Promise<void> {
+  const untagged = (await db.events.toArray()).filter((e) => !e.owner);
+  if (untagged.length) await db.events.bulkPut(untagged.map((e) => ({ ...e, owner })));
+}
+
+export const getEvent = (id: string) => db.events.get(id);
+
+/** Events stay on this device, like their races. */
+export async function saveEvent(e: RaceEvent): Promise<void> {
+  await db.events.put(e);
+}
+
+export const deleteEvent = (id: string) => db.events.delete(id);
 
 /** Races stay on this device (tracks are large); only the notes sync. */
 export async function saveRace(r: Race): Promise<void> {

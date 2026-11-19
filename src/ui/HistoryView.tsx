@@ -18,6 +18,12 @@ import { kindSpans, mss, trainingSummary } from '../race/training';
 import { arrivalTime, maxSog30, sessionTitle, trackIntervalSec } from '../race/cruise';
 import { useApp } from './AppContext';
 import { CRUISE_TEXT as CT } from './sessionText';
+import { EVENT_TEXT as ET, FINISH_TEXT as FT } from './eventText';
+import { EventAfterCard, EventHistoryCard, EventScreen, ResultsEditor } from './EventView';
+import { useRaceEvent } from './eventHooks';
+import { classN, eventBoats, placeText, raceResult } from '../race/event';
+import { hhmmss } from './SessionBar';
+import type { RaceEvent } from '../race/types';
 
 /** A shared training, or a cruise whose training part is shared (P-035 AC 27, 29). */
 const sharedTraining = (r: Race) => !!r.crewShared && (kindOf(r) === 'training' || (!!r.finish && kindSpans(r, r.finish).some((k) => k.kind === 'training')));
@@ -77,19 +83,91 @@ export function SessionCard({ r, fresh, onOpen }: { r: Race; fresh?: boolean; on
 }
 
 type Filter = 'all' | SessionKind;
-type Sub = { s: 'list' } | { s: 'open'; id: string } | { s: 'calc' };
+type Sub =
+  | { s: 'list' }
+  | { s: 'open'; id: string; back?: Sub }
+  | { s: 'calc' }
+  /** P-040: the event screen, and the results editor of one of its races. */
+  | { s: 'event'; id: string }
+  | { s: 'results'; id: string; back: Sub };
+
+/** `openId`: a session id, or «event:<id>» / «results:<raceId>» (P-040). */
+function subOf(openId: string | undefined, races: Race[]): Sub {
+  if (!openId) return { s: 'list' };
+  if (openId.startsWith('event:')) return { s: 'event', id: openId.slice(6) };
+  if (openId.startsWith('results:')) {
+    const id = openId.slice(8);
+    const ev = races.find((r) => r.id === id)?.eventId;
+    return { s: 'results', id, back: ev ? { s: 'event', id: ev } : { s: 'list' } };
+  }
+  return { s: 'open', id: openId };
+}
+
+type Item = { t: 'race'; r: Race; at: number } | { t: 'event'; e: RaceEvent; at: number; fresh: boolean };
 
 /** «Οι έξοδοί μου» (AC 28–30). */
-export function HistoryView({ onHome, openId }: { onHome: () => void; openId?: string }) {
+export function HistoryView({
+  onHome,
+  openId,
+  onSetup,
+}: {
+  onHome: () => void;
+  openId?: string;
+  onSetup?: (kind: SessionKind, raceId?: string, eventId?: string) => void;
+}) {
   const race = useRace();
   const [filter, setFilter] = useState<Filter>('all');
-  const [sub, setSub] = useState<Sub>(openId ? { s: 'open', id: openId } : { s: 'list' });
-  useEffect(() => setSub(openId ? { s: 'open', id: openId } : { s: 'list' }), [openId]);
+  const [sub, setSub] = useState<Sub>(() => subOf(openId, race.races));
+  useEffect(() => setSub(subOf(openId, race.races)), [openId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, [sub]);
   const done = useMemo(
     () => race.races.filter((r) => r.status === 'finished').sort((a, b) => (b.finish ?? b.start) - (a.finish ?? a.start)),
     [race.races],
   );
+  // P-040 AC 35: an event is one card, at the time of its latest race; its races are not listed apart.
+  const items = useMemo(() => {
+    const out: Item[] = [];
+    const seen = new Map<string, Item & { t: 'event' }>();
+    for (const r of done) {
+      const e = r.eventId ? race.events.find((x) => x.id === r.eventId) : undefined;
+      const at = r.finish ?? r.start;
+      if (!e) {
+        out.push({ t: 'race', r, at });
+        continue;
+      }
+      const have = seen.get(e.id);
+      if (have) have.fresh ||= r.id === race.freshId;
+      else {
+        const it = { t: 'event' as const, e, at, fresh: r.id === race.freshId };
+        seen.set(e.id, it);
+        out.push(it);
+      }
+    }
+    return out;
+  }, [done, race.events, race.freshId]);
   const back = () => setSub({ s: 'list' });
+
+  if (sub.s === 'event')
+    return (
+      <EventScreen
+        eventId={sub.id}
+        onBack={back}
+        onSetup={(k, id, ev) => onSetup?.(k, id, ev)}
+        onAnalysis={(id) => setSub({ s: 'open', id, back: sub })}
+        onResults={(id) => setSub({ s: 'results', id, back: sub })}
+      />
+    );
+  if (sub.s === 'results')
+    return (
+      <>
+        <button type="button" className="btn back-btn" onClick={() => setSub(sub.back)}>
+          {sub.back.s === 'event' ? ET.backEvent : ET.back}
+        </button>
+        <ResultsEditor raceId={sub.id} onBack={() => setSub(sub.back)} />
+      </>
+    );
 
   if (sub.s === 'calc')
     return (
@@ -102,7 +180,9 @@ export function HistoryView({ onHome, openId }: { onHome: () => void; openId?: s
     );
   if (sub.s === 'open') {
     const r = race.races.find((x) => x.id === sub.id);
-    if (r && kindOf(r) === 'race' && !isCancelled(r)) return <RaceAnalysisView id={r.id} onBack={back} backLabel="← Οι έξοδοί μου" />;
+    const toEvent = sub.back?.s === 'event' ? sub.back : r?.eventId && race.events.some((e) => e.id === r.eventId) ? ({ s: 'event', id: r.eventId } as const) : undefined;
+    if (r && kindOf(r) === 'race' && !isCancelled(r))
+      return <RaceAnalysisView id={r.id} onBack={() => setSub(toEvent ?? { s: 'list' })} backLabel={toEvent ? ET.backEvent : '← Οι έξοδοί μου'} />;
     return (
       <>
         <button type="button" className="btn back-btn" onClick={back}>
@@ -113,7 +193,7 @@ export function HistoryView({ onHome, openId }: { onHome: () => void; openId?: s
     );
   }
 
-  const list = done.filter((r) => filter === 'all' || kindOf(r) === filter);
+  const list = items.filter((x) => filter === 'all' || (x.t === 'event' ? filter === 'race' : kindOf(x.r) === filter));
   return (
     <div className="history">
       {done.length === 0 ? (
@@ -144,7 +224,13 @@ export function HistoryView({ onHome, openId }: { onHome: () => void; openId?: s
             ))}
           </div>
           {list.length ? (
-            list.map((r) => <SessionCard key={r.id} r={r} fresh={r.id === race.freshId} onOpen={() => setSub({ s: 'open', id: r.id })} />)
+            list.map((x) =>
+              x.t === 'event' ? (
+                <EventHistoryCard key={x.e.id} event={x.e} fresh={x.fresh} onOpen={() => setSub({ s: 'event', id: x.e.id })} />
+              ) : (
+                <SessionCard key={x.r.id} r={x.r} fresh={x.r.id === race.freshId} onOpen={() => setSub({ s: 'open', id: x.r.id })} />
+              ),
+            )
           ) : (
             <section className="card">Καμία έξοδος αυτού του τύπου ακόμα.</section>
           )}
@@ -167,6 +253,7 @@ export function SessionSummary({ r, onAnalysis }: { r: Race; onAnalysis?: () => 
 
 function OtherSummary({ r, onAnalysis }: { r: Race; onAnalysis?: () => void }) {
   const { settings } = useApp();
+  const { event, races: evRaces } = useRaceEvent(r);
   const kind = kindOf(r);
   const cancelled = isCancelled(r);
   const stats = useMemo(() => {
@@ -188,15 +275,25 @@ function OtherSummary({ r, onAnalysis }: { r: Race; onAnalysis?: () => void }) {
     }
     const a = analyseRace(r);
     const own = estimateRace(r, undefined, r.finish ?? Date.now()).find((x) => x.own);
+    // «θέση» once every boat has a time or a code, else «εκτίμηση θέσης» (P-040 AC 30).
+    let place = a.rank ? `${a.rank}ος` : '—';
+    let official = r.entries.every((e) => r.results?.[e.id] !== undefined || !!r.resultCodes?.[e.id]);
+    if (event) {
+      const boats = eventBoats(evRaces);
+      const res = raceResult(r, boats, classN(event, boats));
+      const mine = Object.values(res.byKey).find((x) => boats.find((b) => b.key === x.key)?.own);
+      place = mine?.place !== undefined ? `${placeText(mine.place, mine.tied)}ος` : (mine?.code ?? '—');
+      official = res.official;
+    }
     return [
       [formatDuration(a.durationSec), 'χρόνος'],
       [own?.corrected !== undefined ? formatDuration(own.corrected) : '—', 'διορθωμένος'],
-      [a.rank ? `${a.rank}ος` : '—', 'εκτίμηση θέσης'],
+      [place, official ? ET.place : ET.estPlace],
       [`${n1(a.sailedNm)} NM`, 'απόσταση'],
       [a.avgPct !== undefined ? `${Math.round(a.avgPct * 100)}%` : '—', 'μέσος % του στόχου'],
       [String(a.tacks), 'αναστροφές'],
     ];
-  }, [r, kind, cancelled, settings.cruiseTrackSec]);
+  }, [r, kind, cancelled, settings.cruiseTrackSec, event, evRaces]);
   const own = r.entries.find((e) => e.own);
   return (
     <section className="card session-summary">
@@ -287,7 +384,13 @@ export function EndedScreen({ ended, onUndone, onHistory }: { ended: Ended; onUn
           </button>
         </div>
       )}
+      {ended.line && (
+        <p className="msg small" data-testid="ended-line">
+          {FT.ended(ended.line.approx ? hhmm(ended.line.t) : hhmmss(ended.line.t), ended.line.approx)}
+        </p>
+      )}
       {r && <SessionSummary r={r} onAnalysis={() => onHistory(r.id)} />}
+      {r?.eventId && <EventAfterCard r={r} onEvent={() => onHistory(`event:${r.eventId}`)} onResults={() => onHistory(`results:${r.id}`)} />}
       <div className="btn-row sticky-actions">
         <button type="button" className="btn primary big-btn wide" onClick={() => onHistory()}>
           Στο Ιστορικό
