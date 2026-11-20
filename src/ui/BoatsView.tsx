@@ -74,7 +74,7 @@ export function BoatsView() {
         if (!file) return;
         try {
           const b = parseBoatJson(await file.text());
-          if (boats.some((x) => x.id === b.id) && !(await askConfirm(`Υπάρχει ήδη το «${b.name}». Να αντικατασταθεί με αυτό το αρχείο;`, { ok: 'Αντικατάσταση' }))) return;
+          if (boats.some((x) => x.id === b.id) && !(await askConfirm(`Υπάρχει ήδη το «${b.name}». Να αντικατασταθεί με αυτό το αρχείο;`, { ok: 'Αντικατάσταση', danger: true }))) return;
           await saved(b);
           setMsg(`Εισήχθη: ${b.name}`);
         } catch (err) {

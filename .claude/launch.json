@@ -36,6 +36,12 @@
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "http.server", "8088", "--bind", "127.0.0.1", "--directory", "design/events-2026-11"],
       "port": 8088
+    },
+    {
+      "name": "proto-refresh-b",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8087", "--bind", "127.0.0.1", "--directory", "design/refresh-2026-11-b"],
+      "port": 8087
     }
   ]
 }

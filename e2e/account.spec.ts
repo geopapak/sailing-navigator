@@ -6,13 +6,14 @@ import { test, expect, type AppFixture } from './fixtures/app';
 import { boatItem } from './fixtures/handlers';
 import { download } from './fixtures/session';
 import { TEST_EMAIL } from './fixtures/data/user';
+import { expectActiveBoat } from './fixtures/boat';
 
 test.use({ scenario: { boats: [boatItem()] } });
 
 async function toAccount(app: AppFixture) {
   await app.open();
   await app.signIn();
-  await expect(app.page.getByRole('combobox', { name: 'Ενεργό σκάφος' })).toHaveValue('e2e-astarti');
+  await expectActiveBoat(app.page, 'e2e-astarti');
   await app.tab('Ρυθμίσεις');
 }
 
@@ -75,6 +76,8 @@ test('«Διαγραφή λογαριασμού»: «Άκυρο» δεν σβή�
   await app.page.getByRole('button', { name: 'Διαγραφή λογαριασμού', exact: true }).click();
   const confirm = app.page.getByRole('alertdialog');
   await expect(confirm).toContainText('Οριστική διαγραφή του λογαριασμού και των δεδομένων του στην υπηρεσία; Δεν αναιρείται.');
+  // P-049: a destructive question starts on «Άκυρο», never on the «yes» button.
+  await expect(confirm.getByRole('button', { name: 'Άκυρο' })).toBeFocused();
   await confirm.getByRole('button', { name: 'Άκυρο' }).click();
   await expect(confirm).toHaveCount(0);
   expect(app.server.calls('/me', 'DELETE')).toHaveLength(0);

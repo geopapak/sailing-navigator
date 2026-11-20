@@ -27,6 +27,7 @@ import { eventBoats, eventRaces, liveStanding, nextRaceSetup, openEvents, placeT
 import { EventFields, deleteEventRace, newEventDraft, type EventDraft } from './EventView';
 import type { RaceEvent } from '../race/types';
 import type { ScoringMethod } from '../scoring/corrected';
+import { Icon } from './Icons';
 
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 
@@ -431,7 +432,7 @@ export function RaceSetup({
                 </div>
                 {!e.own && (
                   <button className="icon-btn" aria-label={`Αφαίρεση ${e.name}`} onClick={() => set({ entries: r.entries.filter((x) => x.id !== e.id) })}>
-                    ✕
+                    <Icon name="close" size={20} />
                   </button>
                 )}
               </div>

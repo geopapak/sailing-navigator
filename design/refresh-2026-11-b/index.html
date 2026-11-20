@@ -1,0 +1,1106 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" href="data:," />
+<title>Ανανέωση εμφάνισης · συμπλήρωμα (P-049 Φ-B…Φ-E)</title>
+<style>
+  /* Inter, the same two subsets the app bundles (Φ-A): pinned, from unpkg. Offline → system font. */
+  @font-face { font-family:'Inter'; font-weight:400 900; font-display:swap; src:url('https://unpkg.com/@fontsource-variable/inter@5.3.0/files/inter-latin-wght-normal.woff2') format('woff2'); unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+  @font-face { font-family:'Inter'; font-weight:400 900; font-display:swap; src:url('https://unpkg.com/@fontsource-variable/inter@5.3.0/files/inter-greek-wght-normal.woff2') format('woff2'); unicode-range:U+0370-0377,U+037A-037F,U+0384-038A,U+038C,U+038E-03A1,U+03A3-03FF; }
+
+  /* ---------- Canvas (not part of the design) ---------- */
+  body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:#dfe3e8; color:#111; }
+  .controls { position:sticky; top:0; z-index:50; background:#fff; border-bottom:1px solid #cfd4da; padding:8px 14px; display:flex; flex-wrap:wrap; gap:6px 14px; align-items:center; }
+  .controls .grp { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+  .controls label { font-size:.78rem; font-weight:700; color:#374151; }
+  .pick { display:inline-flex; border:1px solid #9ca3af; border-radius:12px; overflow:hidden; flex-wrap:wrap; }
+  .pick button { border:0; background:#fff; padding:6px 10px; font:inherit; font-size:.8rem; font-weight:600; min-height:36px; cursor:pointer; }
+  .pick button + button { border-left:1px solid #d1d5db; }
+  .pick button.on { background:#0b2a4a; color:#fff; }
+  .pick .ph { background:#f3f4f6; color:#374151; font-weight:800; cursor:default; }
+  .page { display:flex; flex-wrap:wrap; gap:22px; padding:18px 14px 40px; justify-content:center; align-items:flex-start; }
+  .phones { display:flex; flex-wrap:wrap; gap:18px; justify-content:center; flex:1 1 400px; min-width:0; }
+  .cap { text-align:center; font-size:.8rem; font-weight:700; color:#374151; margin:6px 0 0; }
+  .notes { width:440px; max-width:100%; background:#fff; border-radius:16px; padding:16px 20px; line-height:1.5; font-size:.92rem; box-sizing:border-box; }
+  .notes h2 { margin:.1em 0 .4em; font-size:1.15rem; } .notes h3 { margin:1em 0 .3em; font-size:1rem; }
+  .notes ul { padding-left:1.2em; margin:.3em 0; }
+  .notes code { font-size:.85em; background:#f3f4f6; padding:0 3px; border-radius:4px; }
+  .tag { display:inline-block; font-size:.72rem; font-weight:800; padding:2px 7px; border-radius:6px; background:#dcfce7; color:#14532d; margin-right:4px; }
+  .tag.same { background:#e5e7eb; color:#374151; } .tag.ask { background:#fef3c7; color:#78350f; } .tag.copy { background:#e0e7ff; color:#312e81; }
+  .fw { position:relative; flex-shrink:0; }
+
+  /* =====================================================================
+     TOKENS = design/refresh-2026-11/HANDOFF-A.md §1 (Night --muted #e5483d).
+     ===================================================================== */
+  .phone[data-theme='day'] {
+    --bg:#ffffff; --surface:#f2f4f7; --surface-2:#e4e8ee; --fg:#05080f; --muted:#475467; --line:#667085; --line-soft:#d0d5dd;
+    --accent:#0b2a4a; --accent-fg:#ffffff; --accent-cont:#dbe7f5; --on-accent-cont:#0b2a4a;
+    --good:#047857; --good-cont:#d1fae5; --fair:#b45309; --fair-cont:#fef3c7; --bad:#b91c1c; --bad-cont:#fee2e2;
+    --stbd:#047857; --port:#b91c1c; --opt:#f59e0b; --scrim:rgba(5,8,15,.48); --sbar-bg:#0b2a4a; --sbar-fg:#fff;
+    --shadow-1:0 1px 2px rgba(16,24,40,.10),0 1px 3px rgba(16,24,40,.10); --shadow-2:0 8px 24px rgba(16,24,40,.18);
+    --sea:#e6f0f8; --land:#d9d4c7; --lp:#8a8a8a;
+  }
+  .phone[data-theme='dark'] {
+    --bg:#0b1220; --surface:#152033; --surface-2:#1e2b42; --fg:#f8fafc; --muted:#a3b1c6; --line:#6b7c96; --line-soft:#2a3a55;
+    --accent:#7cb4ff; --accent-fg:#0b1220; --accent-cont:#1e3a5f; --on-accent-cont:#dbeafe;
+    --good:#34d399; --good-cont:#0f3b2e; --fair:#fbbf24; --fair-cont:#3d2e0a; --bad:#f87171; --bad-cont:#3f1616;
+    --stbd:#34d399; --port:#f87171; --opt:#fbbf24; --scrim:rgba(0,0,0,.6); --sbar-bg:#7cb4ff; --sbar-fg:#0b1220;
+    --shadow-1:none; --shadow-2:0 8px 24px rgba(0,0,0,.5);
+    --sea:#0f1b2e; --land:#26303f; --lp:#8a8a8a;
+  }
+  .phone[data-theme='night'] {
+    --bg:#000000; --surface:#120202; --surface-2:#1c0403; --fg:#ff3b30; --muted:#e5483d; --line:#b02a20; --line-soft:#4a0b07;
+    --accent:#ff3b30; --accent-fg:#000000; --accent-cont:#2a0503; --on-accent-cont:#ff3b30;
+    --good:#ff6b5e; --good-cont:#2a0503; --fair:#d1342a; --fair-cont:#2a0503; --bad:#ff3b30; --bad-cont:#2a0503;
+    --stbd:#ff6b5e; --port:#d8372c; --opt:#ff8a80; --scrim:rgba(0,0,0,.78); --sbar-bg:#000; --sbar-fg:#ff3b30;
+    --shadow-1:none; --shadow-2:none;
+    --sea:#000; --land:#1c0403; --lp:#e5483d;
+  }
+  .phone {
+    --font:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,'Noto Sans',sans-serif;
+    --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px;
+    --r-s:10px; --r-m:14px; --r-l:20px; --r-xl:28px; --r-pill:999px;
+    --hit:48px; --hit-main:56px; --dur-1:120ms; --dur-2:220ms; --ease:cubic-bezier(.2,0,0,1);
+  }
+
+  /* ---------- Frame ---------- */
+  .phone { box-sizing:content-box; border-radius:34px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,.28); border:10px solid #111; position:absolute; left:0; top:0; transform-origin:0 0; background:var(--bg); color:var(--fg); font-family:var(--font); font-size:17px; font-weight:500; line-height:1.35; }
+  .phone.fr-tab { border-radius:28px; border-width:14px; } .phone.fr-lap { border-radius:10px; border-width:12px; }
+  .phone.fr-land { border-radius:30px; }
+  .phone.sz-l { font-size:20px; } .phone.sz-xl { font-size:23px; }
+  .phone * { box-sizing:border-box; }
+  .phone button, .phone input, .phone select, .phone textarea { font:inherit; color:inherit; }
+  .phone button { cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .phone :focus-visible { outline:3px solid var(--fg); outline-offset:2px; }
+  .num { font-variant-numeric:tabular-nums; }
+  .muted { color:var(--muted); }
+  .cap2 { font-size:max(13px,.8em); font-weight:600; color:var(--muted); }
+  .sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+  .ic { width:1.3em; height:1.3em; flex-shrink:0; }
+  .shell { position:absolute; inset:0; display:flex; }
+  .col { flex:1; min-width:0; display:flex; flex-direction:column; position:relative; }
+  .colbody { flex:1; min-height:0; display:flex; }
+  .scr { flex:1; min-width:0; overflow-y:auto; overflow-x:hidden; padding:var(--s3) var(--s4) var(--s5); position:relative; }
+  .wrap { max-width:40em; margin:0 auto; }
+  .wrap.wide { max-width:72em; }
+
+  /* Top bar outside a session (light). */
+  .top { display:flex; align-items:center; gap:var(--s2); padding:var(--s2) var(--s3); min-height:64px; background:var(--surface); border-bottom:1px solid var(--line-soft); flex-shrink:0; }
+  .phone[data-theme='dark'] .top { background:var(--bg); }
+  .phone[data-theme='night'] .top { background:#000; border-bottom:2px solid var(--line); }
+  .top .ttl { flex:1; min-width:0; font-weight:800; font-size:1.1em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .boatchip { display:inline-flex; align-items:center; gap:6px; min-height:var(--hit); max-width:62%; padding:0 12px 0 10px; border-radius:var(--r-pill); border:2px solid var(--line); background:var(--bg); font-weight:800; }
+  .phone[data-theme='night'] .boatchip { border-color:var(--fg); }
+  .boatchip span { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+  .iconbtn { min-width:var(--hit); min-height:var(--hit); border-radius:var(--r-pill); border:0; background:none; display:inline-flex; align-items:center; justify-content:center; font-weight:800; flex-shrink:0; }
+  .avbtn { position:relative; border:0; background:none; padding:0; width:52px; height:52px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin-left:auto; flex-shrink:0; }
+  .avbtn .dot { position:absolute; right:2px; bottom:2px; width:14px; height:14px; border-radius:50%; background:var(--good); border:3px solid var(--bg); }
+  .avbtn .dot.off { background:var(--fair); }
+
+  /* Strips (only when something is wrong). */
+  .strip { display:flex; gap:var(--s2); align-items:center; padding:6px var(--s4); min-height:var(--hit); font-size:max(13px,.84em); font-weight:700; background:var(--fair-cont); color:var(--fg); border-bottom:2px solid var(--fair); flex-shrink:0; }
+  .strip.bad { background:var(--bad-cont); border-bottom-color:var(--bad); }
+  .strip.ok { background:var(--good-cont); border-bottom-color:var(--good); }
+  .strip.quiet { background:var(--surface); border-bottom:1px solid var(--line-soft); }
+  .strip .d { width:10px; height:10px; border-radius:5px; background:var(--fair); flex-shrink:0; }
+  .strip.bad .d { background:var(--bad); } .strip.ok .d { background:var(--good); }
+  .strip > span:nth-child(2) { flex:1; min-width:0; }
+  .strip .sbtn { min-height:var(--hit); padding:0 12px; border-radius:var(--r-m); border:2px solid var(--line); background:var(--bg); font-weight:800; flex-shrink:0; display:inline-flex; align-items:center; gap:6px; }
+
+  /* Cards, sections, lists */
+  .c { background:var(--surface); border-radius:var(--r-l); padding:var(--s4); margin-bottom:var(--s3); border:1px solid var(--line-soft); box-shadow:var(--shadow-1); min-width:0; }
+  .c.flat { box-shadow:none; }
+  .c h3, .c h4 { margin:0 0 6px; font-size:1.05em; font-weight:800; }
+  .sec { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; margin:var(--s5) 2px var(--s2); min-height:44px; gap:0 8px; }
+  .sec h3 { margin:0; font-size:1.05em; font-weight:800; }
+  .sec:first-child { margin-top:var(--s2); }
+  .lnk { background:none; border:0; min-height:var(--hit); font-weight:800; color:var(--accent); padding:0 6px; }
+  .phone[data-theme='night'] .lnk { color:var(--fg); text-decoration:underline; }
+  .hello { font-size:1.45em; font-weight:800; margin:var(--s2) 2px var(--s3); letter-spacing:-.01em; }
+  .list { background:var(--surface); border-radius:var(--r-l); border:1px solid var(--line-soft); overflow:hidden; }
+  .rowb { display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:12px; align-items:center; width:100%; min-height:64px; padding:10px 14px; border:0; border-top:1px solid var(--line-soft); background:none; text-align:left; }
+  .rowb:first-child { border-top:0; }
+  .rowb.noic { grid-template-columns:minmax(0,1fr) auto; }
+  .rowb b { display:block; font-weight:800; overflow-wrap:anywhere; }
+  .rowb b.one { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .rowb .s { display:block; font-size:max(13px,.8em); font-weight:600; color:var(--muted); }
+  .rowb .v { font-weight:800; font-size:.9em; text-align:right; }
+  .chev { width:22px; height:22px; color:var(--muted); }
+  .role { display:inline-flex; align-items:center; gap:4px; margin-top:4px; font-size:max(13px,.74em); font-weight:800; padding:2px 8px; border-radius:var(--r-pill); border:1.5px solid var(--line); white-space:nowrap; }
+  .role.own { background:var(--accent-cont); color:var(--on-accent-cont); border-color:transparent; }
+  .role.guest { border-style:dashed; }
+  .role.warn { border-color:var(--fair); }
+  .phone[data-theme='night'] .role.own { border-color:var(--fg); }
+
+  /* Buttons */
+  .b { min-height:var(--hit); padding:0 16px; border-radius:var(--r-m); border:2px solid transparent; font-weight:800; display:inline-flex; align-items:center; justify-content:center; gap:8px; transition:transform var(--dur-1) var(--ease), filter var(--dur-1); text-align:center; line-height:1.15; }
+  .b:active { transform:scale(.98); filter:brightness(.92); }
+  .b.main { min-height:var(--hit-main); font-size:1.05em; }
+  .b.wide { width:100%; }
+  .b.fill { background:var(--accent); color:var(--accent-fg); }
+  .b.tonal { background:var(--accent-cont); color:var(--on-accent-cont); }
+  .b.out { background:var(--bg); border-color:var(--line); color:var(--fg); }
+  .b.text { background:none; color:var(--accent); padding:0 10px; }
+  .b.danger { background:var(--bg); border-color:var(--bad); color:var(--bad); }
+  .b:disabled { opacity:.45; cursor:default; transform:none; filter:none; }
+  .phone[data-theme='night'] .b.fill { background:#000; color:var(--fg); border-color:var(--fg); box-shadow:inset 0 0 0 1px var(--fg); }
+  .phone[data-theme='night'] .b.tonal { border-color:var(--line); }
+  .phone[data-theme='night'] .b.text { color:var(--fg); text-decoration:underline; }
+  .brow { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:var(--s2); }
+  .bstack > * { margin-bottom:var(--s2); }
+
+  /* Mode cards / next race (from the approved prototype) */
+  .mode { display:grid; grid-template-columns:60px minmax(0,1fr) auto; gap:14px; align-items:center; width:100%; text-align:left; min-height:84px; border:2px solid var(--line-soft); background:var(--surface); border-radius:var(--r-l); padding:10px 14px; margin-bottom:var(--s2); box-shadow:var(--shadow-1); }
+  .mode .mi { width:60px; height:60px; border-radius:18px; background:var(--accent-cont); color:var(--on-accent-cont); display:flex; align-items:center; justify-content:center; }
+  .mode.race .mi { background:var(--accent); color:var(--accent-fg); }
+  .phone[data-theme='night'] .mode .mi { background:#000; color:var(--fg); border:2px solid var(--fg); }
+  .phone[data-theme='night'] .mode { border-color:var(--line); }
+  .mode b { display:block; font-size:1.2em; font-weight:800; }
+  .mode .d { display:block; font-size:max(13px,.82em); font-weight:600; color:var(--muted); }
+  .mode .go { width:26px; height:26px; color:var(--muted); }
+  .quick { display:flex; align-items:center; gap:12px; width:100%; min-height:60px; border:2px dashed var(--line); background:none; border-radius:var(--r-l); padding:8px 14px; font-weight:800; text-align:left; }
+  .quick .d { display:block; font-weight:600; font-size:max(13px,.8em); color:var(--muted); }
+  .next { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:var(--s3); align-items:start; }
+  .cd { text-align:center; background:var(--accent); color:var(--accent-fg); border-radius:var(--r-m); padding:8px 12px; min-width:84px; }
+  .phone[data-theme='night'] .cd { background:#000; color:var(--fg); border:2px solid var(--fg); }
+  .cd b { display:block; font-size:1.5em; font-weight:900; line-height:1; }
+  .cd span { font-size:max(13px,.72em); font-weight:800; }
+  .chiprow { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+  .schip { display:inline-flex; align-items:center; gap:4px; min-height:30px; padding:2px 10px; border-radius:var(--r-pill); background:var(--bg); border:1.5px solid var(--line); font-size:max(13px,.76em); font-weight:700; white-space:nowrap; }
+  .schip.good { border-color:var(--good); } .schip.fair { border-color:var(--fair); } .schip.dash { border-style:dashed; } .schip.dot { border-style:dotted; border-width:2px; }
+  .hc { display:grid; grid-template-columns:48px minmax(0,1fr) auto; gap:12px; align-items:center; width:100%; text-align:left; border:0; background:none; padding:10px 4px; min-height:68px; border-top:1px solid var(--line-soft); }
+  .hc:first-child { border-top:0; }
+  .hc .hi { width:48px; height:48px; border-radius:14px; background:var(--surface-2); display:flex; align-items:center; justify-content:center; }
+  .hc b { display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .hc .s { display:block; font-size:max(13px,.8em); font-weight:600; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .hc .m { font-size:.9em; font-weight:800; text-align:right; }
+  .evhead { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+  .evhead .ei { width:40px; height:40px; border-radius:12px; background:var(--accent-cont); color:var(--on-accent-cont); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .phone[data-theme='night'] .evhead .ei { background:#000; border:2px solid var(--fg); }
+  .evnext { font-size:1.15em; font-weight:800; margin:8px 0 2px; overflow-wrap:anywhere; }
+
+  /* Bottom / side navigation */
+  .nav { display:grid; grid-template-columns:repeat(var(--n,4),minmax(0,1fr)); background:var(--surface); border-top:1px solid var(--line-soft); padding:4px 4px 12px; flex-shrink:0; }
+  .nav button { background:none; border:0; min-height:64px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; font-size:clamp(13px,.76em,15px); font-weight:700; color:var(--muted); min-width:0; }
+  .nav button .pill { width:64px; height:34px; border-radius:17px; display:flex; align-items:center; justify-content:center; transition:background var(--dur-2) var(--ease); }
+  .nav button.on { color:var(--fg); font-weight:800; }
+  .nav button.on .pill { background:var(--accent-cont); color:var(--on-accent-cont); }
+  .phone[data-theme='night'] .nav { background:#000; border-top:2px solid var(--line); }
+  .phone[data-theme='night'] .nav button.on .pill { background:#000; border:2px solid var(--fg); color:var(--fg); }
+  .nav button span.l { max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .nav.side { width:100px; grid-template-columns:1fr; align-content:center; gap:8px; border-top:0; border-right:1px solid var(--line-soft); padding:8px 4px; }
+  .nav.side button .pill { width:56px; height:32px; }
+  .phone[data-theme='night'] .nav.side { border-right:2px solid var(--line); }
+
+  /* Session bar (dark only while recording) */
+  .sbar { display:flex; align-items:center; gap:6px; padding:6px 8px; background:var(--sbar-bg); color:var(--sbar-fg); min-height:72px; flex-shrink:0; }
+  .phone[data-theme='night'] .sbar { border-bottom:2px solid var(--line); }
+  .modeb { flex:1; min-width:0; line-height:1.15; padding:2px 6px; }
+  .modeb b { display:flex; align-items:center; gap:6px; font-size:min(.82em,15px); font-weight:800; letter-spacing:.03em; white-space:nowrap; overflow:hidden; }
+  .modeb .clk { display:block; font-size:min(1.45em,26px); font-weight:900; }
+  .modeb .s { display:block; font-size:min(.74em,13px); font-weight:700; opacity:.92; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .rec { width:12px; height:12px; border-radius:6px; background:#ef4444; box-shadow:0 0 0 2px currentColor; flex-shrink:0; animation:pulse 1.6s infinite; }
+  .rec.off { background:none; box-shadow:inset 0 0 0 2px currentColor; animation:none; }
+  .phone[data-theme='night'] .rec { background:var(--fg); box-shadow:none; }
+  @keyframes pulse { 50% { opacity:.35; } }
+  .sb { min-width:48px; min-height:var(--hit-main); border-radius:var(--r-m); border:2px solid currentColor; background:none; color:inherit; font-weight:900; padding:0 8px; display:inline-flex; align-items:center; justify-content:center; gap:4px; flex-shrink:0; font-size:min(1em,17px); }
+  .sb.endb { min-width:84px; }
+  .fr-320 .sb.endb { min-width:0; } .fr-320 .sbar { gap:4px; padding:6px 4px; }
+  .bat { display:inline-flex; align-items:center; gap:2px; font-weight:800; letter-spacing:0; padding-left:6px; border-left:1.5px solid currentColor; margin-left:2px; }
+  .bat svg { width:22px; height:14px; }
+  .bat.low { text-decoration:underline; text-underline-offset:2px; }
+
+  /* Live: one grid, 2 / 3 / 4 columns by container width (D4), 1 row in a low landscape (D5). */
+  .livewrap { container-type:inline-size; container-name:live; }
+  .lg { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:var(--s2); grid-auto-flow:row dense; }
+  .lg > * { min-width:0; }
+  .lg .hero { grid-column:span 6; } .lg .md { grid-column:span 3; } .lg .sm { grid-column:span 2; } .lg .full { grid-column:1 / -1; }
+  .t { background:var(--surface); border-radius:var(--r-l); padding:10px 14px; border:1px solid var(--line-soft); min-width:0; position:relative; }
+  .t .lab { font-weight:800; font-size:.86em; display:flex; flex-wrap:wrap; justify-content:space-between; gap:0 6px; }
+  .t .lab .ab { color:var(--muted); font-weight:700; }
+  .t .val { font-weight:900; line-height:1; white-space:nowrap; font-size:2.6em; margin-top:4px; letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
+  .t .val small { font-size:.4em; font-weight:800; margin-left:2px; letter-spacing:0; }
+  .t .val.wait { color:var(--muted); }
+  .t .sub { font-size:max(13px,.82em); font-weight:700; color:var(--muted); margin-top:4px; }
+  .t .sub.good { color:var(--good); } .t .sub.fair { color:var(--fair); }
+  .phone[data-theme='night'] .t .sub.good, .phone[data-theme='night'] .t .sub.fair { color:var(--fg); }
+  .t.hero { padding:12px 16px; border:2px solid var(--line); }
+  .t.hero .val { font-size:4.4em; }
+  .t.sm { padding:8px 10px; } .t.sm .val { font-size:1.45em; } .t.sm .lab { font-size:max(13px,.76em); }
+  .t.stale { border-style:dashed; border-width:2px; border-color:var(--line); }
+  .t.stale .val { color:var(--muted); }
+  .t .st { font-size:max(13px,.74em); font-weight:800; color:var(--muted); }
+  .val.stbd { color:var(--stbd); } .val.port { color:var(--port); }
+  .val.now { color:var(--bad); }
+  .bar { height:10px; border-radius:5px; background:var(--surface-2); margin-top:8px; overflow:hidden; border:1px solid var(--line-soft); }
+  .bar i { display:block; height:100%; background:var(--good); border-radius:5px; }
+  .phone[data-theme='night'] .bar i { background:var(--fg); }
+  @container live (max-width:16em) {
+    .t.hero .val { font-size:3.2em; } .t.md .val { font-size:1.9em; } .t.sm .val { font-size:1.15em; }
+    .lg .sm { grid-column:span 3; } .lg .sm + .sm + .sm { grid-column:span 6; }
+  }
+  @container live (min-width:40em) {
+    .lg { grid-template-columns:repeat(3,minmax(0,1fr)); }
+    .lg .hero { grid-column:1 / 3; grid-row:span 2; } .lg .md, .lg .sm { grid-column:auto; } .lg .full { grid-column:1 / -1; }
+    .t.sm .val { font-size:2em; }
+  }
+  @container live (min-width:50em) {
+    .lg { grid-template-columns:repeat(4,minmax(0,1fr)); }
+    .lg .full { grid-column:span 3; }
+  }
+  .lowland .lg { grid-template-columns:repeat(4,minmax(0,1fr)); }
+  .lowland .lg .hero { grid-column:auto; grid-row:auto; } .lowland .lg .md, .lowland .lg .sm { grid-column:auto; }
+  .lowland .lg .full { grid-column:span 2; }
+  .lg .band, .lowland .lg .band { grid-column:1 / -1; grid-row:auto; }
+  .lowland .t.hero .val { font-size:2.9em; } .lowland .t.md .val { font-size:2.4em; } .lowland .t.sm .val { font-size:1.5em; }
+  .lowland .t.hero .bar { margin-top:4px; }
+  .lowland .band { min-height:48px; padding:6px 12px; } .lowland .band .big { font-size:1.15em; }
+  .fr-320.sz-xl .modeb .clk, .fr-320.sz-l .modeb .clk { font-size:1.1em; }
+
+  /* Alert band (D8) */
+  .band { border-radius:var(--r-l); padding:10px 12px 10px 14px; margin-bottom:var(--s2); min-height:76px; display:flex; align-items:center; gap:10px; }
+  .band > div { flex:1; min-width:0; }
+  .band .big { font-size:1.45em; font-weight:900; line-height:1.05; overflow-wrap:normal; word-break:normal; hyphens:none; }
+  @container live (max-width:19em) { .band { flex-wrap:wrap; } .band > svg { display:none; } .band > div { flex:1 1 9em; } .band .big { font-size:1.2em; } .band .mute { margin-left:auto; } }
+  .band .sub { font-weight:800; font-size:max(13px,.86em); margin-top:4px; }
+  .band.info { background:var(--accent-cont); color:var(--on-accent-cont); border:2px solid var(--accent); }
+  .band.warn { background:var(--fair); color:#05080f; }
+  .band.now { background:var(--bad); color:#fff; }
+  .phone[data-theme='dark'] .band.now { color:#0b1220; }
+  .phone[data-theme='night'] .band.info, .phone[data-theme='night'] .band.warn { background:#000; color:var(--fg); border:3px solid var(--fg); }
+  .phone[data-theme='night'] .band.now { background:var(--fg); color:#000; }
+  .band .mute { min-height:var(--hit); min-width:var(--hit); border-radius:var(--r-m); border:2px solid currentColor; background:none; color:inherit; font-weight:800; display:inline-flex; align-items:center; gap:4px; padding:0 8px; flex-shrink:0; }
+
+  /* Wind card (P-053, in P-049 tokens) */
+  .wind { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:8px; width:100%; text-align:left; background:var(--surface); border:2px solid var(--line); border-radius:var(--r-l); padding:10px 14px; min-height:76px; }
+  .wind .wk { font-weight:800; font-size:.86em; display:block; } .wind .wk span { color:var(--muted); font-weight:700; }
+  .wind .wv { font-size:1.6em; font-weight:900; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .wind .wv small { font-size:.5em; font-weight:800; }
+  .wind .ws { display:block; font-size:max(13px,.8em); font-weight:700; color:var(--muted); }
+  .wind .wgo { display:flex; flex-direction:column; align-items:center; font-size:max(13px,.74em); font-weight:800; min-width:var(--hit); }
+  .wind.empty { border-style:dashed; }
+  .msg { display:flex; gap:8px; align-items:flex-start; padding:10px 12px; border-radius:var(--r-m); background:var(--fair-cont); border:1px solid var(--fair); font-size:max(13px,.86em); font-weight:700; margin-bottom:var(--s2); }
+  .msg.info { background:var(--surface); border-color:var(--line); }
+  .msg.good { background:var(--good-cont); border-color:var(--good); }
+  .msg .ic { width:1.2em; height:1.2em; margin-top:1px; }
+
+  /* Training */
+  .lapbtn { width:100%; min-height:64px; border-radius:var(--r-l); border:0; background:var(--accent); color:var(--accent-fg); font-size:1.25em; font-weight:900; display:flex; align-items:center; justify-content:center; gap:10px; margin:var(--s3) 0 var(--s2); font-variant-numeric:tabular-nums; }
+  .lapbtn:disabled { opacity:.45; }
+  .phone[data-theme='night'] .lapbtn { background:#000; color:var(--fg); border:2px solid var(--fg); }
+  .laps { font-size:max(13px,.86em); font-weight:700; color:var(--muted); margin:6px 2px; font-variant-numeric:tabular-nums; }
+  .cdrow { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; margin-top:8px; }
+  .cdrow .b { padding:0 6px; font-size:.86em; min-width:48px; white-space:normal; }
+  .lowland .cdrow { grid-template-columns:repeat(3,minmax(48px,1fr)); }
+  .lowland .lg .hero.starts { grid-column:span 2; }
+
+  /* Sheets: bottom / centre / side panel (A17) */
+  .scrim { position:absolute; inset:0; background:var(--scrim); z-index:20; display:flex; align-items:flex-end; justify-content:center; animation:fade var(--dur-2) var(--ease); }
+  .scrim.center { align-items:flex-end; padding-bottom:var(--s5); }
+  .scrim.confirm { align-items:center; padding:var(--s3); z-index:40; }
+  .sheet { width:100%; max-height:84%; overflow-y:auto; overflow-x:hidden; background:var(--bg); border-radius:var(--r-xl) var(--r-xl) 0 0; padding:0 var(--s4) 0; box-shadow:var(--shadow-2); animation:up var(--dur-2) var(--ease); }
+  .scrim.center .sheet { max-width:34em; border-radius:var(--r-xl); }
+  .scrim.confirm .sheet { max-width:30em; border-radius:var(--r-xl); padding-top:var(--s4); }
+  .phone[data-theme='night'] .sheet { border:2px solid var(--line); }
+  .sheet.side { position:relative; animation:none; border-radius:0; width:min(26em,48%); max-height:none; flex-shrink:0; border-left:1px solid var(--line); box-shadow:none; }
+  .sheet .hdl { display:flex; justify-content:center; align-items:center; height:24px; }
+  .sheet .hdl i { width:40px; height:5px; border-radius:3px; background:var(--line); }
+  .sheet .sh { display:flex; align-items:center; gap:8px; margin-bottom:var(--s3); }
+  .sheet.side .sh { padding-top:var(--s3); }
+  .sheet .sh h3 { flex:1; margin:0; font-size:1.2em; font-weight:800; overflow-wrap:anywhere; }
+  .sheet .foot { position:sticky; bottom:0; background:var(--bg); padding:var(--s3) 0 var(--s4); margin-top:var(--s3); border-top:1px solid var(--line-soft); }
+  .scrim.confirm .sheet .foot { position:static; border-top:0; padding-top:0; }
+  @keyframes up { from { transform:translateY(40px); opacity:.4; } to { transform:none; opacity:1; } }
+  @keyframes fade { from { opacity:0; } }
+  .info { display:flex; gap:10px; align-items:flex-start; background:var(--surface); border-radius:var(--r-m); padding:12px; font-size:max(13px,.86em); font-weight:600; margin:var(--s3) 0; border:1px solid var(--line-soft); }
+  .info.warn { background:var(--fair-cont); border-color:var(--fair); }
+  .info.good { background:var(--good-cont); border-color:var(--good); }
+  .info b { font-weight:800; }
+  .srow { display:flex; align-items:center; gap:12px; width:100%; min-height:60px; border:0; border-top:1px solid var(--line-soft); background:none; text-align:left; padding:6px 0; font-weight:800; }
+  .srow:first-of-type { border-top:0; }
+  .srow .tx { flex:1; min-width:0; } .srow .tx .cap2 { display:block; }
+
+  /* Segmented, toggle, inputs */
+  .seg { display:grid; grid-auto-flow:column; grid-auto-columns:minmax(0,1fr); background:var(--surface-2); border-radius:var(--r-m); padding:4px; gap:4px; }
+  .seg button { min-height:var(--hit); border:0; border-radius:11px; background:none; font-weight:800; color:var(--muted); padding:0 6px; line-height:1.1; }
+  .seg button small { display:block; font-size:max(13px,.7em); font-weight:600; }
+  .seg button.on { background:var(--bg); color:var(--fg); box-shadow:var(--shadow-1); }
+  .phone[data-theme='dark'] .seg button.on { background:var(--accent-cont); color:var(--on-accent-cont); }
+  .phone[data-theme='night'] .seg button.on { background:#000; border:2px solid var(--fg); color:var(--fg); }
+  .toggle { display:flex; align-items:center; gap:12px; width:100%; min-height:64px; border:0; background:none; text-align:left; padding:6px 0; font-weight:800; }
+  .toggle .tx { flex:1; min-width:0; } .toggle .tx .cap2 { display:block; margin-top:2px; }
+  .knob { width:56px; height:32px; border-radius:16px; background:var(--surface-2); border:2px solid var(--line); position:relative; flex-shrink:0; }
+  .knob::after { content:''; position:absolute; top:4px; left:4px; width:20px; height:20px; border-radius:10px; background:var(--line); transition:left var(--dur-2) var(--ease); }
+  .toggle[aria-checked='true'] .knob { background:var(--accent); border-color:var(--accent); }
+  .toggle[aria-checked='true'] .knob::after { left:28px; background:var(--accent-fg); }
+  .phone[data-theme='night'] .toggle[aria-checked='true'] .knob { background:#000; border-color:var(--fg); } .phone[data-theme='night'] .toggle[aria-checked='true'] .knob::after { background:var(--fg); }
+  .fl { display:block; font-weight:800; font-size:.9em; margin-bottom:var(--s3); }
+  .fl input, .fl textarea { display:block; width:100%; margin-top:6px; min-height:var(--hit-main); border:2px solid var(--line); border-radius:var(--r-m); background:var(--bg); padding:0 14px; font-weight:600; font-size:1.05em; }
+  .fl textarea { padding:10px 14px; min-height:84px; resize:vertical; }
+  .fl .help { display:block; font-weight:600; font-size:max(13px,.85em); color:var(--muted); margin-top:4px; }
+
+  /* Avatars */
+  .av { border-radius:50%; display:inline-flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0; color:#fff; position:relative; isolation:isolate; }
+  .av svg { width:100%; height:100%; display:block; }
+  .av.photo img { width:100%; height:100%; object-fit:cover; display:block; }
+  .av.init { font-weight:800; letter-spacing:-.02em; }
+  .av.wait { background:var(--surface-2) !important; color:var(--muted) !important; }
+  .avring { border-radius:50%; padding:2px; border:2px solid transparent; display:inline-flex; flex-shrink:0; }
+  .avring.guest { border:2px dashed var(--line); }
+  .phone[data-theme='night'] .av { background:#000 !important; color:var(--fg) !important; box-shadow:inset 0 0 0 2px var(--fg); }
+  .phone[data-theme='night'] .av.photo img { filter:grayscale(1) contrast(1.1); }
+  .phone[data-theme='night'] .av.photo::after { content:''; position:absolute; inset:0; background:var(--fg); mix-blend-mode:multiply; }
+  .phone[data-theme='dark'] .av.photo img { filter:brightness(.92); }
+  .avstack { display:flex; } .avstack > * + * { margin-left:-10px; }
+  .avstack .av { box-shadow:0 0 0 2px var(--surface); }
+
+  /* Event tables */
+  .tw { overflow-x:auto; margin:0 -4px; border-radius:var(--r-m); border:1px solid var(--line-soft); }
+  table.stand { border-collapse:separate; border-spacing:0; width:100%; font-variant-numeric:tabular-nums; font-size:.92em; }
+  table.stand th, table.stand td { padding:0 8px; height:52px; text-align:right; white-space:nowrap; border-top:1px solid var(--line-soft); background:var(--surface); }
+  table.stand th { height:40px; font-size:max(13px,.8em); font-weight:800; color:var(--muted); border-top:0; background:var(--surface-2); }
+  table.stand .c-pl { position:sticky; left:0; z-index:2; text-align:center; width:2.2em; font-weight:800; }
+  table.stand .c-boat { position:sticky; left:2.2em; z-index:2; text-align:left; max-width:7.5em; overflow:hidden; text-overflow:ellipsis; font-weight:700; border-right:1px solid var(--line-soft); }
+  table.stand .c-total { position:sticky; right:0; z-index:2; font-weight:900; border-left:2px solid var(--line); }
+  table.stand tr.own td { font-weight:900; background:var(--accent-cont); color:var(--on-accent-cont); }
+  table.stand tr.own td.c-pl { box-shadow:inset 4px 0 0 var(--fg); }
+  table.stand td.disc { color:var(--muted); }
+  .phone[data-theme='night'] table.stand tr.own td { background:#000; color:var(--fg); }
+  .phone[data-theme='night'] table.stand tr.own td { border-top:2px solid var(--fg); border-bottom:2px solid var(--fg); }
+  .resrow { display:grid; grid-template-columns:2.2em minmax(0,1fr) auto; gap:10px; align-items:center; width:100%; min-height:68px; padding:8px 12px; border:0; border-top:1px solid var(--line-soft); background:none; text-align:left; }
+  .resrow:first-child { border-top:0; }
+  .resrow .pl { font-size:1.3em; font-weight:900; text-align:center; font-variant-numeric:tabular-nums; }
+  .resrow b { display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .resrow .vv { text-align:right; font-weight:800; font-variant-numeric:tabular-nums; }
+  .resrow.own { background:var(--accent-cont); color:var(--on-accent-cont); }
+  .phone[data-theme='night'] .resrow.own { background:#000; box-shadow:inset 4px 0 0 var(--fg); }
+  .kp { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:var(--s3) 0 0; }
+  .kp button { min-height:58px; border-radius:var(--r-m); border:2px solid var(--line); background:var(--surface); font-size:1.3em; font-weight:900; font-variant-numeric:tabular-nums; }
+  .kp button.k-s { font-size:.9em; font-weight:800; }
+  .kp button:active { background:var(--accent-cont); }
+  .tval { text-align:center; font-size:2.2em; font-weight:900; font-variant-numeric:tabular-nums; border:2px solid var(--line); border-radius:var(--r-m); min-height:64px; display:flex; align-items:center; justify-content:center; background:var(--bg); margin-top:var(--s3); letter-spacing:.02em; }
+  .tval i { font-style:normal; color:var(--muted); }
+  .codes { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:var(--s3); }
+  .codes button { min-height:56px; border-radius:var(--r-m); border:2px solid var(--line); background:var(--surface); text-align:left; padding:6px 10px; font-weight:900; position:relative; }
+  .codes button small { display:block; font-size:max(13px,.72em); font-weight:600; color:var(--muted); }
+  .codes button.on { border-color:var(--fg); background:var(--accent-cont); }
+  .codes button.on::after { content:'✓'; position:absolute; right:8px; top:6px; font-weight:900; }
+  .calc { min-height:2.6em; margin:10px 0 0; font-weight:800; font-size:.95em; overflow-wrap:anywhere; font-variant-numeric:tabular-nums; }
+
+  /* Low power (Φ-E): black in every theme, dim text, hold to unlock. */
+  .lp { position:absolute; inset:0; z-index:35; background:#000; color:var(--lp); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:24px 16px calc(24px + 8px); text-align:center; touch-action:none; user-select:none; }
+  .lp .lpin { display:flex; flex-direction:column; align-items:center; gap:8px; transform:translate(var(--sx,0px),var(--sy,0px)); }
+  .lp .lclk { font-size:3.6em; font-weight:900; line-height:1; font-variant-numeric:tabular-nums; letter-spacing:-.02em; }
+  .fr-320 .lp .lclk, .sz-xl .lp .lclk { font-size:2.6em; }
+  .lp .lsog { font-size:1.6em; font-weight:900; font-variant-numeric:tabular-nums; }
+  .lp .lsog small { font-size:.5em; font-weight:800; }
+  .lp .lrec { font-size:max(13px,.86em); font-weight:700; display:flex; align-items:center; gap:6px; flex-wrap:wrap; justify-content:center; }
+  .lp .lrec .dd { width:10px; height:10px; border-radius:5px; background:currentColor; }
+  .lp .lalert { border:3px solid var(--lp); border-radius:var(--r-l); padding:12px 16px; font-size:1.5em; font-weight:900; line-height:1.1; max-width:100%; overflow-wrap:anywhere; }
+  .lp .lalert small { display:block; font-size:.55em; font-weight:700; margin-top:4px; }
+  .unlock { position:relative; width:76px; height:76px; border-radius:50%; border:2px solid var(--lp); background:#000; color:var(--lp); display:flex; align-items:center; justify-content:center; margin-top:14px; touch-action:none; }
+  .unlock svg.ring { position:absolute; inset:-6px; width:88px; height:88px; transform:rotate(-90deg); pointer-events:none; }
+  .unlock svg.ring circle { fill:none; stroke:var(--lp); stroke-width:4; }
+  .lp .lhint { font-size:max(13px,.84em); font-weight:700; }
+
+  /* Map sketch (gaps) */
+  .mapc { border-radius:var(--r-m); overflow:hidden; border:1px solid var(--line-soft); background:var(--sea); }
+  .mapc svg { display:block; width:100%; height:auto; }
+  .legend { display:flex; flex-wrap:wrap; gap:6px 14px; margin-top:8px; font-size:max(13px,.8em); font-weight:700; }
+  .legend span { display:inline-flex; align-items:center; gap:6px; }
+  .legend svg { width:34px; height:10px; }
+  .stats { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:var(--s2); margin-top:var(--s3); }
+  .stats div { background:var(--bg); border:1px solid var(--line-soft); border-radius:var(--r-m); padding:8px 12px; min-width:0; }
+  .stats b { display:block; font-size:1.5em; font-weight:900; font-variant-numeric:tabular-nums; }
+  .stats b small { font-size:.5em; }
+  .stats span { font-size:max(13px,.8em); font-weight:700; color:var(--muted); }
+  table.adm { width:100%; border-collapse:collapse; font-size:.9em; font-variant-numeric:tabular-nums; }
+  table.adm th, table.adm td { text-align:right; padding:8px 4px; border-top:1px solid var(--line-soft); }
+  table.adm th:first-child, table.adm td:first-child { text-align:left; }
+  table.adm th { font-size:max(13px,.78em); color:var(--muted); border-top:0; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .phone *, .phone *::after { animation:none !important; transition:none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="controls" id="controls"></div>
+<div class="page">
+  <div class="phones" id="phones"></div>
+  <aside class="notes" id="notes"></aside>
+</div>
+
+<script>
+/* ======================= State ======================= */
+const S = { screen:'crew', state:null, theme:'day', frame:'p375', size:'m', sheetOpen:true, kp:'140732', kpMode:'clock', code:'DNF', stats:true, notice:true, lpShift:0 };
+
+const FRAMES = {
+  p375:{ w:375, h:812, l:'375', cls:'fr-375' },
+  p320:{ w:320, h:640, l:'320', cls:'fr-320' },
+  land:{ w:844, h:390, l:'844×390 οριζόντια', cls:'fr-land' },
+  tab:{ w:768, h:1024, l:'Tablet 768', cls:'fr-tab' },
+  lap:{ w:1280, h:800, l:'Laptop 1280', cls:'fr-lap' },
+};
+const FS = { m:17, l:20, xl:23 };
+
+/* Same rules as hooks.ts sheetMode() and the new navMode() (HANDOFF-A §4.4, §6). */
+const sheetMode = (w, h, fs) => (w / fs >= 60 || (w > h && h / fs <= 30) ? 'side' : w / fs >= 34 ? 'center' : 'bottom');
+const navMode = (w, h, fs) => (w > h && h / fs <= 30 ? 'side' : 'bottom');
+
+/* ======================= Icons ======================= */
+const P = {
+  home:'<path d="M3 11l9-7 9 7M5 10v10h14V10"/>', history:'<path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2"/>',
+  boats:'<path d="M12 3v13M12 4l7 11h-7M3 18h18l-2 3H5z"/>', gear:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
+  live:'<path d="M3 12h4l3-7 4 14 3-7h4"/>', map:'<path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2zM9 4v14M15 6v14"/>', chat:'<path d="M4 5h16v11H9l-5 4z"/>',
+  flag:'<path d="M5 21V4M5 4h12l-3 4 3 4H5"/>', watch:'<circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/>', sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/>',
+  chev:'<path d="M9 5l7 7-7 7"/>', chevd:'<path d="M6 9l6 6 6-6"/>', back:'<path d="M15 5l-7 7 7 7"/>', close:'<path d="M6 6l12 12M18 6L6 18"/>',
+  pen:'<path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"/>', stop:'<path d="M6 6h12v12H6z"/>', pause:'<path d="M8 5v14M16 5v14"/>', play:'<path d="M7 5l12 7-12 7z"/>',
+  timer:'<circle cx="12" cy="13" r="8"/><path d="M12 13V9M9 2h6"/>', undo:'<path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/>', swap:'<path d="M7 7h13l-3-3M17 17H4l3 3"/>',
+  mute:'<path d="M11 5L6 9H3v6h3l5 4zM16 9l5 6M21 9l-5 6"/>', warn:'<path d="M12 3L2 21h20zM12 10v5M12 18v.01"/>', check:'<path d="M5 12l5 5 9-10"/>',
+  list:'<path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/>', plus:'<path d="M12 5v14M5 12h14"/>', lock:'<path d="M5 11h14v9H5zM8 11V8a4 4 0 0 1 8 0v3"/>',
+  unlock:'<path d="M5 11h14v9H5zM8 11V8a4 4 0 0 1 7.5-2"/>', shield:'<path d="M12 3l8 3v6c0 5-4 8-8 9-4-1-8-4-8-9V6z"/>', moon:'<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
+  phone:'<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/>', wind:'<path d="M3 8h11a3 3 0 1 0-3-3M3 12h16a3 3 0 1 1-3 3M3 16h8"/>', trophy:'<path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H4a3 3 0 0 0 4 4M16 6h4a3 3 0 0 1-4 4M12 13v4M8 21h8M9 17h6"/>',
+  user:'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>', chart:'<path d="M4 20V4M4 20h16M7 15l4-5 3 3 5-6"/>', bolt:'<path d="M13 2L5 14h6l-1 8 8-12h-6z"/>',
+};
+const icon = (n, cls = 'ic') => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n]}</svg>`;
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+
+/* ======================= Avatars (badges as in the approved prototype) ======================= */
+const COLORS = { navy:'#0b2a4a', sea:'#0e7490', stbd:'#047857', port:'#b91c1c', orange:'#c2410c', sun:'#a16207', violet:'#6d28d9', slate:'#475467' };
+const GL = {
+  boat:() => '<path d="M31 11v29H15z" fill="currentColor"/><path d="M34 15l14 25H34z" fill="currentColor" opacity=".8"/><path d="M11 43h42l-6 8H18z" fill="currentColor"/>',
+  helmet:() => '<path d="M13 40c0-13 9-22 20-22s19 8 19 19v3z" fill="currentColor"/><path d="M27 40h25v5H27z" fill="currentColor" opacity=".75"/>',
+  sailno:(n) => `<path d="M32 9v40H12z" fill="currentColor" opacity=".28"/><text x="32" y="41" text-anchor="middle" font-family="Inter,system-ui" font-weight="900" font-size="${n.length > 3 ? 16 : 20}" fill="currentColor">${n}</text>`,
+  burgee:() => '<path d="M20 10v44" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/><path d="M22 13l29 9-29 9z" fill="currentColor"/>',
+  anchor:() => '<circle cx="32" cy="14" r="4.5" stroke="currentColor" stroke-width="3.5" fill="none"/><path d="M32 19v33M23 26h18M15 37c1 9 8 15 17 15s16-6 17-15" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round"/>',
+  wheel:() => `<circle cx="32" cy="32" r="13" stroke="currentColor" stroke-width="4" fill="none"/><circle cx="32" cy="32" r="4" fill="currentColor"/>${[0,45,90,135,180,225,270,315].map((d)=>{const r=d*Math.PI/180;return `<line x1="${32+4*Math.cos(r)}" y1="${32+4*Math.sin(r)}" x2="${32+20*Math.cos(r)}" y2="${32+20*Math.sin(r)}" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/>`;}).join('')}`,
+  rose:() => '<path d="M32 8l5 19 19 5-19 5-5 19-5-19-19-5 19-5z" fill="currentColor"/>',
+  wave:() => '<path d="M8 30c6-8 12-8 18 0s12 8 18 0 10-7 12-4" stroke="currentColor" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M8 42c6-8 12-8 18 0s12 8 18 0 10-7 12-4" stroke="currentColor" stroke-width="5" fill="none" stroke-linecap="round" opacity=".6"/>',
+};
+let PHOTO = '';
+function makePhoto() { // fictional seascape, no person
+  const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d');
+  let g = x.createLinearGradient(0, 0, 0, 72); g.addColorStop(0, '#7dd3fc'); g.addColorStop(1, '#e0f2fe'); x.fillStyle = g; x.fillRect(0, 0, 128, 72);
+  x.fillStyle = '#0e7490'; x.fillRect(0, 72, 128, 56); x.fillStyle = '#fde68a'; x.beginPath(); x.arc(98, 24, 12, 0, 7); x.fill();
+  x.fillStyle = '#fff'; x.beginPath(); x.moveTo(64, 20); x.lineTo(64, 80); x.lineTo(36, 80); x.fill();
+  x.fillStyle = '#f97316'; x.beginPath(); x.moveTo(67, 28); x.lineTo(90, 80); x.lineTo(67, 80); x.fill();
+  x.fillStyle = '#111827'; x.beginPath(); x.moveTo(30, 84); x.lineTo(98, 84); x.lineTo(88, 94); x.lineTo(38, 94); x.fill();
+  PHOTO = c.toDataURL('image/jpeg', .85);
+}
+/* People: fictional. kind: photo | badge | initials. */
+const PEOPLE = {
+  eleni:{ n:'Ελένη Κ.', k:'badge', g:'boat', c:'sea' },
+  nikos:{ n:'Νίκος Π.', k:'photo' },
+  maria:{ n:'Μαρία Σ.', k:'badge', g:'helmet', c:'orange' },
+  giorgos:{ n:'Γιώργος Λ.', k:'badge', g:'sailno', c:'navy', no:'1234' },
+  katerina:{ n:'Κατερίνα Δ.', k:'initials', c:'violet' },
+  aris:{ n:'Άρης Μ.', k:'badge', g:'wheel', c:'stbd', guest:true },
+  dimitra:{ n:'Δήμητρα Ζ.', k:'initials', c:'slate' },
+  petros:{ n:'Πέτρος Α.', k:'badge', g:'anchor', c:'port' },
+};
+function av(id, px, opt = {}) {
+  const p = PEOPLE[id];
+  const ini = p.n.trim().split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+  let inner;
+  if (opt.wait) inner = `<span class="av init wait" style="width:${px}px;height:${px}px;font-size:${px * .38}px">${ini}</span>`;
+  else if (p.k === 'photo') inner = `<span class="av photo" style="width:${px}px;height:${px}px"><img src="${PHOTO}" alt=""></span>`;
+  else if (p.k === 'initials') inner = `<span class="av init" style="width:${px}px;height:${px}px;background:${COLORS[p.c]};font-size:${px * .38}px">${ini}</span>`;
+  else inner = `<span class="av" style="width:${px}px;height:${px}px;background:${COLORS[p.c]}"><svg viewBox="0 0 64 64" aria-hidden="true">${GL[p.g](p.no || '')}</svg></span>`;
+  return p.guest && !opt.noRing ? `<span class="avring guest">${inner}</span>` : inner;
+}
+
+/* ======================= Shared pieces ======================= */
+const NAV_OUT = [['home','Αρχική','home'],['history','Ιστορικό','history'],['boats','Σκάφη','boats'],['settings','Ρυθμίσεις','gear']];
+const NAV_IN = [['live','Live','live'],['map','Χάρτης','map'],['chat','Σύμβουλος','chat']];
+function navHTML(items, on, side) {
+  return `<nav class="nav ${side ? 'side' : ''}" style="--n:${items.length}" aria-label="${items === NAV_IN ? 'Οθόνες εξόδου' : 'Κύριες οθόνες'}">${items.map(([id, l, ic]) => `<button class="${id === on ? 'on' : ''}" title="${l}" ${id === on ? 'aria-current="page"' : ''}><span class="pill">${icon(ic)}</span><span class="l">${l}</span></button>`).join('')}</nav>`;
+}
+function topBar({ title, back, chip, avatar = true, offline }) {
+  return `<header class="top">
+    ${back ? `<button class="iconbtn" aria-label="Πίσω">${icon('back')}</button>` : ''}
+    ${chip ? `<button class="boatchip" aria-haspopup="dialog" aria-label="Ενεργό σκάφος: Θέτις. Αλλαγή">${icon('boats')}<span>Θέτις</span>${icon('chevd')}</button><span style="flex:1"></span>` : `<span class="ttl" data-testid="screen-title">${title}</span>`}
+    ${avatar ? `<button class="avbtn" aria-label="Προφίλ: Ελένη Κ.${offline ? ', χωρίς ίντερνετ' : ''}">${av('eleni', 44)}<span class="dot ${offline ? 'off' : ''}" aria-hidden="true"></span></button>` : ''}
+  </header>`;
+}
+function batHTML(b) {
+  if (!b) return '';
+  const w = Math.max(1, Math.round(14 * b.level / 100));
+  return `<span class="bat ${b.level <= 20 && !b.charging ? 'low' : ''}" role="img" aria-label="Μπαταρία ${b.level}%${b.charging ? ', φορτίζει' : ''}"><svg viewBox="0 0 24 14" aria-hidden="true"><rect x="1" y="1.5" width="18" height="11" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="3.5" width="${w}" height="7" rx="1" fill="currentColor"/><rect x="20.2" y="5" width="2.4" height="4" rx="1" fill="currentColor"/>${b.charging ? '<path d="M11 2.5L7 8h3.4l-1 4L14 6.4h-3.3z" fill="var(--sbar-bg)" stroke="var(--sbar-bg)" stroke-width=".8"/>' : ''}</svg><span class="num">${b.level}%</span></span>`;
+}
+function sbar({ kind = 'ΑΓΩΝΑΣ', clk = '01:12:40', sub = 'σε εξέλιξη · Χειμερινό Σαρωνικού · 3η', bat, pause, paused }) {
+  return `<header class="sbar">
+    <div class="modeb"><b><span class="rec ${paused ? 'off' : ''}" aria-hidden="true"></span>${kind}${batHTML(bat)}</b><span class="clk num">${clk}</span><span class="s">${sub}</span></div>
+    ${pause ? `<button class="sb" data-testid="session-pause" aria-label="${paused ? 'Συνέχεια καταγραφής' : 'Παύση καταγραφής'}">${icon(paused ? 'play' : 'pause')}</button>` : ''}
+    <button class="sb" aria-label="Γρήγορες ρυθμίσεις">${icon('gear')}</button>
+    <button class="sb endb" data-testid="session-end">${icon('stop')} Τέλος</button>
+  </header>`;
+}
+const strip = (t, cls = '', btn = '') => `<div class="strip ${cls}" role="${cls === 'bad' ? 'alert' : 'status'}"><span class="d" aria-hidden="true"></span><span>${t}</span>${btn}</div>`;
+function sheet({ title, body, foot = '', kind = 'sheet', testid = '' }) { return { title, body, foot, kind, testid }; }
+function windCard({ empty, manual } = {}) {
+  if (empty) return `<button class="wind empty full" data-testid="wind-reading" aria-label="Άνεμος: κανένας. Βάλε άνεμο"><span><span class="wk">Άνεμος <span>· TWS · αληθής</span></span><span class="wv">—</span><span class="ws">Πάτα για να βάλεις άνεμο</span></span><span class="wgo">${icon('pen')}Βάλε</span></button>`;
+  return `<button class="wind full" data-testid="wind-reading" aria-label="Άνεμος: TWS 14 kt, TWD 225°T, ${manual ? 'χειροκίνητα, πριν από 6 λεπτά' : 'από τα όργανα'}. Αλλαγή"><span><span class="wk">Άνεμος <span>· TWS · TWD</span></span><span class="wv num">14<small> kt</small> · 225°<small>T</small></span><span class="ws">${manual ? 'χειροκίνητα · πριν από 6′' : 'όργανα'}</span></span><span class="wgo">${icon('pen')}Αλλαγή</span></button>`;
+}
+
+/* ======================= Φ-B: crew, race plan, invite ======================= */
+function crewScreen(st) {
+  const off = st === 'offline', empty = st === 'empty', wait = st === 'slow';
+  const crew = [['nikos','μόνιμο πλήρωμα · δελτίο 30412'],['maria','μόνιμο πλήρωμα · δελτίο 27755'],['giorgos','μόνιμο πλήρωμα','nocard'],['katerina','μόνιμο πλήρωμα · δελτίο 31890']];
+  const body = `<div class="wrap">
+    <div class="sec"><h3>Πλήρωμα · Θέτις</h3><span class="cap2">${empty ? '' : '4 μέλη · 1 καλεσμένος'}</span></div>
+    ${empty ? `<div class="c" style="text-align:center"><div class="avstack" style="justify-content:center;margin:4px 0 10px">${av('eleni', 48)}</div><b>Κανένα μέλος ακόμα</b><p class="cap2" style="margin:4px 0 12px">Στείλε πρόσκληση με σύνδεσμο (π.χ. στο WhatsApp). Τα μέλη μόνο βλέπουν τους αγώνες που τους στέλνεις.</p><button class="b fill main wide">${icon('plus')} Πρόσκληση στο πλήρωμα</button></div>` : `
+    <div class="list">
+      <div class="rowb">${av('eleni', 40)}<span style="min-width:0"><b class="one">Ελένη Κ. (εσύ)</b><span class="role own">Ιδιοκτήτης</span></span><span></span></div>
+      ${crew.map(([id, s, f]) => `<div class="rowb">${av(id, 40, { wait })}<span style="min-width:0"><b class="one" title="${PEOPLE[id].n}">${PEOPLE[id].n}</b><span class="s">${f ? `<b style="display:inline;color:var(--fg)">!</b> χωρίς δελτίο` : s}</span><span class="role">Μέλος</span></span><button class="b danger" style="padding:0 12px" ${off ? 'disabled' : ''}>Αφαίρεση</button></div>`).join('')}
+      <div class="rowb">${av('aris', 40, { wait })}<span style="min-width:0"><b class="one">Άρης Μ.</b><span class="s">για «Χειμερινό · 3η» · λήγει 22/11</span><span class="role guest">Καλεσμένος</span></span><button class="b danger" style="padding:0 12px" ${off ? 'disabled' : ''}>Αφαίρεση</button></div>
+    </div>
+    <p class="cap2" style="margin:8px 2px">1 μέλος δεν έχει αριθμό δελτίου αθλητή. Τον βλέπετε μόνο εσύ και το μέλος.</p>
+    ${off ? `<div class="info warn">${icon('warn')}<span>Χωρίς ίντερνετ: η λίστα είναι από τον τελευταίο συγχρονισμό (14:32). Οι εικόνες φαίνονται από τη συσκευή. Πρόσκληση και αφαίρεση θέλουν ίντερνετ.</span></div>` : ''}
+    <div class="bstack" style="margin-top:12px"><button class="b fill main wide" ${off ? 'disabled' : ''}>${icon('plus')} Πρόσκληση στο πλήρωμα</button><button class="b tonal wide">${icon('list')} Λίστα για τη δήλωση συμμετοχής</button></div>`}
+    <div class="sec"><h3>Πληρώματα όπου είμαι μέλος</h3></div>
+    <div class="list"><div class="rowb">${av('petros', 40)}<span style="min-width:0"><b class="one">Αύρα του Σαρωνικού</b><span class="s">του/της Πέτρος Α. · μόνιμο πλήρωμα</span></span><button class="b out" style="padding:0 12px">Αποχώρηση</button></div></div>
+    <p class="cap2" style="margin:10px 2px">Η εικόνα δίπλα στο όνομα: φωτογραφία, αλλιώς το σήμα του μέλους, αλλιώς τα αρχικά του. Το email δεν φαίνεται πουθενά.</p>
+  </div>`;
+  return { top:topBar({ title:'Σκάφη', offline:off }), strips: off ? strip('Χωρίς ίντερνετ. Οι υπολογισμοί δουλεύουν· οι αλλαγές θα σωθούν μόλις επιστρέψει.') : '', body, nav:[NAV_OUT,'boats'] };
+}
+
+const POS = { helm:'Τιμονιέρης', tactician:'Τακτικός', navigator:'Ναυτίλος', genoa:'Τρίμερ τζένοας', main:'Τρίμερ μαΐστρας', spinnaker:'Τρίμερ μπαλονιού', pit:'Πιτ', mast:'Μάστ', bow:'Πλώρη' };
+function planScreen(st) {
+  const member = st === 'member', nohelm = st === 'nohelm';
+  const rows = [['eleni', nohelm ? 'tactician' : 'helm'],['nikos', nohelm ? 'navigator' : 'tactician'],['maria','genoa'],['giorgos','main'],['aris','bow'],['katerina', null]];
+  if (member) {
+    const body = `<div class="wrap">
+      <div class="c"><div class="evhead"><span class="ei">${icon('flag')}</span><span style="min-width:0"><b>Χειμερινό Σαρωνικού · 3η</b><span class="cap2" style="display:block">Σάβ 21/11 · 11:00 · Φάληρο → Σαλαμίνα → Φάληρο</span></span></div>
+      <div class="info">${icon('chat')}<span>«Στις 9:30 στο σκάφος. Παίρνουμε το A2.» — Ελένη Κ.</span></div></div>
+      <div class="sec"><h3>Ποιος σε ποια θέση</h3><span class="cap2">5 έρχονται</span></div>
+      <div class="list">${rows.filter((r) => r[1]).map(([id, p]) => `<div class="rowb">${av(id, 40)}<span style="min-width:0"><b class="one">${PEOPLE[id].n}${id === 'nikos' ? ' (εσύ)' : ''}</b><span class="s">${POS[p]}</span></span>${PEOPLE[id].guest ? '<span class="role guest">Καλεσμένος</span>' : '<span></span>'}</div>`).join('')}</div>
+      <p class="cap2" style="margin:10px 2px">Ο αγώνας είναι μόνο για ανάγνωση. Τον αλλάζει ο ιδιοκτήτης.</p></div>`;
+    return { top:topBar({ title:'Αγώνας', back:true, avatar:false }), body, nav:null };
+  }
+  const body = `<div class="wrap">
+    <div class="sec"><h3>Πλήρωμα για αυτόν τον αγώνα</h3><span class="cap2">5 από 6 έρχονται</span></div>
+    ${nohelm ? `<div class="msg">${icon('warn')}<span>! Λείπει τιμονιέρης. Διάλεξε ποιος κρατά το τιμόνι.</span></div>` : ''}
+    <div class="list">${rows.map(([id, p]) => `<div class="rowb" style="grid-template-columns:auto minmax(0,1fr) auto">${av(id, 40)}
+      <span style="min-width:0"><b class="one">${PEOPLE[id].n}${id === 'eleni' ? ' (εσύ)' : ''}</b>${p ? `<button class="schip" style="min-height:48px;margin-top:4px" aria-label="Θέση του/της ${PEOPLE[id].n}: ${POS[p]}. Αλλαγή">${POS[p]} ${icon('chevd', 'ic')}</button>` : '<span class="s">δεν έρχεται</span>'}</span>
+      <button class="toggle" role="switch" aria-checked="${!!p}" aria-label="Έρχεται: ${PEOPLE[id].n}" style="width:auto;min-height:48px"><span class="knob" aria-hidden="true"></span></button></div>`).join('')}</div>
+    <label class="fl" style="margin-top:14px">Σημείωση για το πλήρωμα<textarea>Στις 9:30 στο σκάφος. Παίρνουμε το A2.</textarea></label>
+    <div class="bstack"><button class="b tonal main wide">Στείλε στο πλήρωμα</button><button class="b out wide">${icon('plus')} Καλεσμένος για αυτόν τον αγώνα</button></div>
+    <p class="cap2">Τα avatars βγαίνουν από την ίδια σειρά: φωτογραφία, σήμα, αρχικά. Ο καλεσμένος έχει διακεκομμένο κύκλο και ετικέτα.</p></div>`;
+  return { top:topBar({ title:'Αγώνας', back:true, avatar:false }), body, nav:null };
+}
+
+function inviteScreen(st) {
+  const guest = st === 'guest';
+  const body = `<div class="wrap" style="padding-top:8px">
+    <div class="c" style="text-align:center;padding:24px 16px">
+      <div style="display:flex;justify-content:center;margin-bottom:12px">${av('eleni', 72)}</div>
+      <h2 style="margin:0 0 6px;font-size:1.3em;font-weight:800">Πρόσκληση στο πλήρωμα</h2>
+      <p style="margin:0 0 4px"><b>Ελένη Κ.</b> σε καλεί στο σκάφος <b>Θέτις</b>${guest ? ` για τον αγώνα <b>Χειμερινό Σαρωνικού · 3η</b> (Σάβ 21/11, 11:00). Θα βλέπεις μόνο αυτόν τον αγώνα, ως δύο μέρες μετά.` : ' ως μόνιμο πλήρωμα. Θα βλέπεις τους αγώνες που σου στέλνει: ώρα, διαδρομή, θέσεις και σημειώσεις.'}</p>
+      <div class="avstack" style="justify-content:center;margin:14px 0 4px" aria-label="Στο πλήρωμα: Νίκος Π., Μαρία Σ., Γιώργος Λ. και 1 ακόμα">${av('nikos', 36)}${av('maria', 36)}${av('giorgos', 36)}<span class="av init" style="width:36px;height:36px;background:var(--surface-2);color:var(--fg);font-size:13px">+1</span></div>
+      <p class="cap2" style="margin:0">Στο πλήρωμα: Νίκος Π., Μαρία Σ., Γιώργος Λ. και 1 ακόμα</p>
+    </div>
+    ${guest ? '' : `<label class="fl">Αριθμός δελτίου αθλητή (προαιρετικό)<input inputmode="numeric" placeholder="π.χ. 30412"><span class="help">Τον βλέπετε μόνο εσύ και ο ιδιοκτήτης του σκάφους, για τη δήλωση συμμετοχής.</span></label>`}
+    <div class="info">${icon('shield')}<span>Μόλις μπεις, το πλήρωμα βλέπει το όνομα και την εικόνα σου${guest ? ', μόνο όσο ισχύει η πρόσκληση' : ''}. Το email σου όχι.</span></div>
+    <button class="b fill main wide">Μπαίνω στο πλήρωμα</button></div>`;
+  return { top:topBar({ title:'Πρόσκληση', avatar:false }), body, nav:null };
+}
+
+/* ======================= Settings (Φ-B row, Φ-E privacy) ======================= */
+function settingsScreen(st) {
+  const admin = st === 'admin';
+  const body = `<div class="wrap">
+    <div class="list" style="margin-top:4px"><button class="rowb" data-testid="settings-profile">${av('eleni', 48)}<span style="min-width:0"><b>Λογαριασμός · Προφίλ</b><span class="s">Ελένη Κ. · συγχρονισμός OK 14:32</span></span>${icon('chev', 'chev')}</button></div>
+    <div class="sec"><h3>Εμφάνιση</h3><span class="cap2">ίδιο με σήμερα</span></div>
+    <div class="c flat"><div class="seg" role="radiogroup" aria-label="Θέμα">${[['day','Μέρα'],['dark','Σούρουπο'],['night','Νύχτα']].map(([t, l]) => `<button class="${S.theme === t ? 'on' : ''}" role="radio" aria-checked="${S.theme === t}">${l}</button>`).join('')}</div></div>
+    <div class="sec"><h3>Οθόνη στην έξοδο</h3><span class="tagx cap2">Φ-E</span></div>
+    <div class="c flat" style="padding:4px 16px">
+      <button class="toggle" role="switch" aria-checked="${S.notice}" data-act="notice"><span class="tx">Μήνυμα «Κράτα την οθόνη ανοιχτή»<span class="cap2">στην αρχή κάθε εξόδου. Βγαίνει πάντα σε συσκευή που δεν κρατά μόνη της την οθόνη ανοιχτή.</span></span><span class="knob" aria-hidden="true"></span></button>
+    </div>
+    <div class="sec"><h3>Απόρρητο</h3><span class="cap2">Φ-E</span></div>
+    <div class="c flat" style="padding:4px 16px">
+      <button class="toggle" role="switch" aria-checked="${S.stats}" data-act="stats" data-testid="usage-stats"><span class="tx">Ανώνυμα στατιστικά<span class="cap2">Μόνο αριθμοί: τύπος κινητού και κενά στο ίχνος. Χωρίς θέση, χωρίς στοιχεία σου.</span></span><span class="knob" aria-hidden="true"></span></button>
+      ${S.stats ? '' : '<p class="cap2" style="margin:0 0 10px">Κλειστά: δεν στέλνεται τίποτα, ούτε όσα περίμεναν.</p>'}
+    </div>
+    <div class="sec"><h3>Για προχωρημένους</h3></div>
+    <div class="c flat">
+      <div class="rowb noic" style="padding:6px 0;min-height:48px"><span><b>Έξοδοι με κενό στο ίχνος</b><span class="s">σε αυτή τη συσκευή</span></span><span class="v num">3 από 11</span></div>
+      <div class="rowb noic" style="padding:6px 0;min-height:48px"><span><b>Συνολικά κενά</b></span><span class="v num">27′</span></div>
+      <div class="rowb noic" style="padding:6px 0;min-height:48px"><span><b>Με «Χαμηλή κατανάλωση»</b></span><span class="v num">2 από 11</span></div>
+    </div>
+    ${admin ? `<div class="sec"><h3>Διαχειριστής · Χρήση (90 μέρες)</h3></div>
+    <div class="c flat"><div style="overflow-x:auto" role="region" aria-label="Χρήση ανά πλατφόρμα" tabindex="0"><table class="adm"><thead><tr><th>Πλατφόρμα</th><th>Έξοδοι</th><th>με κενό</th><th>χαμηλή κατ.</th></tr></thead><tbody>
+      <tr><td>Android</td><td>46</td><td>22%</td><td>9%</td></tr><tr><td>iPhone</td><td>31</td><td>35%</td><td>13%</td></tr><tr><td>Υπολογιστής</td><td>&lt; 5</td><td>&lt; 5</td><td>&lt; 5</td></tr></tbody></table></div>
+      <p class="cap2" style="margin:8px 0 0">Κελί με λιγότερες από 5 εξόδους γράφει «&lt; 5». Χωρίς χρήστη, IP ή συσκευή.</p></div>` : ''}
+  </div>`;
+  return { top:topBar({ title:'Ρυθμίσεις' }), body, nav:[NAV_OUT,'settings'] };
+}
+
+/* ======================= Φ-C: Home with event, event screen, standing, results ======================= */
+function homeScreen(st) {
+  const two = st === 'two', off = st === 'offline';
+  const h = new Date().getHours(); const hi = h < 12 ? 'Καλημέρα' : h < 19 ? 'Καλησπέρα' : 'Καλό βράδυ';
+  const eventCard = `<section class="c" data-testid="home-event">
+    <div class="evhead"><span class="ei">${icon('trophy')}</span><span style="min-width:0;flex:1"><b style="display:block;overflow-wrap:anywhere">Χειμερινό Σαρωνικού 2026</b><span class="cap2">Διοργάνωση · μετά τη 2η: 2ος στη γενική (εκτ.)</span></span>${two ? '' : '<span class="cd num" style="min-width:72px"><b>1</b><span>ΜΕΡΑ</span></span>'}</div>
+    <div class="evnext">→ 3η ιστιοδρομία: Φάληρο – Σαλαμίνα</div>
+    <div class="cap2">Σάβ 21/11 · 11:00 · ίδιο σκάφος και αντίπαλοι</div>
+    ${two ? '' : '<div class="chiprow"><span class="schip good">✓ Διαδρομή</span><span class="schip fair">! Λείπει τιμονιέρης</span></div>'}
+    <button class="b fill main wide" style="margin-top:12px" data-testid="home-event-go">Άνοιξε την 3η ιστιοδρομία</button>
+    <button class="b text wide">Δες τη διοργάνωση</button></section>`;
+  const nextCard = `<div class="sec"><h3>Επόμενος αγώνας</h3></div><div class="c next"><div style="min-width:0"><b>Χειμερινό Σαρωνικού · 3η</b><div class="cap2">Σάβ 21/11 · 11:00 · Φάληρο → Σαλαμίνα</div><div class="chiprow"><span class="schip good">✓ Διαδρομή</span><span class="schip fair">! Λείπει τιμονιέρης</span></div></div><div class="cd num"><b>1</b><span>ΜΕΡΑ</span></div></div>`;
+  const body = `<div class="wrap">
+    <div class="hello" data-testid="screen-title">${hi}, Ελένη</div>
+    <button class="mode race"><span class="mi">${icon('flag')}</span><span><b>Αγώνας</b><span class="d">Διαδρομή, εκκίνηση, αντίπαλοι</span></span>${icon('chev', 'go')}</button>
+    <button class="mode"><span class="mi">${icon('watch')}</span><span><b>Προπόνηση</b><span class="d">Γύροι, μανούβρες, % στόχου</span></span>${icon('chev', 'go')}</button>
+    <button class="mode"><span class="mi">${icon('sun')}</span><span><b>Αναψυχή</b><span class="d">Προορισμός, ETA, βάθος</span></span>${icon('chev', 'go')}</button>
+    <button class="quick">${icon('live')}<span>Γρήγορη ματιά<span class="d">Άνεμος και όργανα, χωρίς καταγραφή</span></span></button>
+    ${two ? nextCard : ''}
+    <div class="sec"><h3>${two ? 'Διοργάνωση' : 'Επόμενος αγώνας'}</h3></div>${eventCard}
+    <div class="sec"><h3>Οι έξοδοί μου</h3><button class="lnk">Όλες</button></div>
+    <div class="c flat" style="padding:4px 12px">
+      <button class="hc"><span class="hi">${icon('flag')}</span><span style="min-width:0"><b>Αίγινα – Πειραιάς</b><span class="s">Αγώνας · Σάβ 14/11 · 16,9 NM</span></span><span class="m num">1η / 7</span></button>
+      <button class="hc"><span class="hi">${icon('watch')}</span><span style="min-width:0"><b>Ταχύτητα όρτσα · Φάληρο</b><span class="s">Προπόνηση · Τετ 11/11 · 6 γύροι</span></span><span class="m num">94%</span></button>
+      <button class="hc"><span class="hi">${icon('sun')}</span><span style="min-width:0"><b>Αναψυχή · Σαλαμίνα</b><span class="s">Αναψυχή · Κυρ 8/11 · 21,0 NM</span></span><span class="m num">4:12</span></button>
+    </div></div>`;
+  return { top:topBar({ chip:true, offline:off }), strips: off ? strip('Χωρίς ίντερνετ. Όλα δουλεύουν, ο συγχρονισμός περιμένει.') : '', body, nav:[NAV_OUT,'home'] };
+}
+
+const BOATS7 = ['Αύρα του Σαρωνικού','Θέτις','Ζέφυρος','Μελτέμι του Σαρωνικού','Γαλήνη','Αλκυόνη','Ναυσικά'];
+const RES = { // place per race (8 = DNF/DNC for a class of 7)
+  'Αύρα του Σαρωνικού':[1,2,4,1,3,2], 'Θέτις':[3,1,2,5,1,1], 'Ζέφυρος':[2,4,1,2,5,4], 'Μελτέμι του Σαρωνικού':[4,3,3,3,2,6],
+  'Γαλήνη':[5,'DNF',6,4,4,3], 'Αλκυόνη':[6,5,5,7,6,5], 'Ναυσικά':[7,6,7,6,7,7],
+};
+const ptsOf = (v) => (v === 'DNF' || v === 'DNC' ? 8 : v);
+function standing(n, discards) {
+  return BOATS7.map((b) => {
+    const r = RES[b].slice(0, n), p = r.map(ptsOf);
+    const worst = discards ? p.indexOf(Math.max(...p)) : -1;
+    const total = p.reduce((a, x, i) => a + (i === worst ? 0 : x), 0);
+    return { b, r, worst, total, best: Math.min(...p) };
+  }).sort((a, z) => a.total - z.total || a.best - z.best);
+}
+function standTable(n, discards, est) {
+  const s = standing(n, discards);
+  return `<div class="tw" role="region" aria-label="Γενική κατάταξη" tabindex="0"><table class="stand"><thead><tr><th class="c-pl">#</th><th class="c-boat">σκάφος</th>${Array.from({ length:n }, (_, i) => `<th>${i + 1}η</th>`).join('')}<th class="c-total">σύνολο</th></tr></thead><tbody>
+    ${s.map((x, i) => `<tr class="${x.b === 'Θέτις' ? 'own' : ''}"><td class="c-pl">${i + 1}</td><td class="c-boat" title="${x.b}">${x.b === 'Θέτις' ? 'Θέτις · εμείς' : x.b}</td>${x.r.map((v, j) => `<td class="${j === x.worst ? 'disc' : ''}">${j === x.worst ? `(${v === 'DNF' ? 'DNF 8' : v})` : v === 'DNF' ? 'DNF 8' : v}${est && j === n - 1 && x.b === 'Θέτις' ? ' (εκτ.)' : ''}</td>`).join('')}<td class="c-total">${x.total}</td></tr>`).join('')}
+  </tbody></table></div>`;
+}
+function eventScreen(st) {
+  const six = st === 'six';
+  const n = six ? 6 : 2;
+  const body = `<div class="wrap">
+    <div class="c"><div class="evhead"><span class="ei">${icon('trophy')}</span><span style="min-width:0;flex:1"><b style="display:block;font-size:1.15em;overflow-wrap:anywhere">Χειμερινό Σαρωνικού 2026</b><span class="cap2">${n} ιστιοδρομίες · Παράρτημα A (θέσεις) · απορρίψεις ${six ? '1 από 4' : '0 από 4'} · σε εξέλιξη</span></span></div>
+      <button class="b text" style="padding:0 4px">${icon('pen')} Αλλαγή</button></div>
+    <div class="sec"><h3>Γενική κατάταξη</h3><span class="cap2">2ος από 7</span></div>
+    <div class="c flat" style="padding:10px">${standTable(n, six, true)}
+      ${six ? '<p class="cap2" style="margin:8px 2px 0">⇆ Σύρε τον πίνακα για όλες τις ιστιοδρομίες</p>' : ''}
+      <p class="cap2" style="margin:8px 2px 0">Περιέχει εκτιμήσεις (εκτ.). Βάλε τα επίσημα από τα «Αποτελέσματα».</p></div>
+    <div class="sec"><h3>Ιστιοδρομίες</h3></div>
+    <div class="c"><b>1η ιστιοδρομία · Πειραιάς – Αίγινα</b><div class="cap2">Σάβ 7/11 · εμείς 3η · διορθωμένος 3:41:12</div>
+      <div class="brow" style="margin-top:10px"><button class="b tonal">Αποτελέσματα</button><button class="b out">Ανάλυση</button></div></div>
+    <div class="c"><b>2η ιστιοδρομία · Αίγινα – Πειραιάς</b><div class="cap2">Σάβ 14/11 · εμείς 1η · διορθωμένος 3:18:05 · 1 εκτ.</div>
+      <div class="brow" style="margin-top:10px"><button class="b tonal">Αποτελέσματα</button><button class="b out">Ανάλυση</button></div></div>
+    <div class="c" style="border-style:dashed;box-shadow:none"><b>3η ιστιοδρομία · Φάληρο – Σαλαμίνα</b><div class="cap2">Σάβ 21/11 · 11:00 · Δεν έγινε ακόμα.</div>
+      <button class="b fill main wide" style="margin-top:10px">Άνοιξε την 3η ιστιοδρομία</button></div>
+    <button class="b out wide">${icon('plus')} Νέα ιστιοδρομία</button>
+    <button class="b text wide" style="margin-top:8px">Η διοργάνωση τελείωσε</button>
+  </div>`;
+  return { top:topBar({ title:'Οι έξοδοί μου', back:true }), body, nav:[NAV_OUT,'history'] };
+}
+function standingScreen(st) {
+  const six = st !== 'two';
+  const n = six ? 6 : 2;
+  const body = `<div class="wrap"><div class="sec"><h3>Γενική κατάταξη</h3><span class="cap2">μετά την ${n}η</span></div>
+    <div class="c flat" style="padding:10px">${standTable(n, six, false)}
+    ${six ? '<p class="cap2" style="margin:8px 2px 0">⇆ Σύρε τον πίνακα για όλες τις ιστιοδρομίες</p>' : ''}
+    <p class="cap2" style="margin:8px 2px 0">${six ? 'Σε παρένθεση: η απόρριψη (1 από 4 ολοκληρωμένες). ' : ''}DNC, DNS, OCS, DNF, RET, DSQ, DNE: 8 βαθμοί (σκάφη στην κλάση + 1). Το DNE δεν απορρίπτεται.</p>
+    <p class="cap2" style="margin:6px 2px 0">«Γαλήνη» και «Ναυσικά»: 13 βαθμοί. Πάνω: «Γαλήνη» (A8.1: καλύτερες θέσεις).</p></div>
+    <p class="cap2" style="margin:8px 2px">Σταθερά στα 320 px: «#», «σκάφος», «σύνολο». Η γραμμή μας: έντονη, «· εμείς», σημάδι αριστερά και πλαίσιο (διαβάζεται και χωρίς χρώμα).</p></div>`;
+  return { top:topBar({ title:'Οι έξοδοί μου', back:true }), body, nav:[NAV_OUT,'history'] };
+}
+function kpDisplay(d, mode) {
+  const pad = (mode === 'clock' ? '______' : '_____').slice(d.length) + d;
+  const f = mode === 'clock' ? `${pad.slice(0,2)}:${pad.slice(2,4)}:${pad.slice(4)}` : `${pad.slice(0,1)}:${pad.slice(1,3)}:${pad.slice(3)}`;
+  return f.replace(/_/g, '<i>0</i>');
+}
+function resultsScreen(st) {
+  const rows = [[1,'Θέτις','τερμ. 14:01:44 · διορθ. 3:18:05','επίσημο','',true],[2,'Αύρα του Σαρωνικού','τερμ. 13:58:10 · διορθ. 3:19:40','επίσημο',''],[3,'Μελτέμι του Σαρωνικού','τερμ. 14:03:02 · διορθ. 3:21:13','από τη γραμμή','dot'],[4,'Ζέφυρος','τερμ. 14:07:32 · διορθ. 3:22:58','εκτίμηση','dash'],[5,'Αλκυόνη','—','χωρίς αποτέλεσμα','dash'],[6,'Ναυσικά','—','χωρίς αποτέλεσμα','dash'],['DNF','Γαλήνη','8 βαθμοί','επίσημο','']];
+  const body = `<div class="wrap"><div class="sec"><h3>Αποτελέσματα · 2η ιστιοδρομία</h3></div>
+    <p class="cap2" style="margin:-4px 2px 10px">Γράψε τα επίσημα από τον πίνακα της επιτροπής. Η κατάταξη αλλάζει αμέσως.</p>
+    <div class="list">${rows.map(([p, b, v, src, sh, own]) => `<button class="resrow ${own ? 'own' : ''}" aria-label="${b}, θέση ${p}, ${v}. Άλλαξε."><span class="pl">${p}</span><span style="min-width:0"><b>${b}${own ? ' · εμείς' : ''}</b><span class="cap2 num">${v}</span></span><span class="schip ${sh}">${src}</span></button>`).join('')}</div>
+    <p class="cap2" style="margin:10px 2px">Συνολικά τώρα: 2ος στη γενική.</p></div>`;
+  const ex = S.kpMode === 'code' ? '' : S.kp;
+  const sb = sheet({ title:'Ζέφυρος', testid:'result-sheet', body:`
+    <div class="seg" role="radiogroup" aria-label="Τι γράφεις"><button role="radio" aria-checked="${S.kpMode === 'clock'}" class="${S.kpMode === 'clock' ? 'on' : ''}" data-act="kpm" data-v="clock">Ώρα<small>τερματισμού</small></button><button role="radio" aria-checked="${S.kpMode === 'elapsed'}" class="${S.kpMode === 'elapsed' ? 'on' : ''}" data-act="kpm" data-v="elapsed">Χρόνος<small>πραγματικός</small></button><button role="radio" aria-checked="${S.kpMode === 'code'}" class="${S.kpMode === 'code' ? 'on' : ''}" data-act="kpm" data-v="code">Κωδικός<small>DNF, DNS…</small></button></div>
+    ${S.kpMode === 'code' ? `<div class="codes" role="radiogroup" aria-label="Κωδικός αποτελέσματος">${[['DNC','δεν ήρθε στην εκκίνηση'],['DNS','δεν ξεκίνησε'],['OCS','πρόωρη εκκίνηση'],['DNF','δεν τερμάτισε'],['RET','αποσύρθηκε'],['DSQ','αποκλεισμός'],['DNE','αποκλεισμός που δεν απορρίπτεται']].map(([c, h]) => `<button role="radio" aria-checked="${S.code === c}" class="${S.code === c ? 'on' : ''}" data-act="code" data-v="${c}">${c}<small>${h}</small></button>`).join('')}</div>
+      <div class="calc">${S.code} = 8 βαθμοί${S.code === 'DNE' ? ' · δεν απορρίπτεται' : ''}</div>` : `
+    <div class="tval" aria-live="polite" aria-label="${S.kpMode === 'clock' ? 'Ώρα τερματισμού' : 'Πραγματικός χρόνος'}">${kpDisplay(ex, S.kpMode)}</div>
+    <p class="cap2" style="margin:4px 2px 0">${S.kpMode === 'clock' ? 'Ώρα τερματισμού (ΩΩ:ΛΛ:ΔΔ), όπως στον πίνακα της επιτροπής' : 'Πραγματικός χρόνος (Ω:ΛΛ:ΔΔ)'} · Τα ψηφία μπαίνουν από δεξιά.</p>
+    <div class="calc">${ex.length >= 5 ? 'Πραγματικός 3:07:32 · διορθωμένος 3:22:58 · 4η θέση' : 'Γράψε την ώρα τερματισμού.'}</div>
+    <div class="kp" role="group" aria-label="Πληκτρολόγιο">${[1,2,3,4,5,6,7,8,9].map((k) => `<button data-act="kp" data-v="${k}">${k}</button>`).join('')}<button class="k-s" data-act="kp" data-v="C" aria-label="Καθάρισμα">Καθάρισε</button><button data-act="kp" data-v="0">0</button><button data-act="kp" data-v="B" aria-label="Σβήσε το τελευταίο ψηφίο">⌫</button></div>`}`,
+    foot:'<div class="brow"><button class="b out main" data-act="close">Άκυρο</button><button class="b fill main">Αποθήκευση · επόμενο ›</button></div>' });
+  return { top:topBar({ title:'Οι έξοδοί μου', back:true }), body, nav:[NAV_OUT,'history'], sheet: S.sheetOpen ? sb : null, sheetOverride:'noside' };
+}
+
+/* ======================= Φ-D: Live ======================= */
+function raceLive(st, fr) {
+  const nogps = st === 'nogps', noinst = st === 'noinst', cd = st === 'countdown';
+  const bands = {
+    lay2:['warn','ΑΝΑΣΤΡΟΦΗ σε 2′','Layline αριστερών για Πάνω · πρόταση','warn'],
+    now:['now','ΑΝΑΣΤΡΟΦΗ ΤΩΡΑ','Layline αριστερών για Πάνω · πρόταση','warn'],
+    shift:['warn','ΣΤΡΟΦΗ ΑΝΕΜΟΥ 9°','Δυσμενής, σε κατεβάζει · πρόταση: αναστροφή','wind'],
+    mark:['info','ΣΗΜΑΔΟΥΡΑ σε 1′','Πάνω · ετοίμασε την επόμενη μανούβρα','flag'],
+    nogps:['now','ΧΑΘΗΚΕ ΤΟ GPS','Η καταγραφή περιμένει θέση · κράτα την οθόνη ανοιχτή','warn'],
+  };
+  const bd = bands[st];
+  const band = bd ? `<div class="band ${bd[0]} full" role="alert">${icon(bd[3])}<div><div class="big">${bd[1]}</div><div class="sub">${bd[2]}</div></div><button class="mute" aria-label="Σίγαση ειδοποιήσεων για 5 λεπτά">${icon('mute')}<span>5′</span></button></div>` : '';
+  const stl = nogps ? 'stale' : '';
+  const old = nogps ? '<span class="st"> · τελευταία τιμή</span>' : '';
+  let tiles;
+  if (cd) tiles = `
+    <div class="t hero"><div class="lab"><span>Εκκίνηση σε</span><span class="ab">11:00</span></div><div class="val num">4:32</div><div class="sub">μέχρι την εκκίνηση · καταγραφή από 10:50</div></div>
+    <div class="t md"><div class="lab"><span>Ταχύτητα</span><span class="ab">BSP · kt</span></div><div class="val num">5,9</div><div class="sub">στόχος 7,1</div></div>
+    <div class="t md"><div class="lab"><span>Άνεμος</span><span class="ab">TWA</span></div><div class="val num stbd">44°</div><div class="sub">Όρτσα · δεξιές</div></div>
+    <div class="t sm"><div class="lab"><span>TWS</span></div><div class="val num">14<small>kt</small></div></div>
+    <div class="t sm"><div class="lab"><span>Πλώρη</span></div><div class="val num">208°</div></div>
+    <div class="t sm"><div class="lab"><span>1η σημ.</span></div><div class="val num">2,4<small>NM</small></div></div>`;
+  else tiles = `
+    <div class="t hero ${stl}"><div class="lab"><span>Ταχύτητα</span><span class="ab">${noinst ? 'SOG από GPS' : 'BSP'} · kt</span></div><div class="val num" data-k="bsp">6,8</div><div class="bar" aria-hidden="true"><i style="width:96%"></i></div><div class="sub ${nogps ? '' : 'good'}">✓ 96% του στόχου 7,1${noinst ? ' · από GPS (SOG)' : ''}${old}</div></div>
+    <div class="t md ${stl}"><div class="lab"><span>Άνεμος</span><span class="ab">TWA${noinst ? ' · χειροκίνητα' : ''}</span></div><div class="val num stbd">42°</div><div class="sub">Όρτσα · δεξιές${old}</div></div>
+    <div class="t md ${stl}"><div class="lab"><span>Επόμενη</span><span class="ab">αναστροφή (τακ)</span></div><div class="val num ${st === 'now' ? 'now' : ''}">${st === 'now' ? 'ΤΩΡΑ' : '9′'}</div><div class="sub">${st === 'now' ? 'πέρασες τη layline' : '1,2 NM · layline αριστερών'}</div></div>
+    <div class="t sm ${stl}"><div class="lab"><span>TWS</span></div><div class="val num">14<small>kt</small></div></div>
+    <div class="t sm ${stl}"><div class="lab"><span>Πλώρη</span></div><div class="val num">205°</div></div>
+    <div class="t sm ${stl}"><div class="lab"><span>Σημαδούρα</span></div><div class="val num">3,3<small>NM</small></div></div>`;
+  const strips = nogps ? strip('Χωρίς GPS εδώ και 40″. Οι τιμές είναι οι τελευταίες.', 'bad')
+    : noinst ? strip('Χωρίς όργανα: ταχύτητα από GPS, άνεμος χειροκίνητα. Οι ειδοποιήσεις στροφής ανέμου είναι κλειστές.')
+    : cd ? strip('Η καταγραφή ξεκινά μόνη της στις 10:50, 10′ πριν από την εκκίνηση.', 'quiet') : '';
+  const lowland = fr.lowland ? 'lowland' : '';
+  const below = `<div class="c flat" style="margin-top:12px"><div class="rowb noic" style="padding:0;min-height:48px"><span><b>Χειμερινό Σαρωνικού · 2ος στη γενική (εκτ.)</b><span class="s">σε διορθωμένο τώρα: 2ος · +0:42 από την «Αύρα του Σαρωνικού»</span></span><span></span></div></div>
+    <div class="c flat"><div class="rowb noic" style="padding:0;min-height:48px"><span><b>Ήχος ειδοποιήσεων</b><span class="s">μπιπ και φωνή · Σίγαση 5′ και από τη ζώνη</span></span><button class="b out">${icon('mute')} Σίγαση 5′</button></div></div>
+    <p class="cap2">Ενδεικτικό, όχι για ναυσιπλοΐα. Οι ειδοποιήσεις είναι προτάσεις και ακούγονται μόνο με την οθόνη ανοιχτή. Η απόφαση είναι του κυβερνήτη.</p>`;
+  const body = `<div class="wrap wide livewrap ${lowland}"><div class="lg">${band}${tiles}${windCard({ manual:noinst })}</div>${fr.lowland ? '' : below}</div>`;
+  let sh = null;
+  if (st === 'finish') sh = sheet({ kind:'confirm', testid:'finish-sheet', title:'Τερματίσατε στις 14:01:44;', body:`<p style="margin:0 0 8px;font-weight:600">Το σκάφος πέρασε τη γραμμή τερματισμού πριν από 1′ 20″. Για τον διορθωμένο χρόνο κρατάμε την ώρα του περάσματος, όσο αργά κι αν πατήσεις.</p><p class="cap2" style="margin:0 0 12px">♪ ♪ γραμμή τερματισμού</p>`, foot:'<div class="bstack"><button class="b fill main wide" data-testid="finish-yes">Ναι, τερματίσαμε</button><button class="b out main wide" data-testid="finish-no">Όχι, συνεχίζουμε</button></div>' });
+  if (st === 'wind') sh = sheet({ title:'Άνεμος', testid:'wind-sheet', body:`<p class="cap2" style="margin:0 0 8px">Τώρα: από τα όργανα. Το Live μένει ορατό δίπλα σε μεγάλη οθόνη (D6).</p><div class="info">${icon('wind')}<span>Το περιεχόμενο του φύλλου είναι της P-053 (<code>ManualWindSheet</code>), χωρίς αλλαγή. Εδώ φαίνεται μόνο η θέση του.</span></div><button class="toggle" role="switch" aria-checked="false"><span class="tx">Χρήση χειροκίνητου ανέμου<span class="cap2">TWD και TWS από το χέρι</span></span><span class="knob" aria-hidden="true"></span></button>`, foot:'<button class="b fill main wide" data-act="close">Έτοιμο</button>' });
+  return { sbar:sbar(cd ? { clk:'−04:32', sub:'εκκίνηση 11:00 · Χειμερινό · 3η' } : {}), strips, body, nav:[NAV_IN,'live'], sheet: S.sheetOpen ? sh : null };
+}
+function trainingLive(st, fr) {
+  const paused = st === 'pause', nowind = st === 'nowind';
+  let hero;
+  if (st === 'tacks') hero = `<div class="t hero"><div class="lab"><span>Ανάκαμψη στο 90%</span><span class="ab">τελευταία αναστροφή</span></div><div class="val num">0:38</div><div class="sub">6 αναστροφές · μέση 0:44 · καλύτερη 0:31</div></div>`;
+  else if (st === 'starts') hero = `<div class="t hero starts"><div class="lab"><span>Εκκίνηση</span><span class="ab">άσκηση εκκινήσεων</span></div><div class="val num">3:12</div><div class="sub">αντίστροφη μέτρηση</div><div class="cdrow"><button class="b out">${icon('play')} 5′</button><button class="b out">${icon('undo')} Από 5′</button><button class="b out">Συγχρ. λεπτού</button></div></div>`;
+  else if (st === 'downwind') hero = `<div class="t hero"><div class="lab"><span>VMG</span><span class="ab">πρόοδος στον άνεμο</span></div><div class="val num">5,6<small> kt</small></div><div class="sub">στόχος 5,9 kt · % 95</div></div>`;
+  else hero = `<div class="t hero ${paused ? 'stale' : ''}"><div class="lab"><span>% του στόχου</span><span class="ab">μέσος όρος 15″</span></div><div class="val num ${nowind ? 'wait' : ''}">${nowind ? '—' : '93<small>%</small>'}</div>${nowind ? '' : '<div class="bar" aria-hidden="true"><i style="width:93%"></i></div>'}<div class="sub ${nowind ? '' : 'fair'}">${nowind ? 'χρειάζεται άνεμο' : '! Λίγο κάτω: δοκίμασε όρτσαρε 2°'}${paused ? '<span class="st"> · σε παύση</span>' : ''}</div></div>`;
+  const tiles = `${hero}
+    <div class="t md ${paused ? 'stale' : ''}"><div class="lab"><span>Γωνία ανέμου</span><span class="ab">TWA</span></div><div class="val num ${nowind ? 'wait' : 'stbd'}">${nowind ? '—' : '41°'}</div><div class="sub">${nowind ? 'χρειάζεται άνεμο' : 'στόχος 42°'}</div></div>
+    <div class="t md ${paused ? 'stale' : ''}"><div class="lab"><span>Ταχύτητα</span><span class="ab">BSP</span></div><div class="val num">6,6<small> kt</small></div><div class="sub">στόχος 7,1 kt</div></div>
+    <div class="t sm"><div class="lab"><span>${st === 'downwind' ? 'BSP' : 'VMG'}</span></div><div class="val num">${st === 'downwind' ? '7,4' : '4,9'}<small>kt</small></div></div>
+    <div class="t sm"><div class="lab"><span>TWS</span></div><div class="val num" data-testid="tws-mini">${nowind ? '—' : '13'}<small>kt</small></div></div>
+    <div class="t sm"><div class="lab"><span>Σκέλος</span></div><div class="val num" style="font-size:1.2em">${st === 'downwind' ? 'πρίμα' : 'όρτσα'}</div></div>
+    ${windCard({ empty:nowind })}`;
+  const body = `<div class="wrap wide livewrap ${fr.lowland ? 'lowland' : ''}">
+    ${paused ? `<section class="c" role="status"><b>${icon('pause')} Σε παύση</b><p class="cap2" style="margin:4px 0 10px">Δεν καταγράφεται ίχνος και δεν βγαίνουν ειδοποιήσεις. Ο χρόνος της παύσης δεν μετράει στη διάρκεια, στα μίλια και στο % του στόχου.</p><button class="b fill main wide" data-testid="session-resume">${icon('play')} Συνέχεια</button></section>` : ''}
+    ${nowind ? `<div class="msg">${icon('warn')}<span><b>Χωρίς άνεμο:</b> δεν υπάρχουν όργανα και δεν έχεις βάλει άνεμο. Δεν βγαίνουν στόχοι και %.</span></div>` : ''}
+    <div class="lg">${tiles}</div>
+    ${fr.lowland ? '' : `<button class="lapbtn" data-testid="lap-button" ${paused ? 'disabled' : ''} aria-label="Νέος γύρος. Ο γύρος 4 τρέχει 2:41">${icon('timer')} Γύρος 4 · 2:41</button>
+    <div class="brow"><button class="b out" data-testid="lap-undo">${icon('undo')} Αναίρεση (7″)</button><button class="b out">${icon('pen')} Σημείωση γύρου</button></div>
+    <p class="laps" data-testid="lap-list">Γύρος 3: 4:12 ★ · Γύρος 2: 4:31 · Γύρος 1: 4:48</p>
+    <div class="c flat" style="margin-top:8px"><b>Polar και τριμάρισμα</b><div class="cap2">Στόχοι για 13 kt · Πανί: J1 · ίδιο με σήμερα</div></div>
+    <button class="b out main wide">${icon('swap')} Άλλαξε σε Αναψυχή</button>`}
+  </div>`;
+  return { sbar:sbar({ kind:'ΠΡΟΠΟΝΗΣΗ', clk:'00:48:15', sub:`${paused ? 'σε παύση' : 'σε εξέλιξη'} · Ταχύτητα όρτσα`, pause:true, paused }),
+    strips: paused ? strip('<b>Σε παύση 3:12</b> · δεν καταγράφεται, χωρίς ειδοποιήσεις', '', `<button class="sbtn">${icon('play')} Συνέχεια</button>`) : '', body, nav:[NAV_IN,'live'] };
+}
+function cruiseLive(st, fr) {
+  const nodest = st === 'nodest', shallow = st === 'shallow', paused = st === 'pause', off = st === 'offline';
+  const body = `<div class="wrap wide livewrap ${fr.lowland ? 'lowland' : ''}"><div class="lg">
+    ${shallow ? `<div class="band warn full" role="alert">${icon('warn')}<div><div class="big">ΡΗΧΑ ΜΠΡΟΣΤΑ · 4 m</div><div class="sub">κάτω από 5 m · ενδεικτικό, όχι για ναυσιπλοΐα</div></div></div>` : ''}
+    <div class="t hero ${paused ? 'stale' : ''}"><div class="lab"><span>Ταχύτητα</span><span class="ab">SOG · ως προς βυθό</span></div><div class="val num">5,8<small> kt</small></div><div class="sub">πορεία 128°T</div></div>
+    ${nodest ? `<button class="t md" style="text-align:left;border:2px dashed var(--line)"><div class="lab"><span>Χωρίς προορισμό</span></div><div class="val wait" style="font-size:1.6em">—</div><div class="sub">Βάλε έναν για απόσταση και ETA</div><span class="b tonal" style="margin-top:8px;min-height:44px">Βάλε</span></button>`
+      : `<div class="t md"><div class="lab"><span>Αίγινα</span><span class="ab">απομένουν</span></div><div class="val num">7,4<small>NM</small></div><div class="sub">${paused ? 'σε παύση · η ETA παγώνει' : 'ETA 15:42 · σε 1 ώ 16′'}</div></div>`}
+    <div class="t md"><div class="lab"><span>Βάθος</span><span class="ab">από χάρτη</span></div><div class="val num">${shallow ? '~4' : '~38'}<small> m</small></div><div class="sub">ενδεικτικό, όχι για ναυσιπλοΐα</div></div>
+    <div class="t sm"><div class="lab"><span>TWS</span></div><div class="val num">12<small>kt</small></div></div>
+    <div class="t sm"><div class="lab"><span>Ριπές</span></div><div class="val num">18<small>kt</small></div></div>
+    <div class="t sm"><div class="lab"><span>Αλλαγή</span></div><div class="val num" style="font-size:1.2em">17:00</div></div>
+    ${windCard({ manual:true })}</div>
+    ${fr.lowland ? '' : `<div class="c flat" style="margin-top:12px"><b>Καιρός</b><div class="cap2">${off ? 'Πρόγνωση των 09:10 (χωρίς ίντερνετ).' : 'Πρόγνωση των 12:00 · Βοριάς 12 kt, ριπές 18 · στις 17:00 δυναμώνει'}</div>${off ? '<button class="b out" style="margin-top:8px">Ξανά</button>' : ''}</div>
+    <button class="b out main wide">${icon('swap')} Άλλαξε σε Προπόνηση</button>`}</div>`;
+  return { sbar:sbar({ kind:'ΑΝΑΨΥΧΗ', clk:'01:04:22', sub:`${paused ? 'σε παύση' : 'σε εξέλιξη'} · ${nodest ? 'χωρίς προορισμό' : 'προς Αίγινα'}`, pause:true, paused }),
+    strips: paused ? strip('<b>Σε παύση 12:40</b> · δεν καταγράφεται, χωρίς ειδοποιήσεις', '', `<button class="sbtn">${icon('play')} Συνέχεια</button>`) : off ? strip('Χωρίς ίντερνετ. Η έξοδος γράφεται κανονικά.') : '', body, nav:[NAV_IN,'live'] };
+}
+function quickLive(st, fr) {
+  const noinst = st === 'manual', none = st === 'none';
+  const body = `<div class="wrap wide livewrap ${fr.lowland ? 'lowland' : ''}">
+    <div class="msg info">${icon('live')}<span>Χωρίς καταγραφή. Το σκάφος δεν έχει polars, άρα ούτε στόχους.</span></div>
+    <div class="lg">
+    <div class="t hero"><div class="lab"><span>Ταχύτητα</span><span class="ab">${noinst || none ? 'SOG από GPS' : 'BSP'} · kt</span></div><div class="val num">6,1</div></div>
+    <div class="t md"><div class="lab"><span>Άνεμος</span><span class="ab">TWA</span></div><div class="val num ${none ? 'wait' : 'port'}">${none ? '—' : '118°'}</div><div class="sub">${none ? 'χρειάζεται άνεμο' : 'αριστερές'}</div></div>
+    <div class="t md"><div class="lab"><span>Βάθος</span><span class="ab">${noinst || none ? '' : 'βυθόμετρο'}</span></div><div class="val num ${noinst || none ? 'wait' : ''}">${noinst || none ? '—' : '22,4'}<small> m</small></div>${noinst || none ? '<div class="sub">χωρίς βυθόμετρο</div>' : ''}</div>
+    <div class="t sm"><div class="lab"><span>Πορεία</span><span class="ab">COG</span></div><div class="val num">096°</div></div>
+    <div class="t sm"><div class="lab"><span>Πλώρη</span><span class="ab">HDG</span></div><div class="val num ${noinst || none ? 'wait' : ''}">${noinst || none ? '—' : '101°'}</div></div>
+    <div class="t sm"><div class="lab"><span>TWD</span></div><div class="val num ${none ? 'wait' : ''}">${none ? '—' : '338°'}</div></div>
+    ${windCard({ empty:none, manual:noinst })}</div>
+    ${fr.lowland ? '' : '<button class="b fill main wide" style="margin-top:14px">Σύμβουλος</button>'}</div>`;
+  return { top:topBar({ title:'Γρήγορη ματιά', back:true, avatar:false }), body, nav:null };
+}
+
+/* ======================= Φ-E ======================= */
+function keepScreen(st, fr) {
+  const r = raceLive('ok', fr);
+  const ios = st === 'ios', nowake = st === 'nowake';
+  const sh = sheet({ title:'Κράτα την οθόνη ανοιχτή', testid:'screen-notice', body:`
+    <p style="margin:0 0 10px;font-weight:600">Η καταγραφή γίνεται μόνο όσο η οθόνη είναι ανοιχτή και η εφαρμογή μπροστά. Αν κλειδώσει το κινητό ή ανοίξεις άλλη εφαρμογή, μένει κενό στο ίχνος και σταματούν οι ειδοποιήσεις.</p>
+    ${nowake
+      ? `<div class="info warn"><span><b>!</b> Αυτή η συσκευή δεν κρατά την οθόνη ανοιχτή μόνη της. Βάλε το αυτόματο κλείδωμα σε «Ποτέ» για την έξοδο.</span></div>`
+      : `<div class="info good"><span><b>✓</b> Η οθόνη μένει ανοιχτή όσο γράφουμε</span></div>`}
+    ${ios ? `<div class="info">${icon('phone')}<span>Στο iPhone η καταγραφή σταματά αμέσως μόλις κλειδώσει η οθόνη. Κράτα το κινητό σε φόρτιση αν η έξοδος είναι μεγάλη.</span></div>` : ''}
+    <div class="info">${icon('moon')}<span>Για μπαταρία: «Χαμηλή κατανάλωση» από τη μπάρα της εξόδου.</span></div>`,
+    foot:`<div class="bstack" style="margin:0"><button class="b fill main wide" data-act="close">Κατάλαβα</button>${nowake ? '' : '<button class="b text wide" data-act="close">Να μην το ξαναδείξεις</button>'}</div>` });
+  return { ...r, sbar:sbar({ clk:'00:00:12', sub:'σε εξέλιξη · Χειμερινό Σαρωνικού · 3η', bat: ios ? null : { level:78 } }), sheet: S.sheetOpen ? sh : null };
+}
+function batteryScreen(st, fr) {
+  const r = raceLive('ok', fr);
+  const bat = st === 'none' ? null : st === 'charge' ? { level:82, charging:true } : st === 'low' ? { level:18 } : { level:64 };
+  const strips = st === 'low' ? strip('Μπαταρία 18%. Άνοιξε τη «Χαμηλή κατανάλωση» για να κρατήσει ως το τέλος.', '', `<button class="sbtn" data-testid="lowpower-on">${icon('moon')} Άνοιξε</button>`) : '';
+  const sh = st === 'quick' ? sheet({ title:'Γρήγορες ρυθμίσεις', body:`<p class="cap2" style="margin:0 0 6px">Μένεις στην έξοδο. Η καταγραφή συνεχίζει.</p>
+    <button class="srow" data-testid="lowpower-on" style="min-height:64px"><span class="mi" style="width:48px;height:48px;border-radius:14px;background:var(--accent-cont);color:var(--on-accent-cont);display:flex;align-items:center;justify-content:center;flex-shrink:0">${icon('moon')}</span><span class="tx">Χαμηλή κατανάλωση<span class="cap2">Μαύρη οθόνη με κλείδωμα αφής. Η καταγραφή και οι ειδοποιήσεις συνεχίζουν.</span></span>${icon('chev', 'chev')}</button>
+    <div class="srow"><span class="tx">Μπαταρία<span class="cap2">ενημερώνεται μόνη της</span></span><span class="num" style="font-weight:900">64%</span></div>
+    <div class="srow"><span class="tx">Καταγραφή<span class="cap2">κάθε 5″ · η οθόνη μένει ανοιχτή</span></span></div>
+    <p style="font-weight:800;margin:12px 0 6px">Ένταση</p><div class="seg" role="radiogroup" aria-label="Ένταση"><button role="radio">Σίγαση</button><button role="radio">Χαμηλά</button><button class="on" role="radio">Δυνατά</button></div>
+    <p class="cap2">Οι υπόλοιπες ρυθμίσεις (ειδοποιήσεις, θέμα, πανί πλώρης) μένουν όπως σήμερα.</p>`, foot:'<button class="b fill main wide" data-act="close">Πίσω στην έξοδο</button>' }) : null;
+  return { ...r, sbar:sbar({ bat }), strips, sheet: S.sheetOpen ? sh : null };
+}
+let holdT = null, holdStart = 0;
+function lowpowerScreen(st, fr) {
+  const r = raceLive('ok', fr);
+  const alert = st === 'alert', wait = st === 'wait', fin = st === 'finish';
+  const sx = [0, 6, -5, 3][S.lpShift % 4], sy = [0, -5, 4, 7][S.lpShift % 4];
+  const lp = `<div class="lp" data-testid="lowpower" role="region" aria-label="Χαμηλή κατανάλωση. Η οθόνη είναι κλειδωμένη. Κράτα πατημένο το Ξεκλείδωμα 2 δευτερόλεπτα." data-act="lptap" style="--sx:${sx}px;--sy:${sy}px">
+    <div class="lpin">
+      <div class="lclk" aria-label="Χρόνος εξόδου 1 ώρα 12 λεπτά">01:12</div>
+      ${alert ? '<div class="lalert" role="alert">ΑΝΑΣΤΡΟΦΗ σε 2′<small>Layline αριστερών για Πάνω</small></div>' : `<div class="lsog">BSP 6,8<small> kt</small></div>`}
+      <div class="lrec">${wait ? '<span>Περιμένει GPS</span>' : '<span>● Καταγραφή · 1.204 σημεία · τελευταίο πριν από 3″</span>'}</div>
+      ${st === 'nobat' ? '' : '<div class="lrec num">Μπαταρία 41%</div>'}
+      <button class="unlock" data-act="unlock" aria-label="Ξεκλείδωμα. Κράτα πατημένο 2 δευτερόλεπτα." aria-describedby="lph"><svg class="ring" viewBox="0 0 88 88" aria-hidden="true"><circle cx="44" cy="44" r="40" stroke-dasharray="251.3" stroke-dashoffset="251.3" data-ring></circle></svg>${icon('unlock')}</button>
+      <div class="lhint" id="lph">Ξεκλείδωμα · Κράτα πατημένο 2″</div>
+    </div></div>`;
+  const sh = fin ? sheet({ kind:'confirm', testid:'finish-sheet', title:'Τερματίσατε στις 14:01:44;', body:'<p style="margin:0 0 8px;font-weight:600">Το σκάφος πέρασε τη γραμμή τερματισμού πριν από 40″. Για τον διορθωμένο χρόνο κρατάμε την ώρα του περάσματος, όσο αργά κι αν πατήσεις.</p><p class="cap2" style="margin:0 0 12px">♪ ♪ γραμμή τερματισμού</p>', foot:'<div class="bstack"><button class="b fill main wide">Ναι, τερματίσαμε</button><button class="b out main wide">Όχι, συνεχίζουμε</button></div>' }) : null;
+  return { ...r, overlay:lp, sheet:sh, sheetOver:true };
+}
+function trackSVG(night) {
+  // Fictional, simplified Saronic sketch: Piraeus (top), Salamina (left), Aegina (bottom right). Not a chart.
+  const pts1 = '62,58 92,96 74,120 112,154 96,176 138,206'; // before the gap
+  const pts2 = '196,268 232,300 214,322 262,352 290,384';     // after the gap
+  return `<svg viewBox="0 0 340 420" role="img" aria-label="Ίχνος Πειραιάς προς Αίγινα με ένα κενό 6 λεπτών, διακεκομμένη γραμμή">
+    <rect width="340" height="420" fill="var(--sea)"/>
+    <path d="M0 0H340V40C290 52 230 30 180 44S90 34 40 52 0 40 0 40Z" fill="var(--land)"/>
+    <path d="M0 120C30 110 46 150 40 190S10 250 0 260Z" fill="var(--land)"/>
+    <path d="M262 330C292 318 330 328 340 350V420H250C236 396 238 344 262 330Z" fill="var(--land)"/>
+    <text x="150" y="26" font-size="13" font-weight="800" fill="var(--muted)" font-family="Inter,system-ui">Πειραιάς</text>
+    <text x="6" y="186" font-size="13" font-weight="800" fill="var(--muted)" font-family="Inter,system-ui">Σαλαμίνα</text>
+    <text x="266" y="408" font-size="13" font-weight="800" fill="var(--muted)" font-family="Inter,system-ui">Αίγινα</text>
+    <line x1="62" y1="58" x2="290" y2="384" stroke="var(--opt)" stroke-width="2" stroke-dasharray="4 4"/>
+    <polyline points="${pts1}" fill="none" stroke="var(--accent)" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <line x1="138" y1="206" x2="196" y2="268" stroke="var(--muted)" stroke-width="${night ? 1.5 : 1.5}" stroke-dasharray="2 6" stroke-linecap="round"/>
+    <circle cx="138" cy="206" r="4" fill="var(--bg)" stroke="var(--fg)" stroke-width="2"/><circle cx="196" cy="268" r="4" fill="var(--bg)" stroke="var(--fg)" stroke-width="2"/>
+    <text x="172" y="228" font-size="12" font-weight="800" fill="var(--fg)" font-family="Inter,system-ui">κενό 6′</text>
+    <polyline points="${pts2}" fill="none" stroke="var(--accent)" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="62" cy="58" r="6" fill="var(--accent)"/><path d="M290 384l-7-12h14z" fill="var(--fg)"/>
+  </svg>`;
+}
+const legend = `<div class="legend" aria-label="Υπόμνημα">
+  <span><svg viewBox="0 0 34 10" aria-hidden="true"><line x1="1" y1="5" x2="33" y2="5" stroke="var(--accent)" stroke-width="3.5" stroke-linecap="round"/></svg>ίχνος</span>
+  <span><svg viewBox="0 0 34 10" aria-hidden="true"><line x1="1" y1="5" x2="33" y2="5" stroke="var(--opt)" stroke-width="2" stroke-dasharray="4 4"/></svg>βέλτιστη πορεία</span>
+  <span><svg viewBox="0 0 34 10" aria-hidden="true"><line x1="1" y1="5" x2="33" y2="5" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="2 6" stroke-linecap="round"/></svg>διακεκομμένη: κενό στο ίχνος (6′)</span></div>`;
+function gapsScreen(st, fr) {
+  if (st === 'strip') {
+    const r = raceLive('ok', fr);
+    return { ...r, strips: strip('Κενό 6′ στο ίχνος: η οθόνη έκλεισε ή η εφαρμογή πήγε στο παρασκήνιο. Στον χάρτη φαίνεται με διακεκομμένη γραμμή.', '', '<button class="sbtn">Εντάξει</button>') };
+  }
+  if (st === 'chart') {
+    const body = `<div class="wrap"><div class="sec"><h3>Ταχύτητα ανά σκέλος</h3><span class="cap2">Αίγινα – Πειραιάς</span></div>
+      <div class="c flat"><svg viewBox="0 0 320 150" style="width:100%;display:block" role="img" aria-label="Ταχύτητα στον χρόνο, με κενό 6 λεπτών χωρίς τιμές">
+        <defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="var(--line)" stroke-width="1.5"/></pattern></defs>
+        <line x1="20" y1="130" x2="316" y2="130" stroke="var(--line-soft)"/><line x1="20" y1="10" x2="20" y2="130" stroke="var(--line-soft)"/>
+        <rect x="150" y="10" width="40" height="120" fill="url(#hatch)" opacity=".7"/>
+        <text x="170" y="24" text-anchor="middle" font-size="11" font-weight="800" fill="var(--fg)" font-family="Inter,system-ui">κενό</text>
+        <polyline points="20,70 40,62 60,66 80,58 100,64 120,55 140,60 150,58" fill="none" stroke="var(--accent)" stroke-width="2.5"/>
+        <polyline points="190,52 210,48 230,56 250,50 270,44 290,50 316,46" fill="none" stroke="var(--accent)" stroke-width="2.5"/>
+        <text x="2" y="62" font-size="11" fill="var(--muted)" font-family="Inter,system-ui">7</text><text x="2" y="122" font-size="11" fill="var(--muted)" font-family="Inter,system-ui">4</text>
+      </svg><p class="cap2" style="margin:6px 0 0">Στο κενό δεν σχεδιάζεται γραμμή και δεν μετρά στις μέσες ταχύτητες, στο % του στόχου και στα σκέλη. Ο χρόνος εξόδου το μετρά.</p></div></div>`;
+    return { top:topBar({ title:'Ανάλυση', back:true, avatar:false }), body, nav:null };
+  }
+  const body = `<div class="wrap"><div class="sec"><h3>Ίχνος</h3><span class="cap2">Πειραιάς – Αίγινα · Σάβ 7/11</span></div>
+    <div class="c flat"><div class="mapc">${trackSVG(S.theme === 'night')}</div>${legend}
+      <p class="cap2" style="margin:8px 0 0">Ενδεικτικό, όχι για ναυσιπλοΐα.</p></div>
+    <div class="c flat"><b>Κενά στο ίχνος: 1, συνολικά 6′</b><div class="cap2">Η οθόνη έκλεισε ή η εφαρμογή πήγε στο παρασκήνιο. Δεν επινοούμε σημεία.</div>
+      <div class="stats"><div><b class="num">16,9<small> NM</small></b><span>μίλια, χωρίς τα κενά</span></div><div><b class="num">3:42</b><span>διάρκεια, με τα κενά</span></div><div><b class="num">5,1<small> kt</small></b><span>μέση ταχύτητα</span></div><div><b class="num">96%</b><span>του στόχου</span></div></div></div>
+    <button class="b out wide">Εξαγωγή GPX</button><p class="cap2">Στο GPX κάθε κενό ξεκινά νέο κομμάτι (<code>trkseg</code>).</p></div>`;
+  return { top:topBar({ title:'Η έξοδος τελείωσε', avatar:false }), body, nav:[NAV_OUT,'home'] };
+}
+
+/* ======================= Registry ======================= */
+const SCREENS = {
+  crew:{ ph:'Φ-B', l:'Πλήρωμα', fn:crewScreen, st:[['ok','Κανονικά'],['slow','Αργό 3G: εικόνες φορτώνουν'],['offline','Χωρίς ίντερνετ'],['empty','Κανένα μέλος']] },
+  plan:{ ph:'Φ-B', l:'Πλάνο αγώνα', fn:planScreen, st:[['ok','Ιδιοκτήτης'],['nohelm','Λείπει τιμονιέρης'],['member','Μέλος (ανάγνωση)']] },
+  invite:{ ph:'Φ-B', l:'Πρόσκληση', fn:inviteScreen, st:[['crew','Μόνιμο πλήρωμα'],['guest','Καλεσμένος']] },
+  settings:{ ph:'Φ-B/E', l:'Ρυθμίσεις', fn:settingsScreen, st:[['ok','Κανονικά'],['admin','Διαχειριστής']] },
+  home:{ ph:'Φ-C', l:'Αρχική + διοργάνωση', fn:homeScreen, st:[['one','Μία κάρτα (πρόταση)'],['two','Δύο κάρτες'],['offline','Χωρίς ίντερνετ']] },
+  event:{ ph:'Φ-C', l:'Διοργάνωση', fn:eventScreen, st:[['two','2 ιστιοδρομίες'],['six','6, με απόρριψη']] },
+  standing:{ ph:'Φ-C', l:'Κατάταξη', fn:standingScreen, st:[['six','6 ιστιοδρομίες'],['two','2 ιστιοδρομίες']] },
+  results:{ ph:'Φ-C', l:'Αποτέλεσμα', fn:resultsScreen, st:[['ok','Φύλλο ανοιχτό']] },
+  race:{ ph:'Φ-D', l:'Live αγώνα', fn:raceLive, st:[['ok','Κανονικά'],['lay2','Layline 2′'],['now','ΤΩΡΑ'],['shift','Στροφή ανέμου'],['mark','Σημαδούρα 1′'],['countdown','Αντίστροφη'],['nogps','Χωρίς GPS'],['noinst','Χωρίς όργανα'],['finish','Τερματίσατε;'],['wind','Φύλλο ανέμου']] },
+  training:{ ph:'Φ-D', l:'Live προπόνησης', fn:trainingLive, st:[['speed','Ταχύτητα'],['tacks','Αναστροφές'],['starts','Εκκινήσεις'],['downwind','Πρίμα'],['pause','Παύση'],['nowind','Χωρίς άνεμο']] },
+  cruise:{ ph:'Φ-D', l:'Live αναψυχής', fn:cruiseLive, st:[['dest','Με προορισμό'],['nodest','Χωρίς προορισμό'],['shallow','Ρηχά μπροστά'],['pause','Παύση'],['offline','Χωρίς ίντερνετ']] },
+  quick:{ ph:'Φ-D', l:'Γρήγορη ματιά', fn:quickLive, st:[['inst','Με όργανα'],['manual','Χωρίς όργανα'],['none','Χωρίς άνεμο']] },
+  keep:{ ph:'Φ-E', l:'Οθόνη ανοιχτή', fn:keepScreen, st:[['android','Android (Wake Lock)'],['nowake','Χωρίς Wake Lock'],['ios','iPhone αρχικής οθόνης']] },
+  battery:{ ph:'Φ-E', l:'Μπαταρία', fn:batteryScreen, st:[['ok','64%'],['charge','Φορτίζει'],['low','18%'],['none','Χωρίς Battery API'],['quick','⚙ με «Χαμηλή κατανάλωση»']] },
+  lowpower:{ ph:'Φ-E', l:'Χαμηλή κατανάλωση', fn:lowpowerScreen, st:[['ok','Κανονικά'],['alert','Ειδοποίηση'],['wait','Περιμένει GPS'],['nobat','Χωρίς Battery API'],['finish','Τερματίσατε;']] },
+  gaps:{ ph:'Φ-E', l:'Κενά ίχνους', fn:gapsScreen, st:[['map','Χάρτης + σύνοψη'],['chart','Ανάλυση'],['strip','Λωρίδα στο Live']] },
+};
+
+/* ======================= Render ======================= */
+function frameCtx(frId) {
+  const f = FRAMES[frId], fs = FS[S.size];
+  const nm = navMode(f.w, f.h, fs);
+  return { ...f, fs, side:nm === 'side', mode:sheetMode(f.w, f.h, fs), lowland:nm === 'side' };
+}
+function sheetHTML(sh, mode, asSide) {
+  const head = `${mode === 'bottom' && sh.kind !== 'confirm' && !asSide ? '<div class="hdl" aria-hidden="true"><i></i></div>' : ''}<div class="sh"><h3 id="shT" tabindex="-1">${sh.title}</h3>${sh.kind === 'confirm' ? '' : `<button class="iconbtn" data-act="close" aria-label="Κλείσιμο">${icon('close')}</button>`}</div>`;
+  const inner = `${head}${sh.body}${sh.foot ? `<div class="foot">${sh.foot}</div>` : ''}`;
+  if (asSide) return `<aside class="sheet side" role="dialog" aria-modal="false" aria-labelledby="shT" data-testid="${sh.testid}">${inner}</aside>`;
+  return `<div class="scrim ${sh.kind === 'confirm' ? 'confirm' : mode}" data-act="scrim"><section class="sheet" role="${sh.kind === 'confirm' ? 'alertdialog' : 'dialog'}" aria-modal="true" aria-labelledby="shT" data-testid="${sh.testid}">${inner}</section></div>`;
+}
+function phoneHTML(theme, frId) {
+  const ctx = frameCtx(frId);
+  const def = SCREENS[S.screen];
+  const st = S.state || def.st[0][0];
+  const o = def.fn(st, ctx);
+  let mode = ctx.mode;
+  if (o.sheetOverride === 'noside' && mode === 'side') mode = 'center'; // P-040: results sheet stays centred
+  const sideSheet = o.sheet && o.sheet.kind !== 'confirm' && mode === 'side';
+  const nav = o.nav ? navHTML(o.nav[0], o.nav[1], ctx.side) : '';
+  const col = `<div class="col">${o.sbar || o.top || ''}${o.strips || ''}<div class="colbody"><main class="scr">${o.body}</main>${sideSheet ? sheetHTML(o.sheet, mode, true) : ''}</div>${!ctx.side ? nav : ''}</div>`;
+  const over = `${o.overlay || ''}${o.sheet && !sideSheet ? sheetHTML(o.sheet, mode, false) : ''}`;
+  const k = Math.min(1, scaleFor(frId));
+  const W = ctx.w + 2 * bw(frId), H = ctx.h + 2 * bw(frId);
+  return `<div><div class="fw" style="width:${W * k}px;height:${H * k}px"><div class="phone ${ctx.cls} sz-${S.size}" data-theme="${theme}" style="width:${ctx.w}px;height:${ctx.h}px;transform:scale(${k})"><div class="shell">${ctx.side ? nav : ''}${col}</div>${over}</div></div>
+    <p class="cap">${{ day:'Μέρα', dark:'Σούρουπο', night:'Νύχτα' }[theme]} · ${ctx.l} · ${{ m:'Κανονικά', l:'Μεγάλα', xl:'Πολύ μεγάλα' }[S.size]} · φύλλο: ${{ bottom:'από κάτω', center:'στο κέντρο', side:'πλαϊνό πάνελ' }[mode]}</p></div>`;
+}
+const bw = (f) => (f === 'tab' ? 14 : f === 'lap' ? 12 : 10);
+function scaleFor(frId) {
+  const avail = Math.max(300, document.getElementById('phones').clientWidth - 8);
+  const n = S.theme === 'all' && FRAMES[frId].w <= 375 ? 1 : 1;
+  return avail / ((FRAMES[frId].w + 2 * bw(frId)) * n);
+}
+function render() {
+  const keep = [...document.querySelectorAll('.scr')].map((e) => e.scrollTop);
+  const themes = S.theme === 'all' ? ['day','dark','night'] : [S.theme];
+  document.getElementById('phones').innerHTML = themes.map((t) => phoneHTML(t, S.frame)).join('');
+  document.querySelectorAll('.scr').forEach((e, i) => (e.scrollTop = keep[i] || 0));
+  renderControls(); renderNotes();
+}
+function renderControls() {
+  const groups = {};
+  Object.entries(SCREENS).forEach(([id, s]) => (groups[s.ph] = groups[s.ph] || []).push([id, s.l]));
+  const def = SCREENS[S.screen], st = S.state || def.st[0][0];
+  const pick = (k, opts, cur) => `<div class="pick">${opts.map(([v, t]) => `<button class="${cur == v ? 'on' : ''}" data-ctl="${k}" data-v="${v}">${t}</button>`).join('')}</div>`;
+  document.getElementById('controls').innerHTML = `
+    <div class="grp"><label>Οθόνη</label>${Object.entries(groups).map(([ph, list]) => `<div class="pick"><button class="ph" tabindex="-1">${ph}</button>${list.map(([v, t]) => `<button class="${S.screen === v ? 'on' : ''}" data-ctl="screen" data-v="${v}">${t}</button>`).join('')}</div>`).join('')}</div>
+    <div class="grp"><label>Κατάσταση</label>${pick('state', def.st, st)}</div>
+    <div class="grp"><label>Θέμα</label>${pick('theme', [['day','Μέρα'],['dark','Σούρουπο'],['night','Νύχτα'],['all','Και τα 3']], S.theme)}</div>
+    <div class="grp"><label>Πλαίσιο</label>${pick('frame', Object.entries(FRAMES).map(([k, f]) => [k, f.l]), S.frame)}</div>
+    <div class="grp"><label>Γράμματα</label>${pick('size', [['m','Κανονικά'],['l','Μεγάλα'],['xl','Πολύ μεγάλα']], S.size)}</div>
+    <div class="grp">${pick('sheet', [['1','Φύλλο ανοιχτό'],['0','Κλειστό']], S.sheetOpen ? '1' : '0')}</div>`;
+}
+
+/* ======================= Notes ======================= */
+const NOTE = {
+  crew:'<b>Φ-B · B34.</b> Avatar 40 px δίπλα σε κάθε όνομα. Σειρά: φωτογραφία → σήμα → αρχικά. Ο ρόλος φαίνεται με σχήμα: ιδιοκτήτης γεμάτο τσιπ, μέλος απλό, καλεσμένος διακεκομμένο τσιπ και διακεκομμένος κύκλος γύρω από το avatar. Στο αργό δίκτυο φαίνονται πρώτα τα αρχικά σε γκρι κύκλο και μετά η εικόνα, ένα-ένα (χωρίς spinner). Offline: εικόνες από τη συσκευή, κουμπιά δικτύου ανενεργά με εξήγηση.',
+  plan:'<b>Φ-B · B34.</b> Στο πλάνο αγώνα: avatar 40 px, τσιπ θέσης που πατιέται (48 px στόχος) και διακόπτης «Έρχεται». Η θέση ανοίγει φύλλο με τις 9 θέσεις (όπως το σημερινό <code>select</code>). Το μέλος βλέπει «Ποιος σε ποια θέση» μόνο για ανάγνωση.',
+  invite:'<b>Φ-B · B34.</b> Η πρόσκληση δείχνει το avatar του ιδιοκτήτη (72 px) και τα πρώτα 3 του πληρώματος (36 px, «+1»). Νέα γραμμή για τον copywriter: «Μόλις μπεις, το πλήρωμα βλέπει το όνομα και την εικόνα σου. Το email σου όχι.»',
+  settings:'<b>Φ-B · B33:</b> πρώτη γραμμή «Λογαριασμός · Προφίλ ›» με avatar 48 px· το <code>AccountCard</code> φεύγει. <b>Φ-E:</b> «Οθόνη στην έξοδο» (E2), «Απόρρητο» με «Ανώνυμα στατιστικά» (E24, αρχικά ανοιχτό, Π6), τοπικοί μετρητές (E26) και, για διαχειριστή, «Χρήση (90 μέρες)» (E25).',
+  home:'<b>Φ-C · C1, C6.</b> Η κάρτα διοργάνωσης στη νέα εμφάνιση: όνομα, θέση στη γενική, «→ 3η ιστιοδρομία», ημέρα/ώρα, τσιπ, ένα γεμάτο κουμπί. <b>Πρόταση</b>: όταν ο επόμενος αγώνας ανήκει σε διοργάνωση, δείχνουμε <i>μία</i> κάρτα (με αντίστροφη μέτρηση και τσιπ) αντί για δύο που λένε το ίδιο (ερώτημα 1).',
+  event:'<b>Φ-C · C6.</b> Κεφαλίδα σε κάρτα με «Αλλαγή», κατάταξη πάνω, ιστιοδρομίες ως κάρτες (η επόμενη με διακεκομμένο περίγραμμα και το μοναδικό γεμάτο κουμπί). Όλοι οι κανόνες της P-040 μένουν (απορρίψεις, «(εκτ.)», A8, επαναρίθμηση).',
+  standing:'<b>Φ-C · C6.</b> Ίδιος πίνακας με την P-040: σταθερά «#», «σκάφος», «σύνολο» στα 320 px, κύλιση μέσα στην κάρτα, απόρριψη σε παρένθεση. Γραμμές 52 px. Η δική μας: «· εμείς» + σημάδι αριστερά + πλαίσιο στη Νύχτα.',
+  results:'<b>Φ-C · C6.</b> Γραμμές 68 px. Η πηγή φαίνεται με κείμενο και σχήμα τσιπ: επίσημο (γεμάτη γραμμή), από τη γραμμή (τελείες), εκτίμηση/χωρίς αποτέλεσμα (διακεκομμένη). Το φύλλο κρατά το δικό του πληκτρολόγιο 58 px. Σε laptop μένει <b>στο κέντρο</b>, όχι πλαϊνό (όπως σήμερα στο <code>EventView</code>). Δοκίμασε τα πλήκτρα.',
+  race:'<b>Φ-D · D1, D3, D8.</b> Ζώνη ειδοποίησης σε όλο το πλάτος με εικονίδιο, κείμενο και κουμπί «Σίγαση 5′» μέσα της (ερώτημα 3). Χρώμα + σχήμα: info (περίγραμμα), προσοχή (πορτοκαλί), ΤΩΡΑ (κόκκινο· στη Νύχτα κόκκινο με μαύρα). «Χωρίς GPS»: λωρίδα + πλακίδια με διακεκομμένο περίγραμμα και «· τελευταία τιμή». Αντίστροφη: το μεγάλο πλακίδιο γίνεται «Εκκίνηση σε». «Τερματίσατε;» = διάλογος στο κέντρο σε όλα τα μεγέθη. Ο αγώνας <b>δεν</b> έχει παύση (P-039). Δοκίμασε tablet/laptop (3/4 στήλες) και 844×390 (μία σειρά, πλαϊνή πλοήγηση).',
+  training:'<b>Φ-D · D2.</b> Ίδιο σχήμα, μεγάλο πλακίδιο ανά «Τι δουλεύουμε»: % στόχου, Ανάκαμψη, Εκκίνηση (με τα 3 κουμπιά), VMG. Κάτω: «Γύρος» 64 px, αναίρεση/σημείωση, λίστα γύρων, polar, «Άλλαξε σε Αναψυχή». Η <b>Παύση</b> περνά στη μπάρα εξόδου ως κουμπί 48 px (σήμερα είναι στη λωρίδα «Καταγραφή κάθε…», που φεύγει όταν όλα είναι εντάξει, D3).',
+  cruise:'<b>Φ-D · D2.</b> Μεγάλο: SOG με πορεία. Μεσαία: προορισμός με απομένουν/ETA (ή «Χωρίς προορισμό · Βάλε») και βάθος με «ενδεικτικό, όχι για ναυσιπλοΐα». Μικρά από την πρόγνωση: TWS, ριπές, ώρα αλλαγής. Ρηχά = ζώνη ειδοποίησης.',
+  quick:'<b>Φ-D · D2, BasicLive.</b> Ανοιχτή μπάρα με «←» (δεν καταγράφει). Τα ίδια 5 πεδία με σήμερα (ταχύτητα, άνεμος, COG, TWA, βάθος) + HDG/TWD όταν υπάρχουν όργανα. Χωρίς άνεμο: «—» και «χρειάζεται άνεμο», ποτέ τιμές που δεν έγραψε κανείς.',
+  keep:'<b>Φ-E · E1–E4.</b> Ανοίγει μία φορά, όταν πατηθεί «Αποθήκευση και έναρξη» (ποτέ πάνω σε αντίστροφη, E4). Χωρίς Wake Lock: «!» με οδηγία και <i>χωρίς</i> «Να μην το ξαναδείξεις», αφού θα ξαναβγεί (E2). iPhone: επιπλέον γραμμή, και χωρίς ένδειξη μπαταρίας.',
+  battery:'<b>Φ-E · E11, E20, E21.</b> Μπαταρία στην πρώτη γραμμή της μπάρας: SVG + «64%», αστραπή όταν φορτίζει, υπογράμμιση στο ≤ 20%. Χωρίς API: δεν φαίνεται τίποτα. Στο 20%: λωρίδα μία φορά ανά έξοδο με «Άνοιξε». Η «Χαμηλή κατανάλωση» είναι πρώτη γραμμή στις «Γρήγορες ρυθμίσεις» (ερώτημα 2).',
+  lowpower:'<b>Φ-E · E7–E12.</b> Μαύρη οθόνη σε όλα τα θέματα, γράμματα γκρι <code>#8a8a8a</code> (6,1:1) ή κόκκινα <code>#e5483d</code> στη Νύχτα. Άγγιγμα αλλού: τίποτα. Ξεκλείδωμα 76 px: πάτα και κράτα 2″ (ο κύκλος γεμίζει· αφήνεις = μηδενίζει). Enter/Space κρατημένο 2″. Ειδοποίηση: μεγάλο κείμενο με πλαίσιο, χωρίς ξεκλείδωμα. Το «Τερματίσατε;» βγαίνει από πάνω και πατιέται. Μετατόπιση λίγων pixel κάθε 60″ (εδώ: κουμπί «μετατόπιση» με διπλό κλικ στο ρολόι).',
+  gaps:'<b>Φ-E · E14–E19.</b> Κενό = ευθεία λεπτή διακεκομμένη <code>2 6</code>, 1,5 px, <code>--muted</code>, με κύκλους στις άκρες και ετικέτα «κενό 6′». Διαφέρει από το ίχνος (3,5 px, συνεχές) και από τη βέλτιστη (<code>4 4</code>) σε σχήμα και πάχος, άρα και στη Νύχτα. Σύνοψη: «Κενά στο ίχνος: 2, συνολικά 14′». Στο γράφημα: κενό χωρίς γραμμή, με γραμμοσκίαση. Ο χάρτης είναι σκίτσο, όχι ναυτικός χάρτης.',
+};
+function renderNotes() {
+  const ctx = frameCtx(S.frame);
+  document.getElementById('notes').innerHTML = `
+  <h2>Συμπλήρωμα ανανέωσης (Φ-B…Φ-E)</h2>
+  <p class="cap2" style="color:#475467">P-049 · πρωτότυπο, όχι αλλαγή στο <code>src/</code>. Φανταστικά ονόματα και σκάφη. Tokens: <code>design/refresh-2026-11/HANDOFF-A.md</code>. Ερωτήματα: <code>NOTES.md</code>.</p>
+  <h3>Αυτή η οθόνη</h3><p>${NOTE[S.screen]}</p>
+  <h3>Πλαίσιο τώρα</h3><p>${ctx.w}×${ctx.h} με ${ctx.fs} px: πλοήγηση <b>${ctx.side ? 'πλαϊνή' : 'κάτω'}</b>, φύλλο <b>${{ bottom:'από κάτω', center:'στο κέντρο', side:'πλαϊνό πάνελ' }[ctx.mode]}</b>. Οι ίδιοι κανόνες με το <code>sheetMode()</code> σε em της ρύθμισης.</p>
+  <h3>Τι μένει ίδιο</h3>
+  <ul><li><span class="tag same">ίδιο</span>Ροές, κείμενα της εφαρμογής, <code>data-testid</code>, η σκούρα μπάρα μόνο μέσα στην έξοδο.</li>
+  <li><span class="tag same">ίδιο</span>Νύχτα μόνο κόκκινο/μαύρο. Κάθε κατάσταση έχει και κείμενο ή σχήμα.</li>
+  <li><span class="tag same">ίδιο</span>Φύλλο «Άνεμος» και αποτελέσματος της P-053/P-040: αλλάζει μόνο το ντύσιμο.</li></ul>
+  <h3>Όρια</h3>
+  <ul><li>Οι αριθμοί δεν κινούνται. Η κουκκίδα καταγραφής σταματά με reduced motion.</li>
+  <li>Ο χάρτης κενών είναι σκίτσο. Στην εφαρμογή μπαίνει στους υπάρχοντες χάρτες (MapLibre, SVG ανάλυσης).</li>
+  <li>Η Inter φορτώνει εδώ από unpkg (καρφωμένη έκδοση)· στην εφαρμογή είναι μέσα στο build.</li></ul>
+  <p><span class="tag copy">copy</span>Νέα κείμενα που δεν υπάρχουν στο spec τα ελέγχει ο copywriter: γραμμή πρόσκλησης, «Μαύρη οθόνη με κλείδωμα αφής…», «Στο κενό δεν σχεδιάζεται γραμμή…».</p>`;
+}
+
+/* ======================= Events ======================= */
+document.addEventListener('click', (e) => {
+  const c = e.target.closest('[data-ctl]');
+  if (c) {
+    const k = c.dataset.ctl, v = c.dataset.v;
+    if (k === 'screen') { S.screen = v; S.state = null; S.sheetOpen = true; }
+    else if (k === 'sheet') S.sheetOpen = v === '1';
+    else S[k] = v;
+    render(); return;
+  }
+  const a = e.target.closest('[data-act]'); if (!a) return;
+  const v = a.dataset.v;
+  switch (a.dataset.act) {
+    case 'close': S.sheetOpen = false; render(); break;
+    case 'scrim': if (e.target === a && !a.classList.contains('confirm')) { S.sheetOpen = false; render(); } break;
+    case 'kp': if (v === 'C') S.kp = ''; else if (v === 'B') S.kp = S.kp.slice(0, -1); else if (S.kp.length < (S.kpMode === 'clock' ? 6 : 5)) S.kp += v; render(); break;
+    case 'kpm': S.kpMode = v; S.kp = v === 'clock' ? '140732' : v === 'elapsed' ? '30732' : ''; render(); break;
+    case 'code': S.code = v; render(); break;
+    case 'stats': S.stats = !S.stats; render(); break;
+    case 'notice': S.notice = !S.notice; render(); break;
+  }
+});
+document.addEventListener('dblclick', (e) => { if (e.target.closest('.lclk')) { S.lpShift++; render(); } });
+/* Hold-to-unlock: 2″ with a progress ring; release early → back to 0. */
+function holdBegin(btn) {
+  const ring = btn.querySelector('[data-ring]'); holdStart = performance.now();
+  const step = (t) => {
+    const p = Math.min(1, (t - holdStart) / 2000); ring.style.strokeDashoffset = String(251.3 * (1 - p));
+    if (p >= 1) { holdT = null; S.state = 'ok'; S.screen = 'race'; S.sheetOpen = false; render(); return; }
+    holdT = requestAnimationFrame(step);
+  };
+  holdT = requestAnimationFrame(step);
+}
+function holdEnd() { if (holdT) cancelAnimationFrame(holdT); holdT = null; document.querySelectorAll('[data-ring]').forEach((r) => (r.style.strokeDashoffset = '251.3')); }
+document.addEventListener('pointerdown', (e) => { const b = e.target.closest('[data-act="unlock"]'); if (b) { e.preventDefault(); holdBegin(b); } });
+document.addEventListener('pointerup', holdEnd); document.addEventListener('pointercancel', holdEnd);
+document.addEventListener('keydown', (e) => {
+  const b = e.target.closest && e.target.closest('[data-act="unlock"]');
+  if (b && (e.key === 'Enter' || e.key === ' ') && !e.repeat) { e.preventDefault(); holdBegin(b); }
+  if (e.key === 'Escape' && S.sheetOpen) { S.sheetOpen = false; render(); }
+});
+document.addEventListener('keyup', (e) => { if (e.key === 'Enter' || e.key === ' ') holdEnd(); });
+window.addEventListener('resize', () => render());
+
+/* Deep links, e.g. #screen=race&state=now&theme=night&frame=p320&size=xl */
+new URLSearchParams(location.hash.slice(1)).forEach((v, k) => { if (k === 'sheet') S.sheetOpen = v !== '0'; else if (k in S) S[k] = v; });
+makePhoto();
+render();
+</script>
+</body>
+</html>

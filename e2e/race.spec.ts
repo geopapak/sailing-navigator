@@ -6,6 +6,7 @@ import { test, expect, type AppFixture } from './fixtures/app';
 import { boatItem, courseItem } from './fixtures/handlers';
 import { COURSE } from './fixtures/data/course-saronic';
 import { download, gpxTimes } from './fixtures/session';
+import { expectActiveBoat } from './fixtures/boat';
 
 const MIN = 60_000;
 const RACE = 'Δοκιμαστικός Σαρωνικού';
@@ -15,7 +16,7 @@ test.use({ scenario: { boats: [boatItem(), courseItem()] } });
 async function ready(app: AppFixture) {
   await app.open();
   await app.signIn();
-  await expect(app.page.getByRole('combobox', { name: 'Ενεργό σκάφος' })).toHaveValue('e2e-astarti');
+  await expectActiveBoat(app.page, 'e2e-astarti');
   await app.useSimulator();
   // 31 (outside a session the header pill says the instruments are live)
   await expect(app.page.getByRole('button', { name: 'Όργανα: συνδεδεμένα' })).toHaveText('Όργανα');
@@ -26,7 +27,8 @@ async function setupRace(app: AppFixture) {
   await page.getByRole('button', { name: /^Αγώνας:/ }).click();
   // 28
   await expect(page.getByTestId('screen-title')).toHaveText('Νέος αγώνας');
-  await expect(page.getByRole('button', { name: 'Πίσω' })).toHaveText('←');
+  // P-049: «←» is an SVG now (the name «Πίσω» stays).
+  await expect(page.locator('.topbar').getByRole('button', { name: 'Πίσω' })).toBeVisible();
   await expect(page.getByRole('navigation')).toHaveCount(0);
   // 29
   const problems = page.locator('.race-setup');
@@ -49,7 +51,7 @@ const points = async (app: AppFixture) => Number((await app.page.getByTestId('ra
 async function endRace(app: AppFixture) {
   await app.page.locator('.race-live').getByRole('button', { name: 'Τερματισμός', exact: true }).click();
   await expect(app.page.getByRole('heading', { name: 'Τερματισμός αγώνα;' })).toBeVisible();
-  await app.page.getByRole('button', { name: '■ Ναι, τερματίσαμε' }).click();
+  await app.page.getByRole('button', { name: 'Ναι, τερματίσαμε' }).click();
   await expect(app.page.getByTestId('screen-title')).toHaveText('Η έξοδος τελείωσε');
 }
 
@@ -112,7 +114,7 @@ test.describe('αγώνας ως το Ιστορικό', () => {
     await view.getByRole('button', { name: 'Ζήτα μαθήματα από τον σύμβουλο' }).click();
     await expect(view.getByTestId('lessons')).toContainText('Δοκιμαστικό μάθημα 1');
     expect(app.server.calls('/analysis')).toHaveLength(2);
-    await view.getByRole('button', { name: '← Οι έξοδοί μου' }).click();
+    await view.getByRole('button', { name: 'Οι έξοδοί μου' }).click();
     await page.getByTestId('history-item').filter({ hasText: RACE }).click();
     await expect(view.getByTestId('lessons')).toContainText('Δοκιμαστικό μάθημα 1');
     await app.advance(3000, 1000);
@@ -138,7 +140,7 @@ test.describe('χωρίς διαδρομή', () => {
   test('29: χωρίς διαδρομή → «Διάλεξε ή φτιάξε διαδρομή…» και ανενεργό κουμπί', async ({ app }) => {
     await app.open();
     await app.signIn();
-    await expect(app.page.getByRole('combobox', { name: 'Ενεργό σκάφος' })).toHaveValue('e2e-astarti');
+    await expectActiveBoat(app.page, 'e2e-astarti');
     await app.page.getByRole('button', { name: /^Αγώνας:/ }).click();
     await app.page.getByLabel('Όνομα', { exact: true }).fill(RACE);
     await expect(app.page.locator('.race-setup')).toContainText('Διάλεξε ή φτιάξε διαδρομή με τουλάχιστον 2 σημεία.');

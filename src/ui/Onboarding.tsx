@@ -101,7 +101,7 @@ export function Onboarding() {
           <p className="small">Έχεις εμπειρία με όργανα αγώνων (TWS, TWA, VMG);</p>
           <button className={`opt ${settings.liveMode === 'simple' ? 'on' : ''}`} onClick={() => updateSettings({ liveMode: 'simple' })}>
             <span className="ic" aria-hidden>
-              ①
+              <span className="step-n">1</span>
             </span>
             <span>
               <b>Όχι — Απλό</b>
@@ -110,7 +110,7 @@ export function Onboarding() {
           </button>
           <button className={`opt ${settings.liveMode === 'full' ? 'on' : ''}`} onClick={() => updateSettings({ liveMode: 'full' })}>
             <span className="ic" aria-hidden>
-              ⑥
+              <span className="step-n">6</span>
             </span>
             <span>
               <b>Ναι — Πλήρες</b>
@@ -128,7 +128,7 @@ export function Onboarding() {
           <p className="small">Διάλεξε έναν τρόπο. Μπορείς να το αλλάξεις μετά.</p>
           <button className="opt on" onClick={() => finish(() => startNewBoat('pdf'))}>
             <span className="ic" aria-hidden>
-              📄
+              <Icon name="doc" size={28} />
             </span>
             <span>
               <b>Έχω το πιστοποιητικό ORC (PDF)</b>
@@ -139,7 +139,7 @@ export function Onboarding() {
           </button>
           <button className="opt" onClick={() => finish(() => startNewBoat('choose'))}>
             <span className="ic" aria-hidden>
-              📲
+              <Icon name="download" size={28} />
             </span>
             <span>
               <b>Έχω αρχείο σκάφους από άλλο κινητό</b>
@@ -148,7 +148,7 @@ export function Onboarding() {
           </button>
           <button className="opt" onClick={() => finish(() => startNewBoat('manual'))}>
             <span className="ic" aria-hidden>
-              ✎
+              <Icon name="pen" size={28} />
             </span>
             <span>
               <b>Θα τα γράψω μόνος μου</b>

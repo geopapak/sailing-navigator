@@ -13,7 +13,10 @@ import { pendingInvite } from '../crew/api';
 import { KnowledgeProvider } from './KnowledgeContext';
 import { ChatView } from './ChatView';
 import { AcceptTermsScreen, AuthFlow, SetPasswordScreen } from './AuthFlow';
-import { Icon, type IconName } from './Icons';
+import { BtnIcon, Icon, type IconName } from './Icons';
+import { BoatChip } from './BoatChip';
+import { useNavMode } from './hooks';
+import { themeColor } from './themeColor';
 import { Dialogs } from './Dialogs';
 import { Onboarding } from './Onboarding';
 import { onboardingDecision, readOnboardedMirror, writeOnboardedMirror } from './onboardingGate';
@@ -56,7 +59,7 @@ const TITLE: Partial<Record<AppTab, string>> = {
 type Screen = { s: 'setup'; kind: SessionKind; id?: string; eventId?: string } | { s: 'ended'; e: Ended };
 
 function Shell() {
-  const { ready, error, activeBoat, boats, settings, updateSettings, account, syncStatus } = useApp();
+  const { ready, error, boats, settings, updateSettings, account, syncStatus } = useApp();
   const race = useRace();
   const inSession = !!race.session;
   // The app always opens at «Νέα έξοδος», or inside the running session (never at the last tab).
@@ -107,6 +110,26 @@ function Shell() {
 
   // All hooks must run before the early returns below (else React throws and the page is blank).
   const [invite, setInvite] = useState(() => pendingInvite());
+  // A11: a side rail on a low landscape screen (computed in JS: em of the text size setting).
+  const navMode = useNavMode();
+  // The browser bar follows the top bar: light outside a session, the session bar's colour inside.
+  useEffect(() => {
+    const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    if (meta) meta.content = themeColor(settings.theme, inSession);
+  }, [inSession, settings.theme]);
+  // The tab «pill» fades only between tabs: no colour fade on the first paint or a theme change.
+  // Decided in the render (not in an effect), so the class is gone in the same commit as the new theme.
+  const [readyTheme, setReadyTheme] = useState<string>();
+  const navReady = readyTheme === settings.theme;
+  useEffect(() => {
+    const t = settings.theme;
+    let r2 = 0;
+    const r1 = requestAnimationFrame(() => (r2 = requestAnimationFrame(() => setReadyTheme(t))));
+    return () => {
+      cancelAnimationFrame(r1);
+      cancelAnimationFrame(r2);
+    };
+  }, [settings.theme]);
 
   // First-run steps: once per device, never for someone with boats or sessions.
   const onboarding = onboardingDecision({
@@ -168,7 +191,7 @@ function Shell() {
   const tabClass = tab === 'session:map' ? 'map' : tab.replace(':', '-');
 
   return (
-    <div className={`app tab-${tabClass} ${inSession ? 'in-session' : ''}`}>
+    <div className={`app tab-${tabClass}${inSession ? ' in-session' : ''}${navReady ? ' nav-ready' : ''}`} data-nav={hasBack ? undefined : navMode}>
       {inSession ? (
         <SessionBar
           onEnded={(e) => {
@@ -180,28 +203,19 @@ function Shell() {
         <header className="topbar">
           {hasBack ? (
             <button type="button" className="icon-btn top-btn back" aria-label="Πίσω" onClick={goHome}>
-              ←
+              <Icon name="back" stroke={2.4} />
             </button>
+          ) : tab === 'home' && !screen ? (
+            <BoatChip />
           ) : (
             <span className="top-gap" />
           )}
-          <b className="top-title" data-testid="screen-title">{title}</b>
+          {/* Home keeps «Νέα έξοδος» for screen readers (and the E2E) until the greeting of Φ-C. */}
+          <b className={`top-title${tab === 'home' && !screen && !hasBack ? ' sr-only' : ''}`} data-testid="screen-title">
+            {title}
+          </b>
+          {tab === 'home' && !screen && !hasBack && <span className="top-fill" />}
           <TestBadge />
-          {tab === 'home' && !screen && (
-            <select
-              className="boat-select"
-              aria-label="Ενεργό σκάφος"
-              value={activeBoat?.id ?? ''}
-              onChange={(e) => updateSettings({ activeBoatId: e.target.value })}
-            >
-              {boats.length === 0 && <option value="">Χωρίς σκάφος</option>}
-              {boats.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
-              ))}
-            </select>
-          )}
           <InstrumentPill />
         </header>
       )}
@@ -227,7 +241,8 @@ function Shell() {
               <>
                 {!isSessionTab(tab) && (
                   <button type="button" className="btn back-btn" onClick={() => pick('session:live')}>
-                    ← Πίσω στην έξοδο
+                    <BtnIcon name="back" />
+                    Πίσω στην έξοδο
                   </button>
                 )}
                 {tab === 'settings' && <SettingsHub />}
@@ -291,7 +306,7 @@ function Shell() {
         )}
       </main>
       {!hasBack && (
-        <nav className={`tabbar tabs-${tabs.length}`} aria-label={inSession ? 'Οθόνες εξόδου' : 'Κύριες οθόνες'}>
+        <nav className={`tabbar tabs-${tabs.length}`} style={{ '--n': tabs.length } as React.CSSProperties} aria-label={inSession ? 'Οθόνες εξόδου' : 'Κύριες οθόνες'}>
           {tabs.map((t) => (
             <button key={t.id} type="button" className={tab === t.id ? 'on' : ''} aria-current={tab === t.id ? 'page' : undefined} onClick={() => pick(t.id)}>
               <span className="tab-icon">

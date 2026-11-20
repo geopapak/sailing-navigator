@@ -92,7 +92,7 @@ test('αναψυχή: «Πού πάμε;» → Live με προορισμό → 
   // End → summary.
   await app.page.getByTestId('session-end').click();
   await expect(app.page.getByRole('heading', { name: 'Τέλος αναψυχής;' })).toBeVisible();
-  await app.page.getByRole('button', { name: '■ Ναι, τέλος' }).click();
+  await app.page.getByRole('button', { name: 'Ναι, τέλος' }).click();
   await expect(app.page.getByTestId('screen-title')).toHaveText('Η έξοδος τελείωσε');
   await expect(app.page.getByTestId('ended-undo')).toBeVisible();
   const stats = app.page.getByTestId('summary-stats');

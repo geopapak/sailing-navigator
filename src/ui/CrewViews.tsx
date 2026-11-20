@@ -22,6 +22,7 @@ import type { Race } from '../race/types';
 import { isTrainingShare, type TrainingShare } from '../race/training';
 import { SharedTrainingView } from './TrainingSummary';
 import { dayStr } from './SessionBar';
+import { BtnIcon } from './Icons';
 
 /** Loads my crews (P-022) when signed in. */
 export function useCrews() {
@@ -118,7 +119,13 @@ export function CrewCard({ boats }: { boats: BoatProfile[] }) {
                   <li key={m.userId}>
                     <span className="crew-name">
                       <strong>{m.name}</strong>
-                      {!m.athleteCard && <span className="warn-text small"> ⚠ χωρίς δελτίο</span>}
+                      {!m.athleteCard && (
+                        <span className="warn-text small">
+                          {' '}
+                          <BtnIcon name="warn" />
+                          χωρίς δελτίο
+                        </span>
+                      )}
                     </span>
                     <CardField
                       label={`Αριθμός δελτίου αθλητή για ${m.name}`}
@@ -152,7 +159,8 @@ export function CrewCard({ boats }: { boats: BoatProfile[] }) {
                   className="btn"
                   onClick={async () => shareResult(await shareText(`Πλήρωμα ${b.name}`, entryListText(b.name, permanent)), 'Η λίστα')}
                 >
-                  📋 Λίστα για τη δήλωση συμμετοχής
+                  <BtnIcon name="list" />
+                  Λίστα για τη δήλωση συμμετοχής
                 </button>
               )}
             </div>
@@ -366,15 +374,21 @@ export function RaceCrew({ race, boat, onChange }: { race: Race; boat?: BoatProf
           })}
         </ul>
       )}
-      {noHelm && <p className="warn-text small">⚠ Δεν έχεις βάλει τιμονιέρη.</p>}
-      {going > 0 && missingCard > 0 && <p className="warn-text small">⚠ {missingCard === 1 ? '1 μέλος δεν έχει' : `${missingCard} μέλη δεν έχουν`} αριθμό δελτίου αθλητή.</p>}
+      {noHelm && (
+        <p className="warn-text small">
+          <BtnIcon name="warn" />
+          Δεν έχεις βάλει τιμονιέρη.
+        </p>
+      )}
+      {going > 0 && missingCard > 0 && <p className="warn-text small"><BtnIcon name="warn" />{missingCard === 1 ? '1 μέλος δεν έχει' : `${missingCard} μέλη δεν έχουν`} αριθμό δελτίου αθλητή.</p>}
       <label className="field">
         <span>Σημείωση για το πλήρωμα</span>
         <textarea rows={2} maxLength={500} value={race.crewNote ?? ''} placeholder="π.χ. Στις 10:00 στη μαρίνα, φέρτε αδιάβροχα" onChange={(e) => onChange({ crewNote: e.target.value })} />
       </label>
       <div className="btn-row">
         <button className="btn primary" disabled={busy} onClick={send}>
-          {race.crewSharedAt ? '↻ Στείλε ξανά στο πλήρωμα' : 'Στείλε στο πλήρωμα'}
+          {race.crewSharedAt && <BtnIcon name="rotate" />}
+          {race.crewSharedAt ? 'Στείλε ξανά στο πλήρωμα' : 'Στείλε στο πλήρωμα'}
         </button>
         <button className="btn" disabled={busy} onClick={inviteGuest}>
           ＋ Καλεσμένος για αυτόν τον αγώνα
@@ -389,7 +403,8 @@ export function RaceCrew({ race, boat, onChange }: { race: Race; boat?: BoatProf
               )
             }
           >
-            📋 Λίστα για τη δήλωση συμμετοχής
+            <BtnIcon name="list" />
+            Λίστα για τη δήλωση συμμετοχής
           </button>
         )}
       </div>

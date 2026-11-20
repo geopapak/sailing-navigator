@@ -23,6 +23,7 @@ import { knowledgeHints } from '../knowledge/match';
 import { InstrumentBar, type LockField } from './InstrumentBar';
 import { MIN_SOG_FOR_COG, pushWind, type WindFrom } from '../weather/windAverage';
 import { markTyped } from '../race/manualWind';
+import { BtnIcon, Icon } from './Icons';
 
 interface LiveState {
   windInput: 'twa' | 'twd';
@@ -321,11 +322,13 @@ export function LiveView() {
           <Label text="% target" />
           {!result ? (
             <button type="button" className="missing" onClick={(e) => (e.stopPropagation(), goToField('live-tws'))}>
-              ⚠ Βάλε άνεμο (TWS και γωνία) ↓
+              <BtnIcon name="warn" />
+              Βάλε άνεμο (TWS και γωνία) ↓
             </button>
           ) : result.bsp === undefined ? (
             <button type="button" className="missing" onClick={(e) => (e.stopPropagation(), goToField('live-bsp'))}>
-              ⚠ Βάλε ταχύτητα σκάφους (BSP) ↓
+              <BtnIcon name="warn" />
+              Βάλε ταχύτητα σκάφους (BSP) ↓
             </button>
           ) : (
             <>
@@ -492,7 +495,7 @@ export function LiveView() {
               style={{ borderColor: sailColor(boat, sl.id), ['--sail' as string]: sailColor(boat, sl.id) }}
               onClick={() => set({ sailId: s.sailId === sl.id ? undefined : sl.id })}
             >
-              {outlook?.recommended?.id === sl.id && <span className="chip-star" aria-label="προτεινόμενο">★</span>}
+              {outlook?.recommended?.id === sl.id && <span className="chip-star" role="img" aria-label="προτεινόμενο"><Icon name="star" size="0.95em" stroke={2.2} /></span>}
               {sl.name}
             </button>
           ))}

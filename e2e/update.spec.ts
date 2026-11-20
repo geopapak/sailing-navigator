@@ -6,6 +6,7 @@
 import { test, expect, type SwApp } from './fixtures/sw';
 import { boatItem } from './fixtures/handlers';
 import { UPDATE_TEXT } from '../src/pwa/updateText';
+import { expectActiveBoat } from './fixtures/boat';
 
 const MIN = 60_000;
 test.use({ scenario: { boats: [boatItem()] } });
@@ -17,7 +18,7 @@ const stillSamePage = (sw: SwApp) => sw.page.evaluate(() => (window as unknown a
 async function signedInWithA(sw: SwApp) {
   await sw.install();
   await sw.signIn();
-  await expect(sw.page.getByRole('combobox', { name: 'Ενεργό σκάφος' })).toHaveValue('e2e-astarti');
+  await expectActiveBoat(sw.page, 'e2e-astarti');
   await sw.useSimulator();
 }
 
@@ -59,7 +60,7 @@ test('46–48: η B περιμένει όσο τρέχει η προπόνηση
 
   // 48: end → after the 10″ undo «Ενημερώνουμε την εφαρμογή…», reload into B
   await sw.page.getByTestId('session-end').click();
-  await sw.page.getByRole('button', { name: '■ Ναι, τέλος' }).click();
+  await sw.page.getByRole('button', { name: 'Ναι, τέλος' }).click();
   await expect(sw.page.getByTestId('screen-title')).toHaveText('Η έξοδος τελείωσε');
   await sw.advance(5000, 1000);
   expect(await stillSamePage(sw)).toBe(true);

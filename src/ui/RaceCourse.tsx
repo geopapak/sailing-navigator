@@ -7,6 +7,7 @@ import { MapView } from './MapView';
 import { formatDM } from '../nav/geo';
 import type { Course } from '../boat/store';
 import type { Mark } from '../routing/isochrones';
+import { BtnIcon, Icon } from './Icons';
 
 /** The course part of a race: saved course id (if any), its name and a snapshot of the marks. */
 export interface RaceCourseValue {
@@ -91,7 +92,8 @@ export function CoursePicker({ value, onChange, onNew, onEdit }: { value: RaceCo
         <>
           <p className="small course-chain">{value.marks.map((m) => m.name).join(' → ')}</p>
           <button type="button" className="btn" onClick={onEdit}>
-            ✎ Άλλαξέ τη για αυτόν τον αγώνα
+            <BtnIcon name="pen" />
+            Άλλαξέ τη για αυτόν τον αγώνα
           </button>
         </>
       )}
@@ -186,7 +188,7 @@ export function CourseEditor({
                     ↑
                   </button>
                   <button className="icon-btn mark-btn" aria-label="Αφαίρεση" onClick={() => setMarks(marks.filter((x) => x.id !== m.id))}>
-                    ✕
+                    <Icon name="close" size={20} />
                   </button>
                 </span>
               </li>

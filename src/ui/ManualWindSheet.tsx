@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Icon } from './Icons';
 import { SheetFrame, hhmm, useNow } from './SessionBar';
 import { useSheetMode } from './hooks';
@@ -58,7 +58,6 @@ interface Draft {
   at?: number;
 }
 
-const SIDE_W = 'min(26em, 48vw)';
 /** «Αναίρεση» of the switch (N01–N03). */
 const UNDO_SWITCH_MS = 6000;
 
@@ -72,8 +71,6 @@ export function ManualWindSheet(p: ManualWindSheetProps) {
   const mode = useSheetMode();
   useNow(5000);
   const now = Date.now();
-  const titleId = useId();
-  const titleRef = useRef<HTMLHeadingElement>(null);
   const on = !!manual?.on;
   const [draft, setDraft] = useState<Draft>(() => (manual ? { twdTrue: manual.twdTrue, tws: manual.tws } : p.prefill ? { ...p.prefill } : {}));
   const cur: Draft = on ? { twdTrue: manual!.twdTrue, tws: manual!.tws } : draft;
@@ -100,38 +97,9 @@ export function ManualWindSheet(p: ManualWindSheetProps) {
     [],
   );
 
-  // Focus on the title when it opens, back on the card (or «Βάλε άνεμο») when it closes.
-  useEffect(() => {
-    const opener = document.activeElement as HTMLElement | null;
-    titleRef.current?.focus({ preventScroll: true });
-    return () => {
-      const back = opener?.isConnected ? opener : document.querySelector<HTMLElement>('[data-testid="wind-reading"], [data-testid="wind-prompt"]');
-      back?.focus({ preventScroll: true });
-    };
-  }, []);
-
-  // Side panel: under the session bar, above the tab bar; the Live makes room for it.
-  const [edges, setEdges] = useState<{ top: number; bottom: number }>({ top: 0, bottom: 0 });
-  useLayoutEffect(() => {
-    const root = document.documentElement;
-    root.classList.add('wind-sheet-open');
-    if (mode !== 'side') return () => root.classList.remove('wind-sheet-open');
-    root.classList.add('wind-side-open');
-    const measure = () => {
-      // Below the session bar and the recording strip under it (its «Παύση» stays reachable).
-      const top = [...document.querySelectorAll('.sbar, .topbar, [data-testid="session-strip"]')].reduce((m, el) => Math.max(m, el.getBoundingClientRect().bottom), 0);
-      const tabs = document.querySelector('.tabbar');
-      setEdges({ top: Math.max(0, top), bottom: tabs ? Math.max(0, window.innerHeight - tabs.getBoundingClientRect().top) : 0 });
-    };
-    measure();
-    window.addEventListener('resize', measure);
-    window.addEventListener('scroll', measure, { passive: true });
-    return () => {
-      window.removeEventListener('resize', measure);
-      window.removeEventListener('scroll', measure);
-      root.classList.remove('wind-side-open', 'wind-sheet-open');
-    };
-  }, [mode]);
+  // The shared frame focuses the title and places the side panel (P-049 §6); the focus comes back
+  // to the card (or «Βάλε άνεμο») when it closes.
+  const backTo = () => document.querySelector<HTMLElement>('[data-testid="wind-reading"], [data-testid="wind-prompt"]');
 
   const change = (k: 'twdTrue' | 'tws', v: number) => {
     const t = Date.now();
@@ -208,28 +176,7 @@ export function ManualWindSheet(p: ManualWindSheetProps) {
   const unit = dirUnit(dir);
 
   return (
-    <SheetFrame
-      label={WT.title}
-      labelledBy={titleId}
-      onClose={onClose}
-      testId="wind-sheet"
-      mode={mode}
-      className="wind-sheet"
-      style={mode === 'side' ? { top: edges.top, bottom: edges.bottom, width: SIDE_W } : undefined}
-    >
-      {mode !== 'side' && (
-        <div className="ws-hdl" aria-hidden="true">
-          <i />
-        </div>
-      )}
-      <div className="ws-head">
-        <h3 id={titleId} ref={titleRef} tabIndex={-1}>
-          {WT.title}
-        </h3>
-        <button type="button" className="ws-x" aria-label={WT.close} onClick={onClose}>
-          <Icon name="close" stroke={2.2} />
-        </button>
-      </div>
+    <SheetFrame title={WT.title} closeLabel={WT.close} onClose={onClose} testId="wind-sheet" mode={mode} className="wind-sheet" returnFocus={backTo}>
       {on ? (
         <div className={`ws-stat${stale ? ' stale' : ''}`} data-testid="wind-age">
           {stale && <Icon name="warn" size="1em" stroke={2.2} className="wi" />}

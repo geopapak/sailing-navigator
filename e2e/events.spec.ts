@@ -8,6 +8,7 @@ import { boatItem, courseItem } from './fixtures/handlers';
 import { NO_POLAR } from './fixtures/data/boat-no-polar';
 import { COURSE } from './fixtures/data/course-saronic';
 import type { Page } from '@playwright/test';
+import { expectActiveBoat } from './fixtures/boat';
 
 const MIN = 60_000;
 const EVENT = 'Διήμερος Δοκιμής';
@@ -19,7 +20,7 @@ test.use({ scenario: { boats: [boatItem(), boatItem(RIVAL), courseItem()] } });
 async function ready(app: AppFixture) {
   await app.open();
   await app.signIn();
-  await expect(app.page.getByRole('combobox', { name: 'Ενεργό σκάφος' })).toHaveValue('e2e-astarti');
+  await expectActiveBoat(app.page, 'e2e-astarti');
 }
 
 /** The stored races (IndexedDB), as the app wrote them. */
@@ -55,7 +56,7 @@ function stored(page: Page) {
 async function endRace(page: Page, title: RegExp) {
   await page.getByTestId('session-end').click();
   await expect(page.getByRole('heading', { name: title })).toBeVisible();
-  await page.getByRole('button', { name: '■ Ναι, τερματίσαμε' }).click();
+  await page.getByRole('button', { name: 'Ναι, τερματίσαμε' }).click();
 }
 
 test('διήμερος: νέα διοργάνωση → 1η → αποτελέσματα με DNF → 2η από την αρχική → γενική κατάταξη', async ({ app }) => {

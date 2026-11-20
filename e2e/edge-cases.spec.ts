@@ -5,6 +5,7 @@
 import { test, expect, type AppFixture } from './fixtures/app';
 import { boatItem } from './fixtures/handlers';
 import { runningTrackLength, storedSessions } from './fixtures/session';
+import { expectActiveBoat } from './fixtures/boat';
 
 const MIN = 60_000;
 const home = (app: AppFixture) => app.page.getByRole('heading', { name: 'Τι κάνουμε σήμερα;' });
@@ -52,7 +53,7 @@ test.describe('άδεια θέσης «denied»', () => {
     test('το Live δείχνει πώς δίνεται η άδεια', async ({ app }) => {
       await app.open();
       await app.signIn();
-      await expect(app.page.getByRole('combobox', { name: 'Ενεργό σκάφος' })).toHaveValue('e2e-astarti');
+      await expectActiveBoat(app.page, 'e2e-astarti');
       await app.page.getByRole('button', { name: /Γρήγορη ματιά/ }).click();
       await expect(app.page.getByText(HOW_TO_ALLOW)).toBeVisible();
     });
@@ -60,7 +61,7 @@ test.describe('άδεια θέσης «denied»', () => {
     test('προπόνηση χωρίς θέση: η λωρίδα λέει ότι περιμένει GPS και δεν γράφεται ίχνος', async ({ app }) => {
       await app.open();
       await app.signIn();
-      await expect(app.page.getByRole('combobox', { name: 'Ενεργό σκάφος' })).toHaveValue('e2e-astarti');
+      await expectActiveBoat(app.page, 'e2e-astarti');
       await app.startTraining();
       await app.advance(MIN);
       await expect(app.page.getByTestId('session-strip')).toContainText('Η καταγραφή περιμένει θέση GPS (ή όργανα).');
@@ -75,7 +76,7 @@ test.describe('άδεια θέσης «denied»', () => {
       test.fail(true, 'Γνωστό κενό: το Live της εξόδου δεν λέει πώς δίνεται η άδεια θέσης');
       await app.open();
       await app.signIn();
-      await expect(app.page.getByRole('combobox', { name: 'Ενεργό σκάφος' })).toHaveValue('e2e-astarti');
+      await expectActiveBoat(app.page, 'e2e-astarti');
       await app.startTraining();
       await app.advance(MIN);
       await expect(app.page.getByText(HOW_TO_ALLOW)).toBeVisible({ timeout: 3000 });
@@ -90,7 +91,7 @@ test.describe('χωρίς όργανα', () => {
     await context.grantPermissions(['geolocation']);
     await app.open();
     await app.signIn();
-    await expect(app.page.getByRole('combobox', { name: 'Ενεργό σκάφος' })).toHaveValue('e2e-astarti');
+    await expectActiveBoat(app.page, 'e2e-astarti');
     await app.startTraining();
     // P-053 AC 47: no instruments and no wind typed → «Χωρίς άνεμο» and «Βάλε άνεμο», never the 10 kt / 42° defaults.
     await expect(app.page.getByText('Χωρίς άνεμο:')).toBeVisible();

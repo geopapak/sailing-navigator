@@ -10,6 +10,7 @@ import { fmtGap } from '../race/estimate';
 import { formatDuration, parseDuration } from '../scoring/corrected';
 import type { Race } from '../race/types';
 import type { LatLon } from '../nav/geo';
+import { BtnIcon } from './Icons';
 
 const MODE = { upwind: 'όρτσα', reach: 'ανοιχτά', downwind: 'πρίμα' } as const;
 const pctTxt = (v?: number) => (v === undefined ? '—' : `${Math.round(v * 100)}%`);
@@ -64,6 +65,7 @@ export function RaceAnalysisView({ id, onBack, backLabel = 'Αγώνες' }: { i
             </p>
           </div>
           <button className="btn small-btn" onClick={onBack}>
+            <BtnIcon name="back" />
             {backLabel}
           </button>
         </div>

@@ -3,6 +3,7 @@ import { useApp } from './AppContext';
 import { useStoredState } from './hooks';
 import { advisorConfig, advisorReady, askAdvisor, AdvisorError } from '../ai/client';
 import type { AdvisorContext, AdvisorResponse, AdvisorWhen } from '../ai/types';
+import { BtnIcon } from './Icons';
 
 const WHEN: Record<AdvisorWhen, string> = { now: 'Τώρα', soon: 'Σύντομα', watch: 'Πρόσεξε' };
 
@@ -10,7 +11,7 @@ const WHEN: Record<AdvisorWhen, string> = { now: 'Τώρα', soon: 'Σύντομ
 const GENERAL = 'Τι να κάνω;';
 
 export const ADVISOR_WAITING =
-  '🔒 Ο Σύμβουλος θα ανοίξει όταν ο διαχειριστής εγκρίνει τον λογαριασμό σου. Ως τότε όλα τα άλλα δουλεύουν κανονικά.';
+  'Ο Σύμβουλος θα ανοίξει όταν ο διαχειριστής εγκρίνει τον λογαριασμό σου. Ως τότε όλα τα άλλα δουλεύουν κανονικά.';
 
 interface Stored {
   res?: AdvisorResponse;
@@ -84,7 +85,10 @@ export function AdvisorCard({
           )}
         </p>
       ) : waiting ? (
-        <p className="small">{ADVISOR_WAITING}</p>
+        <p className="small">
+          <BtnIcon name="lock" />
+          {ADVISOR_WAITING}
+        </p>
       ) : (
         <>
           <p className="muted small">Έτοιμες ερωτήσεις: πάτα για να μπει στο πεδίο, μετά «Ρώτα».</p>
@@ -135,7 +139,12 @@ export function AdvisorCard({
               ))}
             </ol>
           )}
-          {reply.caution && <p className="advisor-caution">⚠ {reply.caution}</p>}
+          {reply.caution && (
+            <p className="advisor-caution">
+              <BtnIcon name="warn" />
+              {reply.caution}
+            </p>
+          )}
           <p className="muted small">
             Συμβουλή AI με βάση τα νούμερα της εφαρμογής: η απόφαση είναι του κυβερνήτη.
             {stored.res?.fallback && ' (απάντησε εναλλακτικό μοντέλο)'}

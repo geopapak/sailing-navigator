@@ -5,6 +5,7 @@
  */
 import { test, expect, type AppFixture } from './fixtures/app';
 import { boatItem } from './fixtures/handlers';
+import { expectActiveBoat } from './fixtures/boat';
 
 const carousel = (app: AppFixture) => app.page.getByTestId('onboarding');
 const home = (app: AppFixture) => app.page.getByRole('heading', { name: 'Τι κάνουμε σήμερα;' });
@@ -95,7 +96,7 @@ test.describe('πρώτη χρήση: καρουζέλ', () => {
       await context.addInitScript(WATCH_CAROUSEL);
       await app.open();
       await app.signIn();
-      await expect(app.page.getByRole('combobox', { name: 'Ενεργό σκάφος' })).toHaveValue('e2e-astarti');
+      await expectActiveBoat(app.page, 'e2e-astarti');
       await expect(home(app)).toBeVisible();
       await app.page.reload();
       await expect(home(app)).toBeVisible();
@@ -134,13 +135,13 @@ test.describe('πρώτη χρήση: καρουζέλ', () => {
       await context.addInitScript(WATCH_CAROUSEL);
       await app.open();
       await app.signIn();
-      await expect(app.page.getByRole('combobox', { name: 'Ενεργό σκάφος' })).toHaveValue('e2e-astarti');
+      await expectActiveBoat(app.page, 'e2e-astarti');
       // The boat stays on the device; forget that the steps were done, so only the boat keeps them away.
       app.server.set({ sync: '500' });
       await app.page.evaluate(() => localStorage.removeItem('onboarded'));
       await app.setSettings({ onboarded: false });
       await expect(home(app)).toBeVisible();
-      await expect(app.page.getByRole('combobox', { name: 'Ενεργό σκάφος' })).toHaveValue('e2e-astarti');
+      await expectActiveBoat(app.page, 'e2e-astarti');
       await expect.poll(() => app.server.calls('/sync').length).toBeGreaterThanOrEqual(2);
       await app.advance(5000, 1000);
       await expect(carousel(app)).toHaveCount(0);

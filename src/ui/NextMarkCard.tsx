@@ -7,6 +7,7 @@ import { meanLabel, meanWind } from '../weather/windAverage';
 import { laylineText, nextManoeuvre } from '../nav/laylines';
 import { useLaylines } from './useLaylines';
 import { fmtWind } from '../race/manualWind';
+import { BtnIcon, Icon } from './Icons';
 
 const f1 = (v: number) => v.toFixed(1);
 const f0 = (v: number) => Math.round(v).toString();
@@ -52,7 +53,7 @@ export function NextMarkCard({ observed, fromCog }: { observed?: WindSample; fro
           disabled={nextMark >= course.marks.length - 1}
           onClick={() => nav.setNextMark(nextMark + 1)}
         >
-          ▶
+          <Icon name="chev" />
         </button>
       </div>
       {fix ? (
@@ -121,7 +122,8 @@ export function NextMarkCard({ observed, fromCog }: { observed?: WindSample; fro
           if (m) nav.rerouteLive({ tws: m.tws, twd: m.twd }, meanLabel(m));
           else nav.rerouteLive(observed, observed && fromCog ? '≈ από την πορεία GPS' : undefined);
         }}>
-        {nav.liveStatus.busy ? 'Υπολογισμός…' : observed ? '↻ Ξαναϋπολογισμός με τον τωρινό άνεμο' : '↻ Ξαναϋπολογισμός (πρόγνωση)'}
+        {!nav.liveStatus.busy && <BtnIcon name="rotate" />}
+        {nav.liveStatus.busy ? 'Υπολογισμός…' : observed ? 'Ξαναϋπολογισμός με τον τωρινό άνεμο' : 'Ξαναϋπολογισμός (πρόγνωση)'}
       </button>
       {nav.liveStatus.note && <p className="muted small">{nav.liveStatus.note}</p>}
       {nav.liveStatus.error && <p className="warn-text">{nav.liveStatus.error}</p>}

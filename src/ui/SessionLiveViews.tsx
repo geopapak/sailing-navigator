@@ -5,6 +5,7 @@ import { useRace } from './RaceContext';
 import { useTraining } from './TrainingContext';
 import { SheetFrame, useNow } from './SessionBar';
 import { flashSession } from './sessionFlash';
+import { BtnIcon } from './Icons';
 import { selectableSails } from '../performance/sails';
 import { bestLap, goalOf, liveLaps, manoeuvreStats, mss, noteLap, TRIM_MAX } from '../race/training';
 import type { Lap } from '../race/types';
@@ -191,20 +192,24 @@ export function TrainingLive() {
         aria-label={TT.lapAria(laps.current.n, mss(laps.current.sec))}
         onClick={tr.lap}
       >
+        <BtnIcon name="timer" />
         {TT.lapBtn(laps.current.n, mss(laps.current.sec))}
       </button>
       {tr.undoLeft > 0 && lastDone ? (
         <div className="g2">
           <button type="button" className="btn" data-testid="lap-undo" onClick={tr.undo}>
+            <BtnIcon name="undo" />
             {TT.undo(tr.undoLeft)}
           </button>
           <button type="button" className="btn" onClick={() => setNoteFor(lastDone.n)}>
+            <BtnIcon name="pen" />
             {TT.noteNow}
           </button>
         </div>
       ) : (
         lastDone && (
           <button type="button" className="btn wide" onClick={() => setNoteFor(lastDone.n)}>
+            <BtnIcon name="pen" />
             {TT.noteFor(lastDone.n)}
           </button>
         )
@@ -222,6 +227,7 @@ export function TrainingLive() {
       )}
       <PolarTrimPanel />
       <button type="button" className="btn big-btn wide swap-btn" onClick={requestKindSheet}>
+        <BtnIcon name="swap" />
         {LIVE_TEXT.toCruise}
       </button>
       {noteFor !== undefined && <LapNoteSheet n={noteFor} sec={laps.done.find((l) => l.n === noteFor)?.sec ?? 0} onClose={() => setNoteFor(undefined)} />}
@@ -279,6 +285,7 @@ function StartTile() {
       </div>
       <div className="g2 cd-row">
         <button type="button" className="btn big-btn primary" disabled={race.paused} onClick={tr.cdStart}>
+          <BtnIcon name={left === undefined ? 'play' : 'rotate'} />
           {left === undefined ? TT.cdStart : TT.cdRestart}
         </button>
         <button type="button" className="btn big-btn" disabled={!runs || race.paused} onClick={tr.cdSync}>
@@ -299,8 +306,7 @@ function LapNoteSheet({ n, sec, onClose }: { n: number; sec: number; onClose: ()
   if (lap?.sail && !sails.includes(lap.sail)) sails.push(lap.sail);
   const set = (p: Omit<Lap, 't'>) => s && race.update((cur) => noteLap(cur, n, p));
   return (
-    <SheetFrame label={TT.noteTitle(n, mss(sec))} onClose={onClose}>
-      <h3>{TT.noteTitle(n, mss(sec))}</h3>
+    <SheetFrame title={TT.noteTitle(n, mss(sec))} onClose={onClose} testId="lap-note-sheet">
       {sails.length > 0 && (
         <>
           <div className="settings-sub">{TT.sail}</div>
@@ -338,7 +344,10 @@ export function PauseCard() {
   if (!race.paused) return null;
   return (
     <section className="card pause-card" role="status">
-      <b>{TT.pausedTitle}</b>
+      <b>
+        <BtnIcon name="pause" />
+        {TT.pausedTitle}
+      </b>
       <span className="small">{TT.pausedText}</span>
       <button
         type="button"
@@ -348,6 +357,7 @@ export function PauseCard() {
           flashSession(TT.resumed);
         }}
       >
+        <BtnIcon name="play" />
         {TT.resume}
       </button>
     </section>
@@ -404,6 +414,7 @@ export function CruiseLive() {
       {nb.windFrom === 'none' ? <CruiseNoWind onOpen={wind.openSheet} /> : <WindReading w={wind.view} dir={settings} onOpen={wind.openSheet} cruise />}
       <CruiseWeather online={online} />
       <button type="button" className="btn big-btn wide swap-btn" onClick={requestKindSheet}>
+        <BtnIcon name="swap" />
         {LIVE_TEXT.toTraining}
       </button>
       {sheet && <DestSheet onClose={() => setSheet(false)} />}

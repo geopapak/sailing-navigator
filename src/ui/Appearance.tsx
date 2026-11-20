@@ -1,5 +1,5 @@
 import { useApp } from './AppContext';
-import { Icon, type IconName } from './Icons';
+import { BtnIcon, Icon, type IconName } from './Icons';
 import type { TextSize, Theme } from './settings';
 
 export const THEME_INFO: Record<Theme, { label: string; icon: IconName }> = {
@@ -39,7 +39,7 @@ export function AppearancePickers() {
           </button>
         ))}
       </div>
-      {settings.theme === 'night' && <p className="small">💡 Τη νύχτα χαμήλωσε και τη φωτεινότητα του κινητού στο ελάχιστο.</p>}
+      {settings.theme === 'night' && <p className="small"><BtnIcon name="bulb" />Τη νύχτα χαμήλωσε και τη φωτεινότητα του κινητού στο ελάχιστο.</p>}
     </>
   );
 }

@@ -320,7 +320,7 @@ export function AlertBanner() {
   const a = useAlerts();
   const b = a.banner;
   if (!b) return null;
-  const how = b.muted ? '🔕 σε σίγαση' : '';
+  const how = b.muted ? 'σε σίγαση' : '';
   return (
     <button type="button" className={`alert-band ${b.kind}`} aria-live="assertive" onClick={a.dismiss}>
       <span className="big">{b.big}</span>

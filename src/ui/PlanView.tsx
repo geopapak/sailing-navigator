@@ -14,7 +14,7 @@ import { knowledgeHints } from '../knowledge/match';
 import { corrected, formatDuration } from '../scoring/corrected';
 import { STANDARD_SCORING_OPTIONS } from '../boat/scoringOptions';
 import { sailColor } from './PolarChart';
-import { Icon } from './Icons';
+import { BtnIcon, Icon } from './Icons';
 import { useStoredState } from './hooks';
 import { AdvisorCard } from './AdvisorCard';
 import { buildPlanContext, localIso } from '../ai/context';
@@ -86,7 +86,7 @@ export function PlanView() {
   if (!boat) return null;
 
   const canCompute = marks.length >= 2 && !nav.planStatus.busy;
-  const computeLabel = nav.planStatus.busy ? 'Υπολογισμός…' : route ? '↻ Ξανά υπολογισμός' : 'Υπολογισμός βέλτιστης πορείας';
+  const computeLabel = nav.planStatus.busy ? 'Υπολογισμός…' : route ? 'Ξανά υπολογισμός' : 'Υπολογισμός βέλτιστης πορείας';
 
   return (
     <div className={`plan ${ui.bigMap ? 'big-map' : ''}`}>
@@ -243,7 +243,7 @@ export function PlanView() {
                         ↑
                       </button>
                       <button className="icon-btn mark-btn" aria-label="Αφαίρεση" onClick={() => setMarks(marks.filter((x) => x.id !== m.id))}>
-                        ✕
+                        <Icon name="close" size={20} />
                       </button>
                     </span>
                   </li>
@@ -493,7 +493,10 @@ function LegCard({ leg, index, boat }: { leg: LegResult; index: number; boat: Bo
         {index}. {leg.from.name} → {leg.to.name}
       </h3>
       <div className="leg-grid">
-        <span>⏱ {fmtHM(leg.durationSec)}</span>
+        <span>
+          <BtnIcon name="timer" />
+          {fmtHM(leg.durationSec)}
+        </span>
         <span>ETA {fmtTime(leg.end)}</span>
         <span>{leg.rhumbNm.toFixed(1)} NM</span>
         <span>

@@ -175,9 +175,49 @@ export function useSheetMode(): SheetMode {
     on();
     window.addEventListener('resize', on);
     window.addEventListener('orientationchange', on);
+    const mo = new MutationObserver(on);
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-size'] });
     return () => {
       window.removeEventListener('resize', on);
       window.removeEventListener('orientationchange', on);
+      mo.disconnect();
+    };
+  }, []);
+  return mode;
+}
+
+export type NavMode = 'bottom' | 'side';
+
+/**
+ * Where the main navigation goes (P-049 A11): a rail on the left on a low landscape screen
+ * (≤ 30em high in em of the text size setting, the same rule as the `side` sheet), else at the
+ * bottom. Not a media query: there `em` is always 16 px and ignores the 17 / 20 / 23 px setting.
+ */
+export function navMode(width: number, height: number, fontPx: number): NavMode {
+  return width > height && height / fontPx <= 30 ? 'side' : 'bottom';
+}
+
+/** The root font size in px (the text size setting). */
+const rootFontPx = () => parseFloat(getComputedStyle(document.documentElement).fontSize) || 17;
+
+/**
+ * `navMode` for this window, kept up to date on resize, rotation and a change of the text size
+ * (`data-size` on <html>).
+ */
+export function useNavMode(): NavMode {
+  const calc = (): NavMode => (typeof window === 'undefined' ? 'bottom' : navMode(window.innerWidth, window.innerHeight, rootFontPx()));
+  const [mode, setMode] = useState<NavMode>(calc);
+  useEffect(() => {
+    const on = () => setMode(calc());
+    on();
+    window.addEventListener('resize', on);
+    window.addEventListener('orientationchange', on);
+    const mo = new MutationObserver(on);
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-size'] });
+    return () => {
+      window.removeEventListener('resize', on);
+      window.removeEventListener('orientationchange', on);
+      mo.disconnect();
     };
   }, []);
   return mode;
