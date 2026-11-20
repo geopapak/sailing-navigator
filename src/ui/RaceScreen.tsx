@@ -8,7 +8,7 @@ import { fmtGap } from '../race/estimate';
 import { mmss, useAlerts } from './RaceAlerts';
 import { useLiveNumbers, usePublishLive, useSessionMarks } from './useSession';
 import { LIVE_TEXT, WIND_TEXT as WT } from './sessionText';
-import { Icon } from './Icons';
+import { BtnIcon, Icon } from './Icons';
 import { NoWindPrompt, WindReading, useSessionWindSheet } from './WindReading';
 import { fmtAge } from '../race/manualWind';
 
@@ -110,12 +110,14 @@ export function RaceScreen() {
       <div className="rs-top">
         <h3>Οθόνη αγώνα</h3>
         <button type="button" className={`btn small-btn ${al.muteLeft ? 'on' : ''}`} aria-pressed={al.muteLeft > 0} onClick={al.toggleMute}>
-          {al.muteLeft ? `🔕 ${mmss(al.muteLeft)}` : '🔕 Σίγαση 5′'}
+          <BtnIcon name="mute" />
+          {al.muteLeft ? mmss(al.muteLeft) : 'Σίγαση 5′'}
         </button>
       </div>
       {!al.audioOk && settings.alerts.sound !== 'off' && (
         <p className="rs-audio">
-          🔊 Για να ακούγονται οι ειδοποιήσεις, το κινητό θέλει ένα πάτημα.{' '}
+          <BtnIcon name="sound" />
+          Για να ακούγονται οι ειδοποιήσεις, το κινητό θέλει ένα πάτημα.{' '}
           <button type="button" className="btn primary small-btn" onClick={al.enableAudio}>
             Ενεργοποίηση ήχου
           </button>

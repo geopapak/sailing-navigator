@@ -5,6 +5,7 @@ import { STANDARD_SCORING_OPTIONS } from '../boat/scoringOptions';
 import { validateBoat } from '../boat/validate';
 import { NumField } from './NumberStepper';
 import { offerUndo } from './Dialogs';
+import { Icon } from './Icons';
 
 interface Props {
   initial: BoatProfile;
@@ -187,7 +188,7 @@ export function BoatEditor({ initial, isNew, onSave, onCancel }: Props) {
                     aria-label="Αφαίρεση"
                     onClick={() => set({ sails: b.sails.filter((_, j) => j !== i), sailRules: b.sailRules.filter((r) => r.sailId !== s.id) })}
                   >
-                    ✕
+                    <Icon name="close" size={20} />
                   </button>
                 </td>
               </tr>
@@ -248,7 +249,7 @@ export function BoatEditor({ initial, isNew, onSave, onCancel }: Props) {
                     ↑
                   </button>
                   <button className="icon-btn" aria-label="Αφαίρεση" onClick={() => set({ sailRules: b.sailRules.filter((_, j) => j !== i) })}>
-                    ✕
+                    <Icon name="close" size={20} />
                   </button>
                 </td>
               </tr>
@@ -358,7 +359,7 @@ export function BoatEditor({ initial, isNew, onSave, onCancel }: Props) {
         {polarJson !== undefined && (
           <div className="json-edit">
             <p className="muted small">Μορφή: tws, beatAngle, beatVMG, speeds {'{ "52": [...] }'}, runVMG, gybeAngle.</p>
-            <textarea rows={12} value={polarJson} onChange={(e) => setPolarJson(e.target.value)} />
+            <textarea className="mono" rows={12} value={polarJson} onChange={(e) => setPolarJson(e.target.value)} />
             <div className="btn-row">
               <button
                 className="btn primary"

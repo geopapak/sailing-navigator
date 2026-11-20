@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useHoldUpdate } from './useHoldUpdate';
 import { useRace } from './RaceContext';
-import { Icon } from './Icons';
+import { BtnIcon, Icon } from './Icons';
 import { RaceAnalysisView } from './RaceAnalysisView';
 import { ScoringView } from './ScoringView';
 import { SharedRaces } from './CrewViews';
@@ -163,6 +163,7 @@ export function HistoryView({
     return (
       <>
         <button type="button" className="btn back-btn" onClick={() => setSub(sub.back)}>
+          <BtnIcon name="back" />
           {sub.back.s === 'event' ? ET.backEvent : ET.back}
         </button>
         <ResultsEditor raceId={sub.id} onBack={() => setSub(sub.back)} />
@@ -173,7 +174,8 @@ export function HistoryView({
     return (
       <>
         <button type="button" className="btn back-btn" onClick={back}>
-          ← Οι έξοδοί μου
+          <BtnIcon name="back" />
+          Οι έξοδοί μου
         </button>
         <ScoringView />
       </>
@@ -182,11 +184,12 @@ export function HistoryView({
     const r = race.races.find((x) => x.id === sub.id);
     const toEvent = sub.back?.s === 'event' ? sub.back : r?.eventId && race.events.some((e) => e.id === r.eventId) ? ({ s: 'event', id: r.eventId } as const) : undefined;
     if (r && kindOf(r) === 'race' && !isCancelled(r))
-      return <RaceAnalysisView id={r.id} onBack={() => setSub(toEvent ?? { s: 'list' })} backLabel={toEvent ? ET.backEvent : '← Οι έξοδοί μου'} />;
+      return <RaceAnalysisView id={r.id} onBack={() => setSub(toEvent ?? { s: 'list' })} backLabel={toEvent ? ET.backEvent : ET.back} />;
     return (
       <>
         <button type="button" className="btn back-btn" onClick={back}>
-          ← Οι έξοδοί μου
+          <BtnIcon name="back" />
+          Οι έξοδοί μου
         </button>
         {r ? <SessionSummary r={r} /> : <p className="muted">Η έξοδος δεν βρέθηκε.</p>}
       </>
@@ -380,7 +383,8 @@ export function EndedScreen({ ended, onUndone, onHistory }: { ended: Ended; onUn
         <div className="msg undo-row" role="status">
           <span>Η έξοδος έκλεισε.</span>
           <button type="button" className="btn" data-testid="ended-undo" onClick={undo}>
-            ↶ Αναίρεση ({left}″)
+            <BtnIcon name="undo" />
+            Αναίρεση ({left}″)
           </button>
         </div>
       )}

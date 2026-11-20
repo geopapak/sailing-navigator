@@ -7,6 +7,7 @@ import { KnowledgeView } from './KnowledgeView';
 import { SettingsView } from './SettingsView';
 import { GuideView } from './GuideView';
 import { NEW_BOAT_FLAG } from './WelcomeCard';
+import { BtnIcon } from './Icons';
 
 // The map (MapLibre) is large: load it only when it is opened.
 const PlanView = lazy(() => import('./PlanView').then((m) => ({ default: m.PlanView })));
@@ -24,7 +25,8 @@ const BOAT_LINKS: [Exclude<BoatsSub, 'list'>, string][] = [
 function Back({ label, onClick }: { label: string; onClick: () => void }) {
   return (
     <button type="button" className="btn back-btn" onClick={onClick}>
-      ← {label}
+      <BtnIcon name="back" />
+      {label}
     </button>
   );
 }

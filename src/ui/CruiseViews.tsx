@@ -215,8 +215,7 @@ export function DestSheet({ onClose }: { onClose: () => void }) {
     onClose();
   };
   return (
-    <SheetFrame label={CT.whereTo} onClose={onClose} testId="cruise-dest-sheet">
-      <h3>{CT.whereTo}</h3>
+    <SheetFrame title={CT.whereTo} onClose={onClose} testId="cruise-dest-sheet">
       <DestPicker value={destOf(r)} onPick={pick} inSession />
       <button type="button" className="btn big-btn wide" onClick={onClose}>
         {CT.cancel}

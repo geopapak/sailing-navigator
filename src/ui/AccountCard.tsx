@@ -4,6 +4,7 @@ import { askConfirm, showAlert } from './Dialogs';
 import { DEFAULT_SERVER } from './settings';
 import { ApiError, accountApi, type AdminUser } from '../sync/api';
 import { PrivacyText, TermsText, useServerConfig } from './legal';
+import { BtnIcon, Icon } from './Icons';
 
 const errText = (e: unknown) => (e instanceof ApiError || e instanceof Error ? e.message : 'Κάτι πήγε στραβά. Δοκίμασε ξανά.');
 const fmtDate = (ms: number) => new Date(ms).toLocaleDateString('el-GR');
@@ -72,7 +73,8 @@ export function AccountCard() {
           </li>
         </ul>
         <button className="btn" disabled={syncStatus.busy} onClick={() => sync().then(refreshAccount)}>
-          ↻ Συγχρονισμός τώρα
+          <BtnIcon name="rotate" />
+          Συγχρονισμός τώρα
         </button>
 
         <h4>Ασφάλεια</h4>
@@ -218,7 +220,7 @@ function AdminCard({ server, token }: { server: string; token: string }) {
       <div className="advisor-head">
         <h3>Χρήστες</h3>
         <button className="link inline" onClick={load} aria-label="Ανανέωση λίστας">
-          ↻
+          <Icon name="rotate" size="1.2em" />
         </button>
       </div>
       {resets.length > 0 && (

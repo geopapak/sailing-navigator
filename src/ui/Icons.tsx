@@ -26,7 +26,33 @@ const P = {
   pen: 'M4 20h4L19 9l-4-4L4 16zM14 6l4 4',
   wind: 'M3 8h11a3 3 0 1 0-3-3M3 12h16a3 3 0 1 1-3 3M3 16h8',
   close: 'M6 6l12 12M18 6L6 18',
+  // P-049 Φ-A (design/refresh-2026-11/HANDOFF-A.md §8): the emoji and arrows of buttons become lines.
+  back: 'M15 5l-7 7 7 7',
+  chev: 'M9 5l7 7-7 7',
+  'chev-down': 'M6 9l6 6 6-6',
+  boat: 'M11 3v13H4zM13 6l6 10h-6zM3 18h18l-3 3H6z',
+  check: 'M5 12l5 5 9-10',
+  timer: 'M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM12 13V9M9 2h6',
+  pause: 'M8 5v14M16 5v14',
+  play: 'M7 5l12 7-12 7z',
+  stop: 'M6 6h12v12H6z',
+  undo: 'M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3',
+  rotate: 'M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5',
+  swap: 'M7 7h13l-3-3M17 17H4l3 3',
+  mute: 'M11 5L6 9H3v6h3l5 4zM16 9l5 6M21 9l-5 6',
+  sound: 'M11 5L6 9H3v6h3l5 4zM15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13',
+  list: 'M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01',
+  lock: 'M5 11h14v9H5zM8 11V8a4 4 0 0 1 8 0v3',
+  star: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z',
+  bulb: 'M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z',
+  doc: 'M6 3h8l4 4v14H6zM14 3v4h4M9 12h6M9 16h6',
+  download: 'M12 4v11M7 10l5 5 5-5M5 20h14',
 } as const;
+
+/** A small icon in front of a button's words (P-049 A16): the words stay the accessible name. */
+export function BtnIcon({ name }: { name: IconName }) {
+  return <Icon name={name} size="1.15em" stroke={2.2} className="bi" />;
+}
 
 export type IconName = keyof typeof P;
 

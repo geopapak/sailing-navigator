@@ -8,6 +8,7 @@ import { test, expect, noHorizontalOverflow, type AppFixture } from './fixtures/
 import { boatItem, courseItem } from './fixtures/handlers';
 import { ASTARTI_LONG } from './fixtures/data/boat-astarti';
 import { LONG_RACE_NAME } from './fixtures/data/course-saronic';
+import { expectActiveBoat } from './fixtures/boat';
 
 test.use({ scenario: { boats: [boatItem(ASTARTI_LONG), courseItem()] } });
 
@@ -46,7 +47,7 @@ async function walk(app: AppFixture, theme: Theme, size: 'n' | 'xl') {
   const { page } = app;
   await app.open();
   await app.signIn();
-  await expect(page.getByRole('combobox', { name: 'Ενεργό σκάφος' })).toHaveValue('e2e-astarti');
+  await expectActiveBoat(page, 'e2e-astarti');
   await app.setSettings({ theme, textSize: size });
   await expect(page.locator('html')).toHaveAttribute('data-size', size);
   await app.useSimulator();
@@ -66,7 +67,7 @@ async function walk(app: AppFixture, theme: Theme, size: 'n' | 'xl') {
   await expect(page.getByRole('region', { name: 'Οθόνη αγώνα' })).toBeVisible();
   await check(app, theme, 'live-agona');
   await page.getByTestId('session-end').click();
-  await page.getByRole('button', { name: '■ Ναι, τερματίσαμε' }).click();
+  await page.getByRole('button', { name: 'Ναι, τερματίσαμε' }).click();
   await app.advance(11_000, 1000);
   await page.getByRole('button', { name: 'Στο Ιστορικό' }).click();
   await app.tab('Αρχική');
@@ -81,7 +82,7 @@ async function walk(app: AppFixture, theme: Theme, size: 'n' | 'xl') {
   await expect(page.getByTestId('lap-list')).toContainText('Γύρος 3');
   await check(app, theme, 'live-proponisis');
   await page.getByTestId('session-end').click();
-  await page.getByRole('button', { name: '■ Ναι, τέλος' }).click();
+  await page.getByRole('button', { name: 'Ναι, τέλος' }).click();
   await expect(page.getByTestId('laps-table')).toBeVisible();
   await check(app, theme, 'synopsi-proponisis');
 }

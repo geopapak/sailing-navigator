@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
 import { useNav } from './NavContext';
 import { AGREEMENT_TEXT, agreement, spreadAt, spreadTimeline, valueAt, type Comparison, type ModelSeries } from '../weather/compare';
 import { norm360 } from '../performance/angles';
+import { BtnIcon } from './Icons';
 
 const fmtHour = (ms: number) => new Date(ms).toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit' });
 const fmtDay = (ms: number) => new Date(ms).toLocaleString('el-GR', { weekday: 'short', hour: '2-digit', minute: '2-digit' });
@@ -192,15 +193,16 @@ export function ModelCompareCard() {
         Τι λένε {c ? c.series.length : 'όλα τα'} μοντέλα για {c ? <b>{c.place}</b> : 'την εκκίνηση'}. Όσο πιο κοντά οι γραμμές, τόσο πιο σίγουρη η πρόγνωση.
       </p>
       <button className="btn primary" disabled={nav.comparisonStatus.busy} onClick={nav.loadComparison}>
-        {nav.comparisonStatus.busy ? 'Λήψη μοντέλων…' : c ? '↻ Ανανέωση σύγκρισης' : 'Σύγκριση μοντέλων'}
+        {c && !nav.comparisonStatus.busy && <BtnIcon name="rotate" />}
+        {nav.comparisonStatus.busy ? 'Λήψη μοντέλων…' : c ? 'Ανανέωση σύγκρισης' : 'Σύγκριση μοντέλων'}
       </button>
       {nav.comparisonStatus.error && <p className="warn-text">{nav.comparisonStatus.error}</p>}
-      {stale && <p className="muted small">Η σύγκριση είναι για άλλο σημείο εκκίνησης: πάτα «↻ Ανανέωση σύγκρισης».</p>}
+      {stale && <p className="muted small">Η σύγκριση είναι για άλλο σημείο εκκίνησης: πάτα «Ανανέωση σύγκρισης».</p>}
 
       {c && atStart && ag && (
         <>
           <div className={`mc-verdict mc-${ag}`}>
-            <span className="mc-badge">{ag === 'good' ? '✓' : ag === 'fair' ? '≈' : '⚠'} {AGREEMENT_TEXT[ag]}</span>
+            <span className="mc-badge">{ag === 'good' ? '✓' : ag === 'fair' ? '≈' : <BtnIcon name="warn" />} {AGREEMENT_TEXT[ag]}</span>
             <span>
               Στην εκκίνηση ({fmtDay(c.start)}): <b>{atStart.meanTws.toFixed(0)} kt</b> (±{atStart.spreadTws.toFixed(1)}, εύρος {atStart.minTws.toFixed(0)}–
               {atStart.maxTws.toFixed(0)}) από <b>{atStart.meanTwd.toFixed(0)}°</b> (±{atStart.spreadTwd.toFixed(0)}°)

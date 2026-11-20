@@ -6,6 +6,7 @@
 import { test, expect } from './fixtures/sw';
 import { boatItem } from './fixtures/handlers';
 import { runningTrackLength } from './fixtures/session';
+import { expectActiveBoat } from './fixtures/boat';
 
 test.use({ scenario: { boats: [boatItem()] }, clockStart: new Date('2026-11-14T10:00:00+02:00').getTime() });
 
@@ -15,7 +16,7 @@ test('52–53: offline ανοίγει από την cache, μένει συνδε
   const { page } = sw;
   await sw.install();
   await sw.signIn();
-  await expect(page.getByRole('combobox', { name: 'Ενεργό σκάφος' })).toHaveValue('e2e-astarti');
+  await expectActiveBoat(page, 'e2e-astarti');
   await sw.useSimulator();
 
   // 52

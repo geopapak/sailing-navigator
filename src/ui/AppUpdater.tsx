@@ -14,6 +14,7 @@ import {
   type UpdatePhase,
 } from '../pwa/update';
 import { UPDATE_TEXT } from '../pwa/updateText';
+import { Icon } from './Icons';
 
 /** While a version waits for 02:00, look at the clock this often (also on focus). */
 const TICK_MS = 30_000;
@@ -82,11 +83,11 @@ export function UpdateCard() {
   return (
     <section className="card update-card" data-testid="update-card" role="status">
       <span className="update-badge" aria-hidden="true">
-        ↻
+        <Icon name="rotate" size="1.1em" stroke={2.4} />
       </span>
       <p className="small">{text}</p>
       <button type="button" className="update-x" aria-label={UPDATE_TEXT.dismiss} onClick={dismissUpdateCard}>
-        <span aria-hidden="true">✕</span>
+        <Icon name="close" size={20} />
       </button>
       {phase === 'waiting' && (
         <button type="button" className="btn small-btn update-now" data-testid="update-now" onClick={() => void updateNow(session)}>

@@ -6,6 +6,7 @@
 import { test, expect, type AppFixture } from './fixtures/app';
 import { boatItem } from './fixtures/handlers';
 import { download, gpxTimes, now, runningTrackLength } from './fixtures/session';
+import { expectActiveBoat } from './fixtures/boat';
 
 const MIN = 60_000;
 
@@ -14,7 +15,7 @@ test.use({ scenario: { boats: [boatItem()] } });
 async function ready(app: AppFixture) {
   await app.open();
   await app.signIn();
-  await expect(app.page.getByRole('combobox', { name: 'Ενεργό σκάφος' })).toHaveValue('e2e-astarti');
+  await expectActiveBoat(app.page, 'e2e-astarti');
   await app.useSimulator();
 }
 
@@ -24,7 +25,7 @@ const strip = (app: AppFixture) => app.page.getByTestId('session-strip');
 async function endTraining(app: AppFixture) {
   await app.page.getByTestId('session-end').click();
   await expect(app.page.getByRole('heading', { name: 'Τέλος προπόνησης;' })).toBeVisible();
-  await app.page.getByRole('button', { name: '■ Ναι, τέλος' }).click();
+  await app.page.getByRole('button', { name: 'Ναι, τέλος' }).click();
   await expect(app.page.getByTestId('screen-title')).toHaveText('Η έξοδος τελείωσε');
 }
 
@@ -33,8 +34,8 @@ test('38–39, 41–43: γύροι, παύση, σύνοψη χωρίς την �
   await ready(app);
   await app.startTraining();
   // 38
-  await expect(app.page.getByTestId('session-pause')).toHaveText('⏸ Παύση');
-  await expect(lapBtn(app)).toContainText('⏱ Γύρος 1');
+  await expect(app.page.getByTestId('session-pause')).toHaveText('Παύση');
+  await expect(lapBtn(app)).toContainText('Γύρος 1');
   await expect(app.page.getByTestId('inst-pill')).toHaveCount(0); // no header pill inside a session
   await expect(app.page.getByRole('navigation', { name: 'Οθόνες εξόδου' })).toBeVisible();
 
@@ -56,7 +57,7 @@ test('38–39, 41–43: γύροι, παύση, σύνοψη χωρίς την �
   const before = await runningTrackLength(app.page);
   expect(before).toBeGreaterThan(10);
   await app.advance(3 * MIN - 20_000);
-  await expect(app.page.getByText('⏸ Σε παύση', { exact: true })).toBeVisible();
+  await expect(app.page.getByText('Σε παύση', { exact: true })).toBeVisible();
   expect(await runningTrackLength(app.page)).toBe(before);
   await app.page.getByTestId('session-resume').click();
   const pauseTo = await now(app.page);
@@ -66,7 +67,7 @@ test('38–39, 41–43: γύροι, παύση, σύνοψη χωρίς την �
 
   // 42: 15′ with a 3′ pause → 12′
   await endTraining(app);
-  await expect(app.page.getByTestId('ended-undo')).toHaveText(/↶ Αναίρεση \(\d+″\)/);
+  await expect(app.page.getByTestId('ended-undo')).toHaveText(/Αναίρεση \(\d+″\)/);
   const stats = app.page.getByTestId('summary-stats');
   await expect(stats).toContainText(/0:(11:5\d|12:0\d)\s*διάρκεια/);
   await expect(app.page.getByText(/Χωρίς τις παύσεις \(3:0\d\)/)).toBeVisible();
@@ -90,20 +91,20 @@ test('40, 40α: αναίρεση γύρου μέσα σε 5″ και διπλό
   await app.advance(2 * MIN);
   // 40: undo → the next lap keeps the same number
   await lapBtn(app).click();
-  await expect(lapBtn(app)).toContainText('⏱ Γύρος 2');
-  await expect(app.page.getByTestId('lap-undo')).toHaveText(/↶ Αναίρεση \([1-5]″\)/);
+  await expect(lapBtn(app)).toContainText('Γύρος 2');
+  await expect(app.page.getByTestId('lap-undo')).toHaveText(/Αναίρεση \([1-5]″\)/);
   await app.page.getByTestId('lap-undo').click();
   await expect(strip(app)).toContainText('Ο γύρος αναιρέθηκε');
-  await expect(lapBtn(app)).toContainText('⏱ Γύρος 1');
+  await expect(lapBtn(app)).toContainText('Γύρος 1');
   await app.advance(MIN);
   // 40α: two taps within 3″ → one lap
   await lapBtn(app).click();
   await app.advance(1000, 500);
   await lapBtn(app).click();
-  await expect(lapBtn(app)).toContainText('⏱ Γύρος 2');
+  await expect(lapBtn(app)).toContainText('Γύρος 2');
   await app.advance(4000, 1000);
   await lapBtn(app).click();
-  await expect(lapBtn(app)).toContainText('⏱ Γύρος 3');
+  await expect(lapBtn(app)).toContainText('Γύρος 3');
 });
 
 test.describe('μαθήματα offline', () => {

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useApp } from './AppContext';
 import { useNav } from './NavContext';
 import { useStoredState } from './hooks';
-import { Icon } from './Icons';
+import { BtnIcon, Icon } from './Icons';
 import { openTab } from './openTab';
 import { ADVISOR_WAITING } from './AdvisorCard';
 import { advisorConfig, advisorReady, askChat, AdvisorError } from '../ai/client';
@@ -240,7 +240,12 @@ export function ChatView() {
           <p className="muted small">Η σύγκριση μοντέλων είναι για άλλη ώρα εκκίνησης από το σχέδιο ({localIso(comparison.start).slice(11, 16)}).</p>
         )}
         {nav.plan.startLocal && !planned && <p className="muted small">Χωρίς υπολογισμένη διαδρομή: ο σύμβουλος δεν θα ξέρει το σχέδιο.</p>}
-        {waiting && <p className="small">{ADVISOR_WAITING}</p>}
+        {waiting && (
+          <p className="small">
+            <BtnIcon name="lock" />
+            {ADVISOR_WAITING}
+          </p>
+        )}
         {!configured && (
           <p className="small">
             Για να μιλήσεις με τον σύμβουλο, συνδέσου στον λογαριασμό σου.{' '}

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { SheetFrame } from './Sheet';
 
 /**
  * Themed replacements for window.confirm / window.alert (which are white and
@@ -62,6 +63,7 @@ export function Dialogs() {
   const [snack, setSnack] = useState<UndoReq>();
   const timer = useRef<number>();
   const okRef = useRef<HTMLButtonElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     listener = {
@@ -82,15 +84,6 @@ export function Dialogs() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!ask) return;
-    okRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close(false);
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ask]);
-
   const close = (ok: boolean) => {
     ask?.resolve(ok);
     setAsk(undefined);
@@ -99,21 +92,21 @@ export function Dialogs() {
   return (
     <>
       {ask && (
-        <div className="sheet-backdrop" onClick={() => close(false)}>
-          <div className="sheet" role="alertdialog" aria-modal="true" aria-labelledby="sheet-text" onClick={(e) => e.stopPropagation()}>
-            <p id="sheet-text">{ask.text}</p>
-            <div className="sheet-actions">
-              {ask.kind === 'confirm' && (
-                <button className="btn big-btn" onClick={() => close(false)}>
-                  {ask.cancel}
-                </button>
-              )}
-              <button ref={okRef} className={`btn big-btn ${ask.danger ? 'danger' : 'primary'}`} onClick={() => close(true)}>
-                {ask.ok}
+        // A question that needs an answer: always in the middle, closed by its buttons or Escape (= «Άκυρο»).
+        <SheetFrame key={ask.text} kind="confirm" labelledBy="sheet-text" testId="confirm-sheet" initialFocus={ask.danger && ask.kind === 'confirm' ? cancelRef : okRef} onClose={() => close(false)}>
+          <p id="sheet-text">{ask.text}</p>
+          <div className="sheet-actions">
+            {ask.kind === 'confirm' && (
+              // A destructive question never starts on «Ναι»: the focus waits on «Άκυρο».
+              <button ref={cancelRef} type="button" className="btn big-btn" onClick={() => close(false)}>
+                {ask.cancel}
               </button>
-            </div>
+            )}
+            <button ref={okRef} type="button" className={`btn big-btn ${ask.danger ? 'danger-fill' : 'primary'}`} onClick={() => close(true)}>
+              {ask.ok}
+            </button>
           </div>
-        </div>
+        </SheetFrame>
       )}
       {snack && (
         <div className="snack" role="status">

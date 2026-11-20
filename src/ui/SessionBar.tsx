@@ -1,11 +1,11 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import type { SheetMode } from './hooks';
+import { SheetFrame } from './Sheet';
 import { UPDATE_TEXT } from '../pwa/updateText';
 import { useUpdatePhase } from './AppUpdater';
 import { useApp } from './AppContext';
 import { useRace } from './RaceContext';
 import { useInstruments } from './InstrumentsContext';
-import { Icon } from './Icons';
+import { BtnIcon, Icon } from './Icons';
 import { THEME_INFO } from './Appearance';
 import { getLiveSail, setLiveSail } from './LiveView';
 import { selectableSails } from '../performance/sails';
@@ -175,7 +175,7 @@ export function SessionBar({ onEnded }: { onEnded: (e: Ended) => void }) {
           <b>
             <span className={`rec ${recording ? '' : 'off'}`} aria-hidden="true" />
             {info.upper}
-            {kind !== 'race' && ' ⇄'}
+            {kind !== 'race' && <Icon name="swap" size="1em" stroke={2.4} />}
           </b>
           <span className="t">{time}</span>
           <span className="s">{sub}</span>
@@ -185,7 +185,8 @@ export function SessionBar({ onEnded }: { onEnded: (e: Ended) => void }) {
         </button>
         {!pending && (
           <button type="button" className="sb end" data-testid="session-end" onClick={() => setSheet('end')}>
-            ■ Τέλος
+            <Icon name="stop" size="1em" stroke={2.6} />
+            Τέλος
           </button>
         )}
       </div>
@@ -194,26 +195,32 @@ export function SessionBar({ onEnded }: { onEnded: (e: Ended) => void }) {
       {sheet === 'kind' && <KindSheet r={r} onClose={() => setSheet(undefined)} onSwitched={setFlash} />}
       {sheet === 'quick' && <QuickSettings kind={kind} onClose={() => setSheet(undefined)} />}
       {sheet === 'end' && (
-        <SheetFrame label="Τέλος εξόδου" onClose={() => setSheet(undefined)}>
-          {kind === 'race' && before ? (
-            <>
-              <h3>Ακύρωση / αναβολή αγώνα;</h3>
-              <p className="small">
-                Ο αγώνας δεν έχει ξεκινήσει ακόμα. Η έξοδος κλείνει χωρίς αποτέλεσμα: δεν γράφεται χρόνος ούτε θέση. Θα έχεις 10″ για αναίρεση.
-              </p>
-            </>
-          ) : (
-            <>
-              <h3>
-                {kind === 'race' ? (event && raceNo ? ET.endTitle(raceNo) : 'Τερματισμός αγώνα;') : kind === 'training' ? 'Τέλος προπόνησης;' : 'Τέλος αναψυχής;'}
-              </h3>
-              <p className="small">
-                {kind === 'race' && event ? ET.endText : 'Σταματά η καταγραφή και οι ειδοποιήσεις. Η οθόνη μπορεί πια να σβήσει. Θα έχεις 10″ για αναίρεση.'}
-              </p>
-            </>
-          )}
+        <SheetFrame
+          kind="confirm"
+          testId="end-sheet"
+          title={
+            kind === 'race' && before
+              ? 'Ακύρωση / αναβολή αγώνα;'
+              : kind === 'race'
+                ? event && raceNo
+                  ? ET.endTitle(raceNo)
+                  : 'Τερματισμός αγώνα;'
+                : kind === 'training'
+                  ? 'Τέλος προπόνησης;'
+                  : 'Τέλος αναψυχής;'
+          }
+          onClose={() => setSheet(undefined)}
+        >
+          <p className="small">
+            {kind === 'race' && before
+              ? 'Ο αγώνας δεν έχει ξεκινήσει ακόμα. Η έξοδος κλείνει χωρίς αποτέλεσμα: δεν γράφεται χρόνος ούτε θέση. Θα έχεις 10″ για αναίρεση.'
+              : kind === 'race' && event
+                ? ET.endText
+                : 'Σταματά η καταγραφή και οι ειδοποιήσεις. Η οθόνη μπορεί πια να σβήσει. Θα έχεις 10″ για αναίρεση.'}
+          </p>
           <button type="button" className="btn big-btn wide dangerfill" onClick={() => end()}>
-            ■ {kind === 'race' ? (before ? 'Ναι, ακύρωση / αναβολή' : 'Ναι, τερματίσαμε') : 'Ναι, τέλος'}
+            <BtnIcon name="stop" />
+            {kind === 'race' ? (before ? 'Ναι, ακύρωση / αναβολή' : 'Ναι, τερματίσαμε') : 'Ναι, τέλος'}
           </button>
           <button type="button" className="btn big-btn wide" onClick={() => setSheet(undefined)}>
             Συνέχεια
@@ -267,7 +274,7 @@ function UpdateLine() {
   return (
     <div className="update-line" data-testid="update-line" role="status" title={text}>
       <span className="update-badge" aria-hidden="true">
-        ↻
+        <Icon name="rotate" size="1em" stroke={2.6} />
       </span>
       <span className="update-text">{text}</span>
     </div>
@@ -293,7 +300,8 @@ function SessionStrip({ r, now, flash, onFlash }: { r: Race; now: number; flash?
           onFlash('Παύση · δεν καταγράφεται');
         }}
       >
-        ⏸ Παύση
+        <BtnIcon name="pause" />
+        Παύση
       </button>
     ) : null;
   const since = pausedSince(r);
@@ -330,7 +338,8 @@ function SessionStrip({ r, now, flash, onFlash }: { r: Race; now: number; flash?
             onFlash('Συνέχεια · η καταγραφή ξανάρχισε');
           }}
         >
-          ▶ Συνέχεια
+          <BtnIcon name="play" />
+          Συνέχεια
         </button>
       </div>
     );
@@ -382,72 +391,8 @@ function SessionStrip({ r, now, flash, onFlash }: { r: Race; now: number; flash?
   );
 }
 
-/**
- * A sheet of the session. `mode` (P-053): 'bottom' / 'center' keep the focus inside and close on a
- * tap outside; 'side' is a panel next to the Live, not modal, closed only by its own buttons or Escape.
- */
-export function SheetFrame({
-  label,
-  onClose,
-  children,
-  testId,
-  mode,
-  className,
-  labelledBy,
-  style,
-}: {
-  label: string;
-  onClose: () => void;
-  children: React.ReactNode;
-  testId?: string;
-  mode?: SheetMode;
-  className?: string;
-  labelledBy?: string;
-  style?: React.CSSProperties;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const k = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
-    window.addEventListener('keydown', k);
-    return () => window.removeEventListener('keydown', k);
-  }, [onClose]);
-  const trap = mode !== undefined && mode !== 'side';
-  const onKeyDown = (e: React.KeyboardEvent) => {
-    if (!trap || e.key !== 'Tab' || !ref.current) return;
-    const f = [...ref.current.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])')];
-    if (!f.length) return;
-    const [first, last] = [f[0], f[f.length - 1]];
-    if (e.shiftKey && (document.activeElement === first || !ref.current.contains(document.activeElement))) {
-      e.preventDefault();
-      last.focus();
-    } else if (!e.shiftKey && document.activeElement === last) {
-      e.preventDefault();
-      first.focus();
-    }
-  };
-  const sheet = (
-    <div
-      ref={ref}
-      className={`sheet session-sheet${className ? ` ${className}` : ''}${mode ? ` mode-${mode}` : ''}`}
-      data-testid={testId}
-      role="dialog"
-      aria-modal={mode === 'side' ? 'false' : 'true'}
-      aria-label={labelledBy ? undefined : label}
-      aria-labelledby={labelledBy}
-      style={style}
-      onClick={(e) => e.stopPropagation()}
-      onKeyDown={onKeyDown}
-    >
-      {children}
-    </div>
-  );
-  if (mode === 'side') return sheet;
-  return (
-    <div className={`sheet-backdrop${mode ? ` mode-${mode}` : ''}`} onClick={onClose}>
-      {sheet}
-    </div>
-  );
-}
+/** The shared sheet now lives in `Sheet.tsx` (P-049); re-exported so the old imports keep working. */
+export { SheetFrame };
 
 function KindSheet({ r, onClose, onSwitched }: { r: Race; onClose: () => void; onSwitched: (msg: string) => void }) {
   const race = useRace();
@@ -455,8 +400,7 @@ function KindSheet({ r, onClose, onSwitched }: { r: Race; onClose: () => void; o
   const kind = kindOf(r);
   if (kind === 'race')
     return (
-      <SheetFrame label="Τύπος εξόδου" onClose={onClose}>
-        <h3>Ο αγώνας μένει αγώνας</h3>
+      <SheetFrame label="Τύπος εξόδου" title="Ο αγώνας μένει αγώνας" onClose={onClose}>
         <p className="small">Για προπόνηση ή αναψυχή, τελείωσε τον αγώνα και ξεκίνα νέα έξοδο. Έτσι δεν χαλάνε οι χρόνοι και η κατάταξη.</p>
         <button type="button" className="btn big-btn wide" onClick={onClose}>
           Εντάξει
@@ -475,8 +419,7 @@ function KindSheet({ r, onClose, onSwitched }: { r: Race; onClose: () => void; o
     onClose();
   };
   return (
-    <SheetFrame label="Αλλαγή τύπου εξόδου" onClose={onClose}>
-      <h3>Αλλαγή τύπου εξόδου</h3>
+    <SheetFrame title="Αλλαγή τύπου εξόδου" onClose={onClose}>
       <p className="small">Το ίχνος συνεχίζει. Αλλάζουν τα νούμερα στο Live και οι ειδοποιήσεις.</p>
       <button
         type="button"
@@ -517,8 +460,7 @@ function QuickSettings({ kind, onClose }: { kind: SessionKind; onClose: () => vo
   const [sail, setSail] = useState(getLiveSail);
   const vol = a.sound === 'off' ? 'off' : a.volume;
   return (
-    <SheetFrame label="Γρήγορες ρυθμίσεις" onClose={onClose}>
-      <h3>Γρήγορες ρυθμίσεις</h3>
+    <SheetFrame title="Γρήγορες ρυθμίσεις" onClose={onClose}>
       <p className="small muted">Μένεις στην έξοδο. Η καταγραφή συνεχίζει.</p>
       <div className="settings-sub">Ειδοποιήσεις · {KIND_INFO[kind].name}</div>
       <KindAlertToggles kind={kind} quick />
@@ -613,24 +555,21 @@ function ForgottenSheet({
   const at = hhmm(p.lastMove);
   const yesterday = new Date(p.lastMove).toDateString() !== new Date(now).toDateString();
   return (
-    <SheetFrame label="Ξεχασμένη έξοδος" onClose={onDismiss}>
+    <SheetFrame
+      kind="confirm"
+      testId="forgotten-sheet"
+      title={p.kind === 'idle' ? 'Το σκάφος δεν κινείται 2 ώρες' : `${info.The} τρέχει ${p.hours} ώρες`}
+      onClose={onDismiss}
+    >
       {p.kind === 'idle' ? (
-        <>
-          <h3>Το σκάφος δεν κινείται 2 ώρες</h3>
-          <p className="small">
-            Η τελευταία κίνηση ήταν στις {at}. Τελείωσε {info.the}; Η διάρκεια κόβεται στην τελευταία κίνηση.
-          </p>
-        </>
+        <p className="small">
+          Η τελευταία κίνηση ήταν στις {at}. Τελείωσε {info.the}; Η διάρκεια κόβεται στην τελευταία κίνηση.
+        </p>
       ) : (
-        <>
-          <h3>
-            {info.The} τρέχει {p.hours} ώρες
-          </h3>
-          <p className="small">
-            Η τελευταία κίνηση ήταν {yesterday ? `χθες στις ${at}` : `στις ${at}`}. Μάλλον ξέχασες να πατήσεις «Τέλος». Η διάρκεια κόβεται στην τελευταία
-            κίνηση.
-          </p>
-        </>
+        <p className="small">
+          Η τελευταία κίνηση ήταν {yesterday ? `χθες στις ${at}` : `στις ${at}`}. Μάλλον ξέχασες να πατήσεις «Τέλος». Η διάρκεια κόβεται στην τελευταία
+          κίνηση.
+        </p>
       )}
       {onLine && r.finishCross && (
         <button type="button" className="btn primary big-btn wide" data-testid="forgotten-line" onClick={onLine}>
@@ -642,7 +581,8 @@ function ForgottenSheet({
       </button>
       {p.kind === 'idle' && onPause && (
         <button type="button" className="btn big-btn wide" onClick={onPause}>
-          ⏸ Παύση
+          <BtnIcon name="pause" />
+          Παύση
         </button>
       )}
       <button type="button" className="btn big-btn wide" onClick={onKeep}>
@@ -658,48 +598,30 @@ function ForgottenSheet({
  */
 function FinishSheet({ cross, now, onYes, onNo }: { cross: NonNullable<Race['finishCross']>; now: number; onYes: () => void; onNo: () => void }) {
   const titleId = useId();
-  const ref = useRef<HTMLDivElement>(null);
   const yesRef = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    yesRef.current?.focus({ preventScroll: true });
-  }, []);
-  const onKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') e.preventDefault();
-    if (e.key !== 'Tab' || !ref.current) return;
-    const f = [...ref.current.querySelectorAll<HTMLElement>('button')];
-    const [first, last] = [f[0], f[f.length - 1]];
-    if (e.shiftKey && document.activeElement === first) {
-      e.preventDefault();
-      last.focus();
-    } else if (!e.shiftKey && document.activeElement === last) {
-      e.preventDefault();
-      first.focus();
-    }
-  };
   const approx = !!cross.approx;
   return (
-    <div className="sheet-backdrop mode-center finish-backdrop">
-      <div
-        ref={ref}
-        className="sheet session-sheet finish-sheet"
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        data-testid="finish-sheet"
-        onKeyDown={onKeyDown}
-      >
-        <p className="finish-tones" aria-hidden="true">
-          {FT.tones}
-        </p>
-        <h3 id={titleId}>{approx ? FT.approxTitle(hhmm(cross.t)) : FT.title(hhmmss(cross.t))}</h3>
-        <p className="small">{approx ? FT.approxBody(Math.max(1, Math.round((cross.gapSec ?? 60) / 60))) : FT.body(mmss((now - cross.t) / 1000))}</p>
-        <button ref={yesRef} type="button" className="btn primary big-btn wide" data-testid="finish-yes" onClick={onYes}>
-          {FT.yes}
-        </button>
-        <button type="button" className="btn big-btn wide" data-testid="finish-no" onClick={onNo}>
-          {FT.no}
-        </button>
-      </div>
-    </div>
+    <SheetFrame
+      kind="confirm"
+      dismissable={false}
+      labelledBy={titleId}
+      testId="finish-sheet"
+      className="finish-sheet"
+      backdropClassName="finish-backdrop"
+      initialFocus={yesRef}
+      onClose={() => undefined}
+    >
+      <p className="finish-tones" aria-hidden="true">
+        {FT.tones}
+      </p>
+      <h3 id={titleId}>{approx ? FT.approxTitle(hhmm(cross.t)) : FT.title(hhmmss(cross.t))}</h3>
+      <p className="small">{approx ? FT.approxBody(Math.max(1, Math.round((cross.gapSec ?? 60) / 60))) : FT.body(mmss((now - cross.t) / 1000))}</p>
+      <button ref={yesRef} type="button" className="btn primary big-btn wide" data-testid="finish-yes" onClick={onYes}>
+        {FT.yes}
+      </button>
+      <button type="button" className="btn big-btn wide" data-testid="finish-no" onClick={onNo}>
+        {FT.no}
+      </button>
+    </SheetFrame>
   );
 }

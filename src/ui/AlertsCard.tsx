@@ -12,6 +12,7 @@ import type { SessionKind } from '../race/types';
 import { ALERT_SETTINGS_TEXT as T } from './sessionText';
 import { beep, canVibrate, notify, speak, unlockAudio } from './sound';
 import { useOnline } from './hooks';
+import { BtnIcon } from './Icons';
 
 export function Toggle({
   on,
@@ -198,7 +199,8 @@ export function AlertsCard() {
         </label>
         <p>
           <button className="btn" onClick={test}>
-            🔊 Δοκιμή ήχου
+            <BtnIcon name="sound" />
+            Δοκιμή ήχου
           </button>
           {a.sound === 'voice' && (
             <button className="btn" onClick={() => speak(`${w.tack} τώρα`)}>

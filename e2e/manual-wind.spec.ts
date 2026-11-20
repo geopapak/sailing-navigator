@@ -7,6 +7,7 @@ import { test, expect, noHorizontalOverflow, type AppFixture } from './fixtures/
 import { boatItem, courseItem } from './fixtures/handlers';
 import { NO_POLAR } from './fixtures/data/boat-no-polar';
 import { download, runningSession, storedSessions } from './fixtures/session';
+import { expectActiveBoat } from './fixtures/boat';
 
 const MIN = 60_000;
 
@@ -16,7 +17,7 @@ const card = (app: AppFixture) => app.page.getByTestId('wind-reading');
 async function signedIn(app: AppFixture, boat = 'e2e-astarti') {
   await app.open();
   await app.signIn();
-  await expect(app.page.getByRole('combobox', { name: 'Ενεργό σκάφος' })).toHaveValue(boat);
+  await expectActiveBoat(app.page, boat);
 }
 
 async function setupRace(app: AppFixture) {
@@ -30,7 +31,7 @@ async function setupRace(app: AppFixture) {
 
 async function endTraining(app: AppFixture) {
   await app.page.getByTestId('session-end').click();
-  await app.page.getByRole('button', { name: '■ Ναι, τέλος' }).click();
+  await app.page.getByRole('button', { name: 'Ναι, τέλος' }).click();
   await expect(app.page.getByTestId('screen-title')).toHaveText('Η έξοδος τελείωσε');
 }
 

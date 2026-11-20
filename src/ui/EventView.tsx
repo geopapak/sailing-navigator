@@ -31,6 +31,7 @@ import { isCancelled } from '../race/session';
 import { bufOf, bufText, checkEntry, pressKey, type EntryMode } from '../race/resultEntry';
 import { formatDuration } from '../scoring/corrected';
 import type { Race, RaceEvent, ResultCode, SessionKind } from '../race/types';
+import { BtnIcon } from './Icons';
 
 // ---- Settings of an event (AC 2, 36) ------------------------------------------------------
 
@@ -493,12 +494,7 @@ function ResultSheet({
   const check = d.mode === 'code' ? undefined : checkEntry(d.mode, d.buf, r.start);
   const next: Next | undefined = d.mode === 'code' ? (d.code ? { code: d.code } : undefined) : check?.ok ? { elapsed: check.elapsed } : undefined;
 
-  // The undo note goes to the top while the sheet is open, so it does not cover the buttons.
-  useLayoutEffect(() => {
-    const root = document.documentElement;
-    root.classList.add('result-sheet-open');
-    return () => root.classList.remove('result-sheet-open');
-  }, []);
+  // The undo note goes to the top while the sheet is open (`:root.sheet-open`, set by the frame).
   useEffect(() => {
     titleRef.current?.focus({ preventScroll: true });
   }, [b.key]);
@@ -690,6 +686,7 @@ export function EventScreen({
     return (
       <>
         <button type="button" className="btn back-btn" onClick={onBack}>
+          <BtnIcon name="back" />
           {ET.back}
         </button>
         <p className="muted">{ET.notFound}</p>
@@ -722,6 +719,7 @@ export function EventScreen({
   return (
     <div className="event-screen" data-testid="event-screen">
       <button type="button" className="btn back-btn" onClick={onBack}>
+        <BtnIcon name="back" />
         {ET.back}
       </button>
       <section className="card">
