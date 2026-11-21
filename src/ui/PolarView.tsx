@@ -3,6 +3,7 @@ import { useApp } from './AppContext';
 import { PolarChart } from './PolarChart';
 import { optimums } from '../performance/polar';
 import { recommendSail } from '../performance/sails';
+import { num } from '../format';
 
 export function PolarView() {
   const { activeBoat: boat } = useApp();
@@ -45,12 +46,12 @@ export function PolarView() {
               return (
                 <tr key={t} className={t === tws ? 'hl' : ''} onClick={() => setTws(t)}>
                   <td>{t}</td>
-                  <td>{o.beat.angle.toFixed(1)}</td>
-                  <td>{(o.beat.bsp * f).toFixed(2)}</td>
-                  <td>{(o.beat.vmg * f).toFixed(2)}</td>
-                  <td>{o.run.angle.toFixed(1)}</td>
-                  <td>{(o.run.bsp * f).toFixed(2)}</td>
-                  <td>{(o.run.vmg * f).toFixed(2)}</td>
+                  <td>{num(o.beat.angle)}</td>
+                  <td>{num(o.beat.bsp * f, 2)}</td>
+                  <td>{num(o.beat.vmg * f, 2)}</td>
+                  <td>{num(o.run.angle)}</td>
+                  <td>{num(o.run.bsp * f, 2)}</td>
+                  <td>{num(o.run.vmg * f, 2)}</td>
                   <td>{recommendSail(boat, t, o.beat.angle)?.name ?? '—'}</td>
                   <td>{recommendSail(boat, t, o.run.angle)?.name ?? '—'}</td>
                 </tr>

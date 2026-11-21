@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { StickyBar } from './StickyBar';
 import { useHoldUpdate } from './useHoldUpdate';
 import type { BoatProfile, PolarTable, Sail, SailKind, SailRule } from '../boat/types';
 import { STANDARD_SCORING_OPTIONS } from '../boat/scoringOptions';
@@ -6,6 +7,7 @@ import { validateBoat } from '../boat/validate';
 import { NumField } from './NumberStepper';
 import { offerUndo } from './Dialogs';
 import { Icon } from './Icons';
+import { DateField } from './DateTimeField';
 
 interface Props {
   initial: BoatProfile;
@@ -118,10 +120,7 @@ export function BoatEditor({ initial, isNew, onSave, onCancel }: Props) {
           CDL (μήκος για κλάσεις)
           <NumField value={b.cdl} onChange={(v) => set({ cdl: v })} />
         </label>
-        <label>
-          Λήξη πιστοποιητικού
-          <input type="date" value={b.certificateValidUntil ?? ''} onChange={(e) => set({ certificateValidUntil: e.target.value || undefined })} />
-        </label>
+        <DateField label="Λήξη πιστοποιητικού" value={b.certificateValidUntil} onChange={(v) => set({ certificateValidUntil: v })} />
         <label>
           Συντελεστής απόδοσης (% των polars)
           <NumField
@@ -140,61 +139,63 @@ export function BoatEditor({ initial, isNew, onSave, onCancel }: Props) {
 
       <section className="card">
         <h3>Πανιά</h3>
-        <table className="data edit">
-          <thead>
-            <tr>
-              <th>Κωδικός</th>
-              <th>Όνομα</th>
-              <th>Τύπος</th>
-              <th>m²</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {b.sails.map((s, i) => (
-              <tr key={i}>
-                <td>
-                  <input
-                    value={s.id}
-                    onChange={(e) => {
-                      const old = s.id;
-                      const id = e.target.value;
-                      setB((prev) => ({
-                        ...prev,
-                        sails: prev.sails.map((x, j) => (j === i ? { ...x, id } : x)),
-                        sailRules: prev.sailRules.map((r) => (r.sailId === old ? { ...r, sailId: id } : r)),
-                      }));
-                    }}
-                  />
-                </td>
-                <td>
-                  <input value={s.name} onChange={(e) => updateSail(i, { name: e.target.value })} />
-                </td>
-                <td>
-                  <select value={s.kind} onChange={(e) => updateSail(i, { kind: e.target.value as SailKind })}>
-                    {Object.entries(KIND_LABEL).map(([k, l]) => (
-                      <option key={k} value={k}>
-                        {l}
-                      </option>
-                    ))}
-                  </select>
-                </td>
-                <td>
-                  <NumField value={s.area} onChange={(v) => updateSail(i, { area: v })} width="5em" />
-                </td>
-                <td>
-                  <button
-                    className="icon-btn"
-                    aria-label="Αφαίρεση"
-                    onClick={() => set({ sails: b.sails.filter((_, j) => j !== i), sailRules: b.sailRules.filter((r) => r.sailId !== s.id) })}
-                  >
-                    <Icon name="close" size={20} />
-                  </button>
-                </td>
+        <div className="table-wrap edge">
+          <table className="data edit">
+            <thead>
+              <tr>
+                <th>Κωδικός</th>
+                <th>Όνομα</th>
+                <th>Τύπος</th>
+                <th>m²</th>
+                <th />
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {b.sails.map((s, i) => (
+                <tr key={i}>
+                  <td>
+                    <input
+                      value={s.id}
+                      onChange={(e) => {
+                        const old = s.id;
+                        const id = e.target.value;
+                        setB((prev) => ({
+                          ...prev,
+                          sails: prev.sails.map((x, j) => (j === i ? { ...x, id } : x)),
+                          sailRules: prev.sailRules.map((r) => (r.sailId === old ? { ...r, sailId: id } : r)),
+                        }));
+                      }}
+                    />
+                  </td>
+                  <td>
+                    <input value={s.name} onChange={(e) => updateSail(i, { name: e.target.value })} />
+                  </td>
+                  <td>
+                    <select value={s.kind} onChange={(e) => updateSail(i, { kind: e.target.value as SailKind })}>
+                      {Object.entries(KIND_LABEL).map(([k, l]) => (
+                        <option key={k} value={k}>
+                          {l}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td>
+                    <NumField value={s.area} onChange={(v) => updateSail(i, { area: v })} width="5em" />
+                  </td>
+                  <td>
+                    <button
+                      className="icon-btn"
+                      aria-label="Αφαίρεση"
+                      onClick={() => set({ sails: b.sails.filter((_, j) => j !== i), sailRules: b.sailRules.filter((r) => r.sailId !== s.id) })}
+                    >
+                      <Icon name="close" size={20} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         <button className="btn" onClick={() => set({ sails: [...b.sails, { id: `sail${b.sails.length + 1}`, name: '', kind: 'headsail' }] })}>
           + Πανί
         </button>
@@ -205,57 +206,59 @@ export function BoatEditor({ initial, isNew, onSave, onCancel }: Props) {
         <p className="muted small">
           Το πανί προτείνεται όταν TWA και TWS είναι μέσα στα όρια (από ≤ τιμή &lt; έως). Ισχύει ο πρώτος κανόνας που ταιριάζει.
         </p>
-        <table className="data edit">
-          <thead>
-            <tr>
-              <th>Πανί</th>
-              <th>TWA από</th>
-              <th>TWA έως</th>
-              <th>TWS από</th>
-              <th>TWS έως</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {b.sailRules.map((r, i) => (
-              <tr key={i}>
-                <td>
-                  <select value={r.sailId} onChange={(e) => updateRule(i, { sailId: e.target.value })}>
-                    {b.sails
-                      .filter((s) => s.kind !== 'main')
-                      .map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.name || s.id}
-                        </option>
-                      ))}
-                  </select>
-                </td>
-                {(['twaMin', 'twaMax', 'twsMin', 'twsMax'] as const).map((k) => (
-                  <td key={k}>
-                    <NumField value={r[k]} onChange={(v) => updateRule(i, { [k]: v ?? 0 })} width="4em" />
-                  </td>
-                ))}
-                <td className="nowrap">
-                  <button
-                    className="icon-btn"
-                    aria-label="Πάνω"
-                    disabled={i === 0}
-                    onClick={() => {
-                      const rs = [...b.sailRules];
-                      [rs[i - 1], rs[i]] = [rs[i], rs[i - 1]];
-                      set({ sailRules: rs });
-                    }}
-                  >
-                    ↑
-                  </button>
-                  <button className="icon-btn" aria-label="Αφαίρεση" onClick={() => set({ sailRules: b.sailRules.filter((_, j) => j !== i) })}>
-                    <Icon name="close" size={20} />
-                  </button>
-                </td>
+        <div className="table-wrap edge">
+          <table className="data edit">
+            <thead>
+              <tr>
+                <th>Πανί</th>
+                <th>TWA από</th>
+                <th>TWA έως</th>
+                <th>TWS από</th>
+                <th>TWS έως</th>
+                <th />
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {b.sailRules.map((r, i) => (
+                <tr key={i}>
+                  <td>
+                    <select value={r.sailId} onChange={(e) => updateRule(i, { sailId: e.target.value })}>
+                      {b.sails
+                        .filter((s) => s.kind !== 'main')
+                        .map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.name || s.id}
+                          </option>
+                        ))}
+                    </select>
+                  </td>
+                  {(['twaMin', 'twaMax', 'twsMin', 'twsMax'] as const).map((k) => (
+                    <td key={k}>
+                      <NumField value={r[k]} onChange={(v) => updateRule(i, { [k]: v ?? 0 })} width="4em" />
+                    </td>
+                  ))}
+                  <td className="nowrap">
+                    <button
+                      className="icon-btn"
+                      aria-label="Πάνω"
+                      disabled={i === 0}
+                      onClick={() => {
+                        const rs = [...b.sailRules];
+                        [rs[i - 1], rs[i]] = [rs[i], rs[i - 1]];
+                        set({ sailRules: rs });
+                      }}
+                    >
+                      ↑
+                    </button>
+                    <button className="icon-btn" aria-label="Αφαίρεση" onClick={() => set({ sailRules: b.sailRules.filter((_, j) => j !== i) })}>
+                      <Icon name="close" size={20} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         <button
           className="btn"
           disabled={!b.sails.some((s) => s.kind !== 'main')}
@@ -274,32 +277,34 @@ export function BoatEditor({ initial, isNew, onSave, onCancel }: Props) {
 
       <section className="card">
         <h3>Συντελεστές διορθωμένου χρόνου</h3>
-        <table className="data edit">
-          <thead>
-            <tr>
-              <th>Επιλογή</th>
-              <th>ToD (s/NM)</th>
-              <th>ToT</th>
-            </tr>
-          </thead>
-          <tbody>
-            {STANDARD_SCORING_OPTIONS.map((o) => {
-              const cur = b.scoring.find((x) => x.id === o.id);
-              const val = (v: number | undefined) => (v !== undefined && Number.isFinite(v) ? v : undefined);
-              return (
-                <tr key={o.id}>
-                  <td>{o.label}</td>
-                  <td>
-                    <NumField value={val(cur?.tod)} onChange={(v) => setScoring(o.id, 'tod', v)} width="5.5em" ariaLabel={`${o.label} ToD`} />
-                  </td>
-                  <td>
-                    <NumField value={val(cur?.tot)} onChange={(v) => setScoring(o.id, 'tot', v)} width="5.5em" ariaLabel={`${o.label} ToT`} />
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <div className="table-wrap edge">
+          <table className="data edit">
+            <thead>
+              <tr>
+                <th>Επιλογή</th>
+                <th>ToD (s/NM)</th>
+                <th>ToT</th>
+              </tr>
+            </thead>
+            <tbody>
+              {STANDARD_SCORING_OPTIONS.map((o) => {
+                const cur = b.scoring.find((x) => x.id === o.id);
+                const val = (v: number | undefined) => (v !== undefined && Number.isFinite(v) ? v : undefined);
+                return (
+                  <tr key={o.id}>
+                    <td>{o.label}</td>
+                    <td>
+                      <NumField value={val(cur?.tod)} onChange={(v) => setScoring(o.id, 'tod', v)} width="5.5em" ariaLabel={`${o.label} ToD`} />
+                    </td>
+                    <td>
+                      <NumField value={val(cur?.tot)} onChange={(v) => setScoring(o.id, 'tot', v)} width="5.5em" ariaLabel={`${o.label} ToT`} />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <section className="card">
@@ -313,7 +318,7 @@ export function BoatEditor({ initial, isNew, onSave, onCancel }: Props) {
           </>
         ) : (
           <>
-            <div className="table-wrap">
+            <div className="table-wrap edge">
               <table className="data edit polar-edit">
                 <thead>
                   <tr>
@@ -389,14 +394,14 @@ export function BoatEditor({ initial, isNew, onSave, onCancel }: Props) {
           ))}
         </ul>
       )}
-      <div className="btn-row sticky-actions">
+      <StickyBar>
         <button className="btn primary" onClick={save}>
           Αποθήκευση
         </button>
         <button className="btn" onClick={onCancel}>
           Άκυρο
         </button>
-      </div>
+      </StickyBar>
     </div>
   );
 }

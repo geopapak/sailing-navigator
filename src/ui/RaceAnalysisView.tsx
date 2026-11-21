@@ -4,17 +4,18 @@ import { useRace } from './RaceContext';
 import { useNav } from './NavContext';
 import { DEFAULT_SERVER } from './settings';
 import { accountApi } from '../sync/api';
-import { analyseRace, analysisSummary, countManoeuvres, raceManualWind, toCsv, toGpx, type RaceAnalysis } from '../race/analysis';
+import { analyseRace, analysisSummary, countManoeuvres, placeLine, raceManualWind, toCsv, toGpx, type RaceAnalysis } from '../race/analysis';
+import { count, duration, num, pct, qty } from '../format';
 import { manualNote } from '../race/manualWind';
 import { fmtGap } from '../race/estimate';
-import { formatDuration, parseDuration } from '../scoring/corrected';
+import { parseDuration } from '../scoring/corrected';
 import type { Race } from '../race/types';
 import type { LatLon } from '../nav/geo';
 import { BtnIcon } from './Icons';
 
 const MODE = { upwind: 'όρτσα', reach: 'ανοιχτά', downwind: 'πρίμα' } as const;
-const pctTxt = (v?: number) => (v === undefined ? '—' : `${Math.round(v * 100)}%`);
-const sinceStart = (race: Race, t: number) => formatDuration((t - race.start) / 1000).replace(/:\d\d$/, '');
+const pctTxt = (v?: number) => (v === undefined ? '—' : pct(v * 100));
+const sinceStart = (race: Race, t: number) => duration((t - race.start) / 1000).replace(/:\d\d$/, '');
 
 function download(name: string, text: string, type: string) {
   const url = URL.createObjectURL(new Blob([text], { type }));
@@ -60,8 +61,9 @@ export function RaceAnalysisView({ id, onBack, backLabel = 'Αγώνες' }: { i
           <div>
             <h2>{race.name}</h2>
             <p className="muted small">
-              {a.rank ? `${a.rank}ος / ${a.of} · ` : ''}
-              {formatDuration(a.durationSec)} · {a.sailedNm.toFixed(1).replace('.', ',')} NM
+              {placeLine(a) ? `${placeLine(a)} · ` : ''}
+              {duration(a.durationSec)}
+              {a.noFinish && <span data-testid="no-finish"> (χωρίς τερματισμό)</span>} · {qty(a.sailedNm, 'NM')}
             </p>
           </div>
           <button className="btn small-btn" onClick={onBack}>
@@ -134,9 +136,14 @@ export function RaceAnalysisView({ id, onBack, backLabel = 'Αγώνες' }: { i
                   </strong>
                   <span className="muted small">
                     {' '}
-                    · {MODE[l.mode]} · {formatDuration(l.durationSec)} · {l.sailedNm.toFixed(1)}/{l.rhumbNm.toFixed(1)} NM
-                    {l.avgTws !== undefined && ` · ${l.avgTws.toFixed(0)} kt`} · {l.tacks + l.gybes} μανούβρες
+                    · {MODE[l.mode]} · {duration(l.durationSec)} · {num(l.sailedNm)} / {qty(l.rhumbNm, 'NM')}
+                    {l.avgTws !== undefined && ` · ${qty(l.avgTws, 'kt', 0)}`} · {count(l.tacks + l.gybes, 'μανούβρα', 'μανούβρες', 'χωρίς μανούβρες')}
                   </span>
+                  {l.missed && (
+                    <span className="muted small leg-missed" data-testid="leg-missed">
+                      {l.missed.map((m) => `η ${m} δεν εντοπίστηκε στο ίχνος`).join(' · ')}
+                    </span>
+                  )}
                 </span>
                 <span className={`badge ${l.avgPct !== undefined && l.avgPct >= 0.95 ? 'ok' : ''}`}>{pctTxt(l.avgPct)}</span>
               </li>
@@ -157,7 +164,7 @@ export function RaceAnalysisView({ id, onBack, backLabel = 'Αγώνες' }: { i
                     {sinceStart(race, s.t)} · {Math.round(s.durationSec / 60)}′ στο {pctTxt(s.avgPct)}
                   </span>
                   <span className="muted small">
-                    {s.twa !== undefined && `TWA ${Math.abs(Math.round(s.twa))}°`} {s.tws !== undefined && `· ${s.tws.toFixed(0)} kt`}
+                    {s.twa !== undefined && `TWA ${Math.abs(Math.round(s.twa))}°`} {s.tws !== undefined && `· ${qty(s.tws, 'kt', 0)}`}
                   </span>
                 </li>
               ))}
@@ -200,14 +207,14 @@ function OpponentResults({ race, a, onSave }: { race: Race; a: RaceAnalysis; onS
             <li key={e.id}>
               <span>
                 <strong>{e.name}</strong>
-                <span className="muted small"> · {res !== undefined ? `πραγματικός ${formatDuration(res)}` : 'χωρίς χρόνο τερματισμού'}</span>
+                <span className="muted small"> · {res !== undefined ? `πραγματικός ${duration(res)}` : 'χωρίς χρόνο τερματισμού'}</span>
               </span>
               {edit === e.id ? (
                 <input
                   className="time-input"
                   autoFocus
                   placeholder="h:mm:ss"
-                  defaultValue={res !== undefined ? formatDuration(res) : ''}
+                  defaultValue={res !== undefined ? duration(res) : ''}
                   onBlur={async (ev) => {
                     const sec = parseDuration(ev.target.value);
                     const results = { ...(race.results ?? {}) };

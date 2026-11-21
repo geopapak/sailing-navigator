@@ -1,0 +1,699 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" href="data:," />
+<title>Διορθώσεις 0.19.1 · σκίτσο (P-056 / P-064 / P-067)</title>
+<style>
+  /* Inter, the same two subsets the app bundles (P-049 Φ-A): pinned, from unpkg. Offline → system font. */
+  @font-face { font-family:'Inter'; font-weight:400 900; font-display:swap; src:url('https://unpkg.com/@fontsource-variable/inter@5.3.0/files/inter-latin-wght-normal.woff2') format('woff2'); unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+  @font-face { font-family:'Inter'; font-weight:400 900; font-display:swap; src:url('https://unpkg.com/@fontsource-variable/inter@5.3.0/files/inter-greek-wght-normal.woff2') format('woff2'); unicode-range:U+0370-0377,U+037A-037F,U+0384-038A,U+038C,U+038E-03A1,U+03A3-03FF; }
+
+  /* ---------- Canvas (not part of the design) ---------- */
+  body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:#dfe3e8; color:#111; }
+  .controls { position:sticky; top:0; z-index:50; background:#fff; border-bottom:1px solid #cfd4da; padding:8px 14px; display:flex; flex-wrap:wrap; gap:6px 14px; align-items:center; }
+  .controls .grp { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+  .controls label { font-size:.78rem; font-weight:700; color:#374151; }
+  .pick { display:inline-flex; border:1px solid #9ca3af; border-radius:12px; overflow:hidden; flex-wrap:wrap; }
+  .pick button { border:0; background:#fff; padding:6px 10px; font:inherit; font-size:.8rem; font-weight:600; min-height:36px; cursor:pointer; }
+  .pick button + button { border-left:1px solid #d1d5db; }
+  .pick button.on { background:#0b2a4a; color:#fff; }
+  .page { display:flex; flex-wrap:wrap; gap:22px; padding:18px 14px 40px; justify-content:center; align-items:flex-start; }
+  .phones { display:flex; flex-wrap:wrap; gap:22px; justify-content:center; flex:1 1 720px; min-width:0; align-items:flex-start; }
+  .cap { text-align:center; font-size:.8rem; font-weight:700; color:#374151; margin:8px 0 0; max-width:100%; }
+  .cap .chk { display:block; font-weight:600; margin-top:2px; }
+  .cap .chk.bad { color:#b91c1c; } .cap .chk.ok { color:#047857; }
+  .notes { width:420px; max-width:100%; background:#fff; border-radius:16px; padding:16px 20px; line-height:1.5; font-size:.92rem; box-sizing:border-box; }
+  .notes h2 { margin:.1em 0 .4em; font-size:1.15rem; } .notes h3 { margin:1em 0 .3em; font-size:1rem; }
+  .notes ul { padding-left:1.2em; margin:.3em 0; }
+  .notes code { font-size:.85em; background:#f3f4f6; padding:0 3px; border-radius:4px; }
+  .tag { display:inline-block; font-size:.72rem; font-weight:800; padding:2px 7px; border-radius:6px; background:#dcfce7; color:#14532d; margin-right:4px; }
+  .tag.same { background:#e5e7eb; color:#374151; } .tag.ask { background:#fef3c7; color:#78350f; }
+
+  /* =====================================================================
+     TOKENS = 0.19.0 (design/refresh-2026-11/HANDOFF-A.md §1, src/ui/styles.css). Nothing new.
+     ===================================================================== */
+  .phone[data-theme='day'] {
+    --bg:#ffffff; --surface:#f2f4f7; --surface-2:#e4e8ee; --fg:#05080f; --muted:#475467; --line:#667085; --line-soft:#d0d5dd;
+    --accent:#0b2a4a; --accent-fg:#ffffff; --accent-cont:#dbe7f5; --on-accent-cont:#0b2a4a;
+    --good:#047857; --good-cont:#d1fae5; --fair:#b45309; --fair-cont:#fef3c7; --bad:#b91c1c; --bad-cont:#fee2e2;
+    --stbd:#047857; --port:#b91c1c; --sbar-bg:#0b2a4a; --sbar-fg:#fff;
+    --shadow-1:0 1px 2px rgba(16,24,40,.10),0 1px 3px rgba(16,24,40,.10);
+    --sea:#e6f0f8; --land:#d9d4c7;
+  }
+  .phone[data-theme='dark'] {
+    --bg:#0b1220; --surface:#152033; --surface-2:#1e2b42; --fg:#f8fafc; --muted:#a3b1c6; --line:#6b7c96; --line-soft:#2a3a55;
+    --accent:#7cb4ff; --accent-fg:#0b1220; --accent-cont:#1e3a5f; --on-accent-cont:#dbeafe;
+    --good:#34d399; --good-cont:#0f3b2e; --fair:#fbbf24; --fair-cont:#3d2e0a; --bad:#f87171; --bad-cont:#3f1616;
+    --stbd:#34d399; --port:#f87171; --sbar-bg:#7cb4ff; --sbar-fg:#0b1220;
+    --shadow-1:none;
+    --sea:#0f1b2e; --land:#26303f;
+  }
+  .phone[data-theme='night'] {
+    --bg:#000000; --surface:#120202; --surface-2:#1c0403; --fg:#ff3b30; --muted:#e5483d; --line:#b02a20; --line-soft:#4a0b07;
+    --accent:#ff3b30; --accent-fg:#000000; --accent-cont:#2a0503; --on-accent-cont:#ff3b30;
+    --good:#ff6b5e; --good-cont:#2a0503; --fair:#d1342a; --fair-cont:#2a0503; --bad:#ff3b30; --bad-cont:#2a0503;
+    --stbd:#ff6b5e; --port:#d8372c; --sbar-bg:#000; --sbar-fg:#ff3b30;
+    --shadow-1:none;
+    --sea:#000; --land:#1c0403;
+  }
+  .phone {
+    --font:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,'Noto Sans',sans-serif;
+    --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px;
+    --r-s:10px; --r-m:14px; --r-l:20px; --r-xl:28px; --r-pill:999px;
+    --hit:48px; --hit-main:56px; --dur-1:120ms; --ease:cubic-bezier(.2,0,0,1);
+  }
+
+  /* ---------- Frame ---------- */
+  .fw { flex-shrink:0; display:flex; flex-direction:column; align-items:center; }
+  .phone { box-sizing:content-box; position:relative; border-radius:34px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,.28); border:10px solid #111; background:var(--bg); color:var(--fg); font-family:var(--font); font-size:17px; font-weight:500; line-height:1.35; }
+  .phone.sz-l { font-size:20px; } .phone.sz-xl { font-size:23px; }
+  .phone * { box-sizing:border-box; }
+  .phone button, .phone input, .phone select { font:inherit; color:inherit; }
+  .phone button { cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .phone :focus-visible { outline:3px solid var(--fg); outline-offset:2px; }
+  .num { font-variant-numeric:tabular-nums; }
+  .muted { color:var(--muted); }
+  .cap2 { font-size:max(13px,.8em); font-weight:600; color:var(--muted); }
+  .ic { width:1.25em; height:1.25em; flex-shrink:0; }
+  .shell { position:absolute; inset:0; display:flex; flex-direction:column; }
+  .scr { flex:1; min-height:0; overflow-y:auto; overflow-x:hidden; padding:var(--s3) var(--s4) var(--s5); position:relative; }
+  .scr.endbar { padding-bottom:0; }
+  .scr { scrollbar-width:none; } .scr::-webkit-scrollbar { display:none; } /* phones use overlay scrollbars */
+
+  .top { display:flex; align-items:center; gap:var(--s2); padding:var(--s2) var(--s3); min-height:64px; background:var(--surface); border-bottom:1px solid var(--line-soft); flex-shrink:0; }
+  .phone[data-theme='dark'] .top { background:var(--bg); }
+  .phone[data-theme='night'] .top { background:#000; border-bottom:2px solid var(--line); }
+  .top .ttl { flex:1; min-width:0; font-weight:800; font-size:1.1em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .iconbtn { min-width:var(--hit); min-height:var(--hit); border-radius:var(--r-pill); border:0; background:none; display:inline-flex; align-items:center; justify-content:center; font-weight:800; flex-shrink:0; }
+
+  .strip { display:flex; gap:var(--s2); align-items:center; padding:6px var(--s4); min-height:var(--hit); font-size:max(13px,.84em); font-weight:700; background:var(--fair-cont); color:var(--fg); border-bottom:2px solid var(--fair); flex-shrink:0; }
+  .strip .d { width:10px; height:10px; border-radius:5px; background:var(--fair); flex-shrink:0; }
+  .strip > span:nth-child(2) { flex:1; min-width:0; overflow-wrap:anywhere; }
+
+  .c { background:var(--surface); border-radius:var(--r-l); padding:var(--s4); margin-bottom:var(--s3); border:1px solid var(--line-soft); box-shadow:var(--shadow-1); min-width:0; }
+  .c h3 { margin:0 0 6px; font-size:1.05em; font-weight:800; }
+  .ctx { display:block; font-size:max(13px,.74em); font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--muted); margin:var(--s4) 2px var(--s2); }
+
+  .b { min-height:var(--hit); padding:0 16px; border-radius:var(--r-m); border:2px solid transparent; font-weight:800; display:inline-flex; align-items:center; justify-content:center; gap:8px; transition:transform var(--dur-1) var(--ease); text-align:center; line-height:1.15; }
+  .b:active { transform:scale(.98); }
+  .b.main { min-height:var(--hit-main); font-size:1.05em; }
+  .b.wide { width:100%; }
+  .b.fill { background:var(--accent); color:var(--accent-fg); }
+  .b.tonal { background:var(--accent-cont); color:var(--on-accent-cont); }
+  .b.out { background:var(--bg); border-color:var(--line); color:var(--fg); }
+  .b.text { background:none; color:var(--accent); padding:0 10px; }
+  .b.sm { min-height:var(--hit); padding:0 10px; font-size:.86em; }
+  .b:disabled { opacity:.45; cursor:default; transform:none; }
+  .phone[data-theme='night'] .b.fill { background:#000; color:var(--fg); border-color:var(--fg); box-shadow:inset 0 0 0 1px var(--fg); }
+  .phone[data-theme='night'] .b.tonal { border-color:var(--line); }
+  .phone[data-theme='night'] .b.text { color:var(--fg); text-decoration:underline; }
+  .bstack > * + * { margin-top:var(--s2); }
+
+  .nav { display:grid; grid-template-columns:repeat(var(--n,4),minmax(0,1fr)); background:var(--surface); border-top:1px solid var(--line-soft); padding:4px 4px 10px; flex-shrink:0; }
+  .nav button { background:none; border:0; min-height:60px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; font-size:clamp(13px,.76em,15px); font-weight:700; color:var(--muted); min-width:0; }
+  .nav button .pill { width:60px; height:32px; border-radius:16px; display:flex; align-items:center; justify-content:center; }
+  .nav button.on { color:var(--fg); font-weight:800; }
+  .nav button.on .pill { background:var(--accent-cont); color:var(--on-accent-cont); }
+  .phone[data-theme='night'] .nav { background:#000; border-top:2px solid var(--line); }
+  .phone[data-theme='night'] .nav button.on .pill { background:#000; border:2px solid var(--fg); color:var(--fg); }
+
+  .sbar { display:flex; align-items:center; gap:6px; padding:6px 8px; background:var(--sbar-bg); color:var(--sbar-fg); min-height:72px; flex-shrink:0; }
+  .phone[data-theme='night'] .sbar { border-bottom:2px solid var(--line); }
+  .modeb { flex:1; min-width:0; line-height:1.15; padding:2px 6px; }
+  .modeb b { display:flex; align-items:center; gap:6px; font-size:min(.82em,15px); font-weight:800; letter-spacing:.03em; }
+  .modeb .clk { display:block; font-size:min(1.45em,26px); font-weight:900; }
+  .modeb .s { display:block; font-size:min(.74em,13px); font-weight:700; opacity:.92; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .rec { width:12px; height:12px; border-radius:6px; background:#ef4444; box-shadow:0 0 0 2px currentColor; flex-shrink:0; }
+  .phone[data-theme='night'] .rec { background:var(--fg); box-shadow:none; }
+  .sb { min-width:48px; min-height:var(--hit-main); border-radius:var(--r-m); border:2px solid currentColor; background:none; color:inherit; font-weight:900; padding:0 8px; display:inline-flex; align-items:center; justify-content:center; gap:4px; flex-shrink:0; font-size:min(1em,17px); }
+
+  /* ---------- Frame 1 · Race screen (0.19.0 .rs-tile rows) ---------- */
+  .rs-top { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:2px; }
+  .rs-top h3 { margin:0; }
+  .rs-tile { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px 0; border-bottom:1px solid var(--line-soft); }
+  .rs-tile > span:first-child { display:flex; flex-direction:column; min-width:0; }
+  .rs-tile .lab { font-weight:800; font-size:1.05em; }
+  .rs-tile .ab { font-size:max(13px,.75em); color:var(--muted); font-weight:600; }
+  .rs-tile .sub { font-size:max(13px,.85em); font-weight:700; }
+  .rs-tile .sub.good { color:var(--good); }
+  .phone[data-theme='night'] .rs-tile .sub.good { color:var(--fg); }
+  .rs-tile .val { font-size:3.4em; font-weight:900; font-variant-numeric:tabular-nums; line-height:1; white-space:nowrap; }
+  .rs-tile .val small { font-size:.4em; font-weight:800; }
+  .rs-tile .val .pre { font-size:.42em; font-weight:800; margin-right:.12em; }
+  .rs-tile .val.stbd { color:var(--stbd); }
+  .fr-320 .rs-tile .val { font-size:2.3em; }
+  .wind { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:8px; width:100%; text-align:left; background:var(--bg); border:2px solid var(--line); border-radius:var(--r-l); padding:10px 14px; min-height:72px; margin-top:10px; }
+  .wind .wk { font-weight:800; font-size:.86em; display:block; } .wind .wk span { color:var(--muted); font-weight:700; }
+  .wind .wv { font-size:1.5em; font-weight:900; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .wind .wv small { font-size:.5em; font-weight:800; }
+  .wind .wgo { display:flex; flex-direction:column; align-items:center; font-size:max(13px,.74em); font-weight:800; min-width:var(--hit); }
+  .rs-next { display:flex; flex-wrap:wrap; justify-content:space-between; gap:4px 12px; padding:10px 0 4px; font-weight:800; font-variant-numeric:tabular-nums; }
+  .rs-next span:first-child { min-width:0; overflow-wrap:anywhere; }
+  .band { border-radius:var(--r-l); padding:10px 12px 10px 14px; margin:0 0 4px; min-height:72px; display:flex; align-items:center; gap:10px; background:var(--accent-cont); color:var(--on-accent-cont); border:2px solid var(--accent); }
+  .band .big { font-size:1.15em; font-weight:900; line-height:1.1; overflow-wrap:anywhere; flex:1; min-width:0; }
+  .phone[data-theme='night'] .band { background:#000; color:var(--fg); border:3px solid var(--fg); }
+  .band .mute { min-height:var(--hit); min-width:var(--hit); border-radius:var(--r-m); border:2px solid currentColor; background:none; color:inherit; font-weight:800; display:inline-flex; align-items:center; gap:4px; padding:0 8px; flex-shrink:0; }
+  .rkrow { display:grid; grid-template-columns:2em minmax(0,1fr) auto; gap:8px; align-items:center; min-height:52px; border-top:1px solid var(--line-soft); font-variant-numeric:tabular-nums; }
+  .rkrow:first-of-type { border-top:0; }
+  .rkrow b { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .rkrow.own { font-weight:900; }
+  .recl { display:flex; align-items:center; gap:8px; margin:8px 2px; font-size:max(13px,.8em); font-weight:700; color:var(--muted); }
+
+  /* The race action bar (§Ι). One row, two buttons; sticky only when it fits. */
+  /* Flex so the two buttons stack only when a word would break (in the flow); sticky is always one row. */
+  .ract { display:flex; flex-wrap:wrap; gap:var(--s2); padding:var(--s2) 0; background:var(--bg); }
+  .ract .b { flex:1 1 7.5em; min-width:0; min-height:var(--hit-main); padding:0 8px; white-space:normal; overflow-wrap:normal; hyphens:none; }
+  .ract.end { margin:var(--s3) 0 var(--s4); }
+  .ract.flow { margin:0 0 var(--s3); }
+  .ract.stick { position:sticky; bottom:0; z-index:3; margin:var(--s3) calc(-1 * var(--s4)) 0; padding:var(--s2) var(--s4); border-top:1px solid var(--line-soft); }
+  .phone[data-theme='night'] .ract.stick { border-top:2px solid var(--line); }
+  /* 0.19.0 for comparison: stacked, sticky, covers numbers. */
+  .ract.old { flex-direction:column; position:sticky; bottom:0; z-index:3; margin:var(--s3) calc(-1 * var(--s4)) 0; padding:var(--s2) var(--s4) var(--s3); }
+  .hit-bad { outline:3px dashed #e11d48 !important; outline-offset:-2px; }
+
+  /* ---------- Fields, DateTimeField (§Κ) ---------- */
+  .fl { display:block; font-weight:800; font-size:.9em; margin-bottom:var(--s3); }
+  .fl > input, .fl > select, .fl .fake { display:block; width:100%; margin-top:6px; min-height:var(--hit-main); border:2px solid var(--line); border-radius:var(--r-m); background:var(--bg); padding:0 14px; font-weight:600; font-size:1.05em; }
+  .fl > select { appearance:none; background-image:none; }
+  .fl .help { display:block; font-weight:600; font-size:max(13px,.85em); color:var(--muted); margin-top:4px; }
+  .fake { display:flex !important; align-items:center; justify-content:space-between; gap:8px; color:var(--fg); font-family:Arial,sans-serif; }
+  .dtf { display:flex; flex-wrap:wrap; gap:var(--s2); margin-top:6px; }
+  .dtf input { flex:1 1 7.4em; min-width:0; min-height:var(--hit-main); border:2px solid var(--line); border-radius:var(--r-m); background:var(--bg); padding:0 14px; font-weight:700; font-size:1.1em; font-variant-numeric:tabular-nums; letter-spacing:.02em; }
+  .dtf input.t { flex:1 1 4.4em; }
+  .dtf input::placeholder { color:var(--muted); font-weight:600; opacity:1; }
+  .dtf input[aria-invalid='true'] { border-color:var(--bad); border-width:3px; }
+  .ferr { display:flex; gap:6px; align-items:flex-start; margin-top:6px; font-weight:800; font-size:max(13px,.85em); color:var(--bad); }
+  .ferr::before { content:'!'; display:inline-flex; align-items:center; justify-content:center; width:1.3em; height:1.3em; border-radius:50%; background:var(--bad); color:var(--bg); font-weight:900; flex-shrink:0; font-size:.9em; }
+  .sel { display:flex !important; align-items:center; justify-content:space-between; gap:8px; }
+  .sel span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .crs { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:center; margin-top:6px; padding:10px 12px; border:2px solid var(--line); border-radius:var(--r-m); background:var(--bg); min-height:var(--hit-main); }
+  .crs b { display:block; overflow-wrap:anywhere; } .crs .cap2 { display:block; }
+
+  /* ---------- Frame 2 · «Βέλτιστη διαδρομή» card, forecast label, prep map ---------- */
+  .fc { display:flex; gap:8px; align-items:flex-start; padding:10px 12px; border-radius:var(--r-m); background:var(--bg); border:1px solid var(--line); font-size:max(13px,.86em); font-weight:700; margin:0 0 var(--s2); overflow-wrap:anywhere; }
+  .fc.warn { background:var(--fair-cont); border:2px solid var(--fair); }
+  .fc.good { background:var(--good-cont); border-color:var(--good); }
+  .fc .ic { margin-top:1px; }
+  .fc > span { min-width:0; flex:1; }
+  .phone[data-theme='night'] .fc.warn { border-style:dashed; }
+  .miss { list-style:none; margin:var(--s2) 0 0; padding:0; font-size:max(13px,.85em); font-weight:700; color:var(--fg); }
+  .miss li { display:flex; gap:6px; margin-top:4px; overflow-wrap:anywhere; }
+  .miss li::before { content:'–'; color:var(--muted); }
+  .calc { display:block; font-size:max(13px,.86em); font-weight:800; margin:var(--s2) 0 0; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+  .brow { display:flex; flex-wrap:wrap; gap:var(--s2); margin-top:var(--s2); }
+  .brow > .b { flex:1 1 9em; }
+  .phead { margin:calc(-1 * var(--s3)) calc(-1 * var(--s4)) var(--s3); padding:var(--s2) var(--s4) var(--s3); background:var(--surface); border-bottom:1px solid var(--line-soft); flex-shrink:0; }
+  .phone[data-theme='dark'] .phead { background:var(--bg); }
+  .phone[data-theme='night'] .phead { background:#000; border-bottom:2px solid var(--line); }
+  .phead h1 { margin:4px 2px 8px; font-size:1.15em; font-weight:800; line-height:1.2; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; overflow-wrap:anywhere; }
+  .phead .fc { margin:0; }
+  .backb { min-height:var(--hit); padding:0 14px 0 8px; }
+  .mapc { border-radius:var(--r-m); overflow:hidden; border:1px solid var(--line-soft); background:var(--sea); position:relative; }
+  .mapc svg { display:block; width:100%; height:auto; }
+  .mapc .disc { position:absolute; left:6px; bottom:6px; background:var(--bg); border-radius:6px; padding:2px 6px; font-size:max(13px,.7em); font-weight:700; color:var(--muted); }
+  .marks { list-style:none; margin:0; padding:0; }
+  .marks li { display:grid; grid-template-columns:2em minmax(0,1fr); gap:8px; align-items:center; min-height:44px; border-top:1px solid var(--line-soft); font-weight:700; }
+  .marks li:first-child { border-top:0; }
+  .marks .mi { width:1.8em; height:1.8em; border-radius:50%; border:2px solid var(--line); display:inline-flex; align-items:center; justify-content:center; font-weight:900; font-size:.85em; }
+  .marks .cap2 { display:block; }
+  .seg { display:grid; grid-auto-flow:column; grid-auto-columns:minmax(0,1fr); background:var(--surface-2); border-radius:var(--r-m); padding:4px; gap:4px; margin-top:6px; }
+  .seg button { min-height:var(--hit); border:0; border-radius:11px; background:none; font-weight:800; color:var(--muted); padding:0 6px; }
+  .seg button.on { background:var(--bg); color:var(--fg); box-shadow:var(--shadow-1); }
+  .phone[data-theme='dark'] .seg button.on { background:var(--accent-cont); color:var(--on-accent-cont); }
+  .phone[data-theme='night'] .seg button.on { background:#000; border:2px solid var(--fg); color:var(--fg); }
+  .stats { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:var(--s2); margin-top:var(--s2); }
+  .stats div { background:var(--bg); border:1px solid var(--line-soft); border-radius:var(--r-m); padding:8px 12px; min-width:0; }
+  .stats b { display:block; font-size:1.4em; font-weight:900; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .stats span { font-size:max(13px,.8em); font-weight:700; color:var(--muted); }
+  .stats .wide2 { grid-column:1 / -1; }
+  .faded { opacity:.45; }
+  .stp { display:grid; grid-template-columns:var(--hit) minmax(0,1fr) var(--hit); gap:6px; align-items:center; margin-top:6px; }
+  .stp button { min-height:var(--hit); border-radius:var(--r-m); border:2px solid var(--line); background:var(--bg); font-weight:900; font-size:1.2em; }
+  .stp output { text-align:center; font-weight:900; font-size:1.3em; font-variant-numeric:tabular-nums; white-space:nowrap; }
+
+  /* ---------- Frame 4 · Sign-in with invite (§Δ) ---------- */
+  .auth { max-width:26em; margin:0 auto; padding:var(--s2) 0 var(--s4); }
+  .alogo { display:flex; flex-direction:column; align-items:center; gap:6px; margin:16px 0 14px; color:var(--accent); text-align:center; }
+  .alogo h1 { margin:0; font-size:1.45em; color:var(--fg); }
+  .alogo p { margin:0; color:var(--muted); font-weight:600; font-size:.9em; }
+  .alogo.compact { flex-direction:row; justify-content:center; margin:6px 0 12px; }
+  .alogo.compact h1 { font-size:1.15em; }
+  .invite { display:grid; grid-template-columns:auto minmax(0,1fr); gap:10px; align-items:start; padding:12px 14px; border-radius:var(--r-l); background:var(--accent-cont); color:var(--on-accent-cont); border:2px solid var(--accent); margin:0 0 var(--s4); }
+  .invite h2 { margin:0 0 4px; font-size:1.05em; font-weight:800; line-height:1.2; overflow-wrap:anywhere; }
+  .invite p { margin:0; font-size:max(13px,.88em); font-weight:600; overflow-wrap:anywhere; }
+  .invite .ic { width:1.6em; height:1.6em; margin-top:2px; }
+  .phone[data-theme='night'] .invite { background:#000; color:var(--fg); border:3px solid var(--fg); }
+  .aform .fl > input { font-weight:500; }
+  .forgot { display:flex; justify-content:flex-end; margin:-6px 0 6px; }
+  .aor { display:flex; align-items:center; gap:10px; margin:12px 0; color:var(--muted); font-weight:700; }
+  .aor span { flex:1; height:1px; background:var(--line-soft); }
+  .legal { text-align:center; margin-top:12px; }
+  .cons { display:flex; gap:10px; align-items:flex-start; min-height:var(--hit); font-weight:600; font-size:.9em; margin-bottom:6px; }
+  .cons i { width:26px; height:26px; border:2px solid var(--line); border-radius:7px; flex-shrink:0; margin-top:2px; }
+  .lnk { color:var(--accent); text-decoration:underline; font-weight:800; }
+  .phone[data-theme='night'] .lnk { color:var(--fg); }
+  .errpage { display:flex; flex-direction:column; min-height:100%; }
+  .errpage .msgb { text-align:center; padding:var(--s5) var(--s2); }
+  .errpage .msgb .ic { width:3em; height:3em; color:var(--muted); }
+  .errpage .msgb p { font-size:1.05em; font-weight:700; margin:12px 0 0; overflow-wrap:anywhere; }
+  .errpage .acts { margin-top:auto; padding-top:var(--s4); }
+</style>
+</head>
+<body>
+<div class="controls" role="toolbar" aria-label="Επιλογές σκίτσου">
+  <div class="grp"><label>Καρέ</label><div class="pick" data-k="frame"></div></div>
+  <div class="grp"><label>Κατάσταση</label><div class="pick" data-k="st"></div></div>
+  <div class="grp"><label>Έκδοση</label><div class="pick" data-k="ver"></div></div>
+  <div class="grp"><label>Θέμα</label><div class="pick" data-k="theme"></div></div>
+  <div class="grp"><label>Γράμματα</label><div class="pick" data-k="size"></div></div>
+</div>
+<div class="page">
+  <div class="phones" id="phones"></div>
+  <aside class="notes" id="notes"></aside>
+</div>
+
+<script>
+/* ======================= Data & state ======================= */
+const FRAMES = {
+  1:{ l:'1 · Live αγώνα: μπάρα', st:[['run','Σε εξέλιξη'],['band','Με ζώνη ειδοποίησης']] },
+  2:{ l:'2 · Βέλτιστη διαδρομή', st:[
+      ['none','Χωρίς πρόγνωση'],['loading','Λήψη…'],['ok','Πρόγνωση έτοιμη'],['done','Υπολογίστηκε'],['refreshed','Ανανεώθηκε'],
+      ['stale','Άλλαξε η ώρα'],['partial','Εν μέρει κάλυψη'],['past','Εκκίνηση πέρασε'],['dateonly','Χωρίς ώρα'],
+      ['horizon','Πέρα από τον ορίζοντα'],['offok','Offline, καλύπτει'],['offline','Offline, δεν φτάνει'],['missing','Λείπουν στοιχεία'],['error','Σφάλμα υπολογισμού']] },
+  3:{ l:'3 · Ημερομηνία & ώρα', st:[['filled','Συμπληρωμένα'],['empty','Κενά'],['baddate','Λάθος ημερομηνία'],['badtime','Λάθος ώρα']] },
+  4:{ l:'4 · Πρόσκληση', st:[['login','Σύνδεση'],['signup','Εγγραφή (πρώτη φορά)'],['offline','Χωρίς ίντερνετ'],['e404','Δεν βρέθηκε (404)'],['e410a','Έληξε (410)'],['e410b','Χρησιμοποιήθηκε (410)'],['enet','Σφάλμα δικτύου'],['slow','Αργεί']] },
+};
+const S = { frame:'1', st:{ 1:'run', 2:'ok', 3:'filled', 4:'login' }, ver:'new', theme:'day', size:'n', view2:'form', wind2:'forecast' };
+let PHONES = [[375, 812], [320, 568]];
+const phonesFor = (f) => (f === '1' ? [[390, 844], ...PHONES] : PHONES); // §Ι is specified at 390×844 (ΚΑ-Ι2)
+
+/* ======================= Icons (stroke, currentColor) ======================= */
+const P = {
+  back:'<path d="M15 5l-7 7 7 7"/>', cloud:'<path d="M7 18h10a4 4 0 0 0 .5-8A6 6 0 0 0 6 11a3.5 3.5 0 0 0 1 7z"/>',
+  route:'<circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/><path d="M8 18h6a3 3 0 0 0 0-6h-4a3 3 0 0 1 0-6h6"/>',
+  warn:'<path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17v.5"/>', off:'<path d="M3 3l18 18M8.5 16.5a5 5 0 0 1 7 0M5 13a10 10 0 0 1 4-2.5M19 13a10 10 0 0 0-3-2M2 9.5a15 15 0 0 1 4.5-3M22 9.5A15 15 0 0 0 11 5.1"/><path d="M12 20h.01"/>',
+  check:'<path d="M5 12l5 5 9-10"/>', crew:'<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6"/><path d="M16 4.5a3 3 0 0 1 0 6M18 14c2 .8 3 3 3 6"/>',
+  live:'<path d="M3 12h4l3-7 4 14 3-7h4"/>', map:'<path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/>', chat:'<path d="M4 5h16v11H9l-5 4z"/>',
+  home:'<path d="M3 11l9-7 9 7v9h-6v-6H9v6H3z"/>', history:'<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/>', boats:'<path d="M12 3v13H5zM14 6l6 10h-6z"/><path d="M3 19h18l-2 2H5z"/>', gear:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
+  mute:'<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9l4 6M21 9l-4 6"/>', pen:'<path d="M4 20l4-1 11-11-3-3L5 16z"/>', stop:'<rect x="6" y="6" width="12" height="12" rx="1.5"/>',
+  cal:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>', link:'<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+  lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>', logo:'<path d="M12 3v15M12 3l7 13H12M12 6 6 16h6M4 19h16l-2 2H6z"/>',
+};
+const icon = (n, cls = 'ic') => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n]}</svg>`;
+const NAV_OUT = [['home','Αρχική','home'],['history','Ιστορικό','history'],['boats','Σκάφη','boats'],['settings','Ρυθμίσεις','gear']];
+const NAV_IN = [['live','Live','live'],['map','Χάρτης','map'],['chat','Σύμβουλος','chat']];
+const nav = (items, on) => `<nav class="nav" style="--n:${items.length}" aria-label="${items === NAV_IN ? 'Οθόνες εξόδου' : 'Κύριες οθόνες'}">${items.map(([id, l, ic]) => `<button class="${id === on ? 'on' : ''}" ${id === on ? 'aria-current="page"' : ''}><span class="pill">${icon(ic)}</span><span>${l}</span></button>`).join('')}</nav>`;
+const strip = (t) => `<div class="strip" role="status"><span class="d" aria-hidden="true"></span><span>${t}</span></div>`;
+const topBar = (title, back = true) => `<header class="top">${back ? `<button class="iconbtn" aria-label="Πίσω">${icon('back')}</button>` : ''}<span class="ttl">${title}</span></header>`;
+
+/* ======================= Frame 1 · Race Live bar (§Ι) ======================= */
+function frame1(w) {
+  const band = S.st[1] === 'band';
+  const old = S.ver === 'old';
+  const bar = (cls) => `<div class="ract ${cls}" data-bar role="group" aria-label="Ενέργειες αγώνα"><button class="b out main">Θέση αντιπάλου</button><button class="b fill main">Τερματισμός</button></div>`;
+  const rs = `<section class="c" data-rs aria-label="Οθόνη αγώνα">
+    ${band
+      ? `<div class="band" role="alert" data-num="ζώνη">${icon('warn')}<span class="big">Επόμενο: αναστροφή στη layline δεξιών σε 6′48″</span><button class="mute" aria-label="Σίγαση ειδοποιήσεων για 5 λεπτά">${icon('mute')}<span>5′</span></button></div>`
+      : `<div class="rs-top" data-rstop><h3>Οθόνη αγώνα</h3><button class="b out sm">${icon('mute')} Σίγαση 5′</button></div>`}
+    <div class="rs-tile"><span><span class="lab">Ταχύτητα</span><span class="ab">BSP · kt</span><span class="sub good">στόχος 7,1 · 96%</span></span><span class="val" data-num="Ταχύτητα">6,8</span></div>
+    <div class="rs-tile"><span><span class="lab">Γωνία ανέμου</span><span class="ab">TWA · δεξιές μούρες</span><span class="sub">στόχος 42°</span></span><span class="val stbd" data-num="Γωνία ανέμου">41°</span></div>
+    <div class="rs-tile"><span><span class="lab">Επόμενη</span><span class="ab">αναστροφή (τακ)</span><span class="sub">1,2 NM · layline δεξιών</span></span><span class="val" data-num="Επόμενη" aria-label="σε 6 λεπτά και 48 δευτερόλεπτα"><span class="pre">σε</span>6′48″</span></div>
+    <button class="wind" data-num="Άνεμος" aria-label="Άνεμος: TWS 14 kt, TWD 225°T, από τα όργανα. Αλλαγή"><span><span class="wk">Άνεμος <span>· TWS · TWD</span></span><span class="wv">14<small> kt</small> · 225°<small>T</small></span></span><span class="wgo">${icon('pen')}Αλλαγή</span></button>
+    <div class="rs-next" data-num="Σημαδούρα"><span>Ψυττάλεια · 1,4 NM · 218°T</span><span>σε 11′20″</span></div>
+    <div class="rs-next" data-num="Κατάταξη" data-fit-end><span>Κατάταξη (εκτ.)</span><span>2ος · −0:48</span></div>
+    <p class="cap2" style="margin:8px 0 0">Ενδεικτικό, όχι για ναυσιπλοΐα. Οι ειδοποιήσεις είναι προτάσεις και ακούγονται μόνο με την οθόνη ανοιχτή. Η απόφαση είναι του κυβερνήτη.</p>
+  </section>`;
+  const rest = `<section class="c"><h3>Κατάταξη σε διορθωμένο</h3>
+      <div class="rkrow"><span class="num">1</span><b>Αύρα</b><span class="num">+0:48</span></div>
+      <div class="rkrow own"><span class="num">2</span><b>Ναυτίλος (εμείς)</b><span class="num">—</span></div>
+      <div class="rkrow"><span class="num">3</span><b>Ζέφυρος</b><span class="num">−2:15</span></div>
+      <p class="cap2" style="margin:6px 0 0">Εκτίμηση από AIS πριν από 2′ και τα polars κάθε σκάφους.</p></section>
+    <p class="recl"><span class="rec" aria-hidden="true"></span>Καταγραφή αγώνα σε εξέλιξη · 1.284 σημεία</p>`;
+  // New: the bar is rendered after the race screen; layout() moves it to the end and makes it sticky when it fits.
+  const body = old ? `${rs}${rest}${bar('old')}` : `${rs}${bar('flow')}${rest}`;
+  return `${`<header class="sbar"><div class="modeb"><b><span class="rec" aria-hidden="true"></span>ΑΓΩΝΑΣ</b><span class="clk num">01:12:40</span><span class="s">σε εξέλιξη · Χειμερινό Σαρωνικού · 3η</span></div><button class="sb" aria-label="Γρήγορες ρυθμίσεις">${icon('gear')}</button><button class="sb" style="min-width:84px">${icon('stop')} Τέλος</button></header>`}
+    <div class="scr ${old ? 'endbar' : ''}" data-scr>${body}</div>${nav(NAV_IN, 'live')}`;
+}
+/* Fit rule (§Ι): the whole race screen (to the last .rs-next) + a reserved alert band + the bar fit in the scroll area → sticky. */
+function layout1(ph) {
+  const scr = ph.querySelector('[data-scr]'), bar = ph.querySelector('[data-bar]'), rs = ph.querySelector('[data-rs]');
+  if (!scr || !bar) return;
+  const em = parseFloat(getComputedStyle(ph).fontSize);
+  let mode = 'old';
+  if (bar.classList.contains('flow')) {
+    const end = rs.querySelector('[data-fit-end]').getBoundingClientRect().bottom - scr.getBoundingClientRect().top + scr.scrollTop;
+    // The alert band takes the place of the «Οθόνη αγώνα» header row (it has its own mute button), so only the difference is reserved.
+    const head = rs.querySelector('[data-rstop]');
+    const reserve = head ? Math.max(0, 4.8 * em + 12 - head.offsetHeight) : 0;
+    const need = end + reserve + bar.offsetHeight + 12;
+    const btns = bar.querySelectorAll('.b');
+    const oneRow = btns[0].offsetTop === btns[1].offsetTop;
+    if (oneRow && need <= scr.clientHeight) { bar.classList.replace('flow', 'stick'); scr.appendChild(bar); scr.classList.add('endbar'); mode = 'stick'; }
+    else mode = 'flow';
+    ph.dataset.need = Math.round(need); ph.dataset.avail = scr.clientHeight;
+  }
+  ph.dataset.mode = mode;
+  const check = () => {
+    const br = bar.getBoundingClientRect(), sr = scr.getBoundingClientRect();
+    const hit = [];
+    ph.querySelectorAll('[data-num]').forEach((el) => {
+      const r = el.getBoundingClientRect();
+      const vis = r.bottom > sr.top && r.top < sr.bottom;
+      const over = vis && br.top < sr.bottom && r.bottom > br.top + 1 && r.top < br.bottom - 1;
+      el.classList.toggle('hit-bad', over);
+      if (over) hit.push(el.dataset.num);
+    });
+    const cap = document.getElementById('chk-' + ph.dataset.w);
+    if (cap) {
+      const m = mode === 'stick' ? 'σταθερή (χωράει)' : mode === 'flow' ? 'μέσα στη ροή (δεν χωράει)' : 'σταθερή, 2 σειρές (0.19.0)';
+      cap.className = 'chk ' + (hit.length ? 'bad' : 'ok');
+      cap.textContent = `Μπάρα: ${m} · ύψος ${bar.offsetHeight} px · ${hit.length ? 'σκεπάζει: ' + hit.join(', ') : 'δεν σκεπάζει νούμερα'}`;
+    }
+  };
+  scr.addEventListener('scroll', check, { passive:true });
+  check();
+}
+
+/* Forms (§Ι, ΚΑ-Ι4): the bar is sticky when its two buttons fit in one row, else it stays at the end, in the flow. */
+function layoutForm(ph) {
+  const bar = ph.querySelector('[data-form]'); if (!bar) return;
+  const btns = bar.querySelectorAll('.b');
+  if (btns[0].offsetTop === btns[1].offsetTop) { bar.classList.replace('end', 'stick'); ph.querySelector('[data-scr]').classList.add('endbar'); }
+}
+
+/* ======================= Frame 2 · «Βέλτιστη διαδρομή» (§Λ, §Μ) ======================= */
+const RACE = 'Χειμερινό Σαρωνικού · 3η';
+const OK_LABEL = 'Πρόγνωση για Σάβ 23/11 11:00 · Αυτόματο (best match) · λήψη Τετ 20/11 14:05';
+const ST2 = {
+  none:{ label:[['Δεν υπάρχει πρόγνωση για τον αγώνα ακόμα.', 'info', 'cloud']], fetch:'Λήψη πρόγνωσης' },
+  loading:{ label:[['Λήψη…', 'info', 'cloud']], fetch:'Λήψη…', busy:true },
+  ok:{ label:[[OK_LABEL, 'info', 'cloud']] },
+  done:{ label:[[OK_LABEL, 'info', 'cloud']], calc:'Υπολογίστηκε Τετ 20/11 14:20 · 2 ώ 05′ · 9,8 NM', route:'fresh' },
+  refreshed:{ label:[['Ανανεώθηκε η πρόγνωση (λήψη Σάβ 23/11 08:10)', 'good', 'check']], calc:'Υπολογίστηκε με πρόγνωση της Τετ 20/11 14:05', recalc:true, route:'fresh' },
+  stale:{ label:[[OK_LABEL, 'info', 'cloud']], calc:'Η διαδρομή υπολογίστηκε για άλλη ώρα ή διαδρομή', recalc:true, route:'stale', start:['23/11/2026', '12:30'] },
+  partial:{ label:[['Πρόγνωση για Σάβ 23/11 20:00 · Météo-France ARPEGE (10 km) · λήψη Τετ 20/11 14:05', 'info', 'cloud']], start:['23/11/2026', '20:00'], route:'fresh', note:'Η πρόγνωση τελειώνει στις Κυρ 24/11 02:00· μετά κρατάμε τον άνεμο της τελευταίας ώρας.', res:['6 ώ 40′', '02:40', '9,4 NM', '10,6 NM'] },
+  past:{ label:[['Η ώρα εκκίνησης πέρασε (Τετ 20/11 11:00). Άλλαξέ την αν μετατέθηκε.', 'warn', 'warn']], start:['20/11/2026', '11:00'], route:'fresh' },
+  dateonly:{ label:[['Πρόγνωση για Σάβ 23/11 (χωρίς ώρα)', 'info', 'cloud']], start:['23/11/2026', ''], miss:['Βάλε ώρα εκκίνησης.'], noCalc:'Βάλε ώρα εκκίνησης για τη βέλτιστη διαδρομή.' },
+  horizon:{ label:[['Η πρόγνωση φτάνει ως Πέμ 05/12. Ο αγώνας είναι Τρι 10/12 11:00: δοκίμασε ξανά από Σάβ 07/12, ή διάλεξε «Σταθερός» άνεμο.', 'warn', 'warn']], start:['10/12/2026', '11:00'], fetch:'Λήψη πρόγνωσης', horizon:true },
+  offok:{ label:[[OK_LABEL + ' (χωρίς ίντερνετ)', 'info', 'off']], offline:true },
+  offline:{ label:[['Χωρίς ίντερνετ, και η αποθηκευμένη πρόγνωση (λήψη Τετ 20/11 14:05) δεν φτάνει ως τον αγώνα.', 'warn', 'off']], offline:true, horizon:true },
+  missing:{ label:[['Δεν υπάρχει πρόγνωση για τον αγώνα ακόμα.', 'info', 'cloud']], fetch:'Λήψη πρόγνωσης', miss:['Λείπει διαδρομή με τουλάχιστον 2 σημεία.', 'Βάλε ώρα εκκίνησης.', 'Η βέλτιστη διαδρομή θέλει polars του σκάφους (από το πιστοποιητικό ORC ή με το χέρι).'], start:['', ''], nocourse:true },
+  error:{ label:[[OK_LABEL, 'info', 'cloud']], err:true },
+};
+const fcLine = ([t, k, ic]) => `<div class="fc ${k === 'info' ? '' : k}" data-testid="forecast-label" role="status">${icon(ic)}<span>${t}</span></div>`;
+function dtf(id, d, t, opt = {}) {
+  const errD = opt.errD ? `<span class="ferr" id="${id}-de">Γράψε ημερομηνία όπως 23/11/2026</span>` : '';
+  const errT = opt.errT ? `<span class="ferr" id="${id}-te">Γράψε ώρα όπως 11:00</span>` : '';
+  return `<div class="fl" role="group" aria-labelledby="${id}-l"><span id="${id}-l">${opt.label || 'Εκκίνηση'}</span>
+    <div class="dtf" data-dtf>
+      <input class="d" inputmode="numeric" autocomplete="off" maxlength="10" placeholder="ηη/μμ/εεεε" value="${d}" aria-label="${opt.label || 'Εκκίνηση'}, ημερομηνία" ${opt.errD ? `aria-invalid="true" aria-describedby="${id}-de"` : ''} data-kind="d">
+      ${opt.dateOnly ? '' : `<input class="t" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="ΩΩ:ΛΛ" value="${t}" aria-label="${opt.label || 'Εκκίνηση'}, ώρα" ${opt.errT ? `aria-invalid="true" aria-describedby="${id}-te"` : ''} data-kind="t">`}
+    </div>${errD}${errT}${opt.help ? `<span class="help">${opt.help}</span>` : ''}</div>`;
+}
+function bestCard(st) {
+  const s = ST2[st];
+  const fetchTxt = s.fetch || 'Ανανέωση πρόγνωσης';
+  const canView = !s.miss;
+  return `<section class="c" data-testid="best-route-card"><h3>Βέλτιστη διαδρομή</h3>
+    ${s.label.map(fcLine).join('')}
+    ${s.calc ? `<span class="calc ${s.route === 'stale' ? 'muted' : ''}">${s.calc}</span>` : ''}
+    <div class="brow">
+      ${s.busy ? `<button class="b out" disabled>Λήψη…</button><button class="b text">Άκυρο</button>` : `<button class="b out" ${s.offline ? 'disabled' : ''}>${icon('cloud')} ${fetchTxt}</button>`}
+    </div>
+    <button class="b fill main wide" style="margin-top:8px" data-go="map" ${canView ? '' : 'disabled aria-describedby="miss2"'}>${icon('route')} Δες τη βέλτιστη διαδρομή</button>
+    ${s.miss ? `<ul class="miss" id="miss2">${s.miss.map((m) => `<li>${m}</li>`).join('')}</ul>` : ''}
+  </section>`;
+}
+function frame2(w) {
+  const st = S.st[2], s = ST2[st];
+  const [d, t] = s.start || ['23/11/2026', '11:00'];
+  const old = S.ver === 'old';
+  if (S.view2 === 'map' && !old) return prepMap(st, s);
+  const course = s.nocourse
+    ? `<div class="crs"><span><b>Χωρίς διαδρομή</b><span class="cap2">Διάλεξε ή φτιάξε διαδρομή</span></span><span class="b out sm">Διάλεξε</span></div>`
+    : `<div class="crs"><span><b>Φάληρο · Ψυττάλεια · Φάληρο</b><span class="cap2">3 σημεία · 9,4 NM</span></span><span class="b out sm">Αλλαγή</span></div>`;
+  const startField = old
+    ? `<label class="fl">Εκκίνηση<span class="fake"><span>11/23/2026, 11:00 AM</span>${icon('cal')}</span></label>`
+    : dtf('rs', d, t);
+  return `${topBar('Νέος αγώνας')}${s.offline ? strip('Χωρίς ίντερνετ. Οι υπολογισμοί δουλεύουν· οι αλλαγές θα σωθούν μόλις επιστρέψει.') : ''}
+    <div class="scr" data-scr>
+      <section class="c">
+        <label class="fl">Όνομα<input value="${RACE}" maxlength="80"></label>
+        <div class="fl">Διαδρομή${course}</div>
+        ${startField}
+        <label class="fl" style="margin-bottom:0">Βαθμολογία<span class="fake sel" style="font-family:inherit"><span>Coastal / Long Distance — ToT</span>▾</span></label>
+      </section>
+      ${old ? '' : bestCard(st)}
+      <section class="c"><h3>Συμμετοχές</h3><p class="cap2" style="margin:0">Ναυτίλος (εμείς) · Αύρα · Ζέφυρος</p></section>
+      <div class="ract end" data-bar data-form role="group" aria-label="Αποθήκευση αγώνα"><button class="b out main">Αποθήκευση για αργότερα</button><button class="b fill main">Αποθήκευση και έναρξη</button></div>
+    </div>${nav(NAV_OUT, 'home')}`;
+}
+function mapSVG(route) {
+  const r = route === 'stale' ? 'class="faded"' : '';
+  return `<svg viewBox="0 0 340 210" role="img" aria-label="Χάρτης: Φάληρο, Ψυττάλεια, Πειραιάς, Σαλαμίνα, με τη βέλτιστη διαδρομή">
+    <rect width="340" height="210" fill="var(--sea)"/>
+    <path d="M150 0H340V96C305 84 272 64 246 54C222 46 200 38 186 26C172 16 160 8 150 0Z" fill="var(--land)"/>
+    <path d="M118 0H150C162 12 168 32 160 52C150 70 130 76 114 66C104 56 108 30 118 0Z" fill="var(--land)"/>
+    <path d="M0 36C32 32 60 50 70 82C80 114 70 152 40 176C22 190 0 194 0 194Z" fill="var(--land)"/>
+    <ellipse cx="102" cy="108" rx="11" ry="6" fill="var(--land)"/>
+    <g font-family="Inter,system-ui" font-size="14" font-weight="700" fill="var(--fg)">
+      <text x="116" y="36">Πειραιάς</text><text x="256" y="40">Φάληρο</text><text x="8" y="160">Σαλαμίνα</text><text x="62" y="96">Ψυττάλεια</text>
+    </g>
+    <path d="M236 84L110 120" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="4 4" fill="none"/>
+    ${route ? `<g ${r}><path d="M236 84L196 104L168 90L132 112L112 120" stroke="var(--accent)" stroke-width="3.5" fill="none" stroke-linejoin="round" ${route === 'stale' ? 'stroke-dasharray="7 5"' : ''}/>
+      <path d="M112 120L170 142L236 86" stroke="var(--accent)" stroke-width="3.5" fill="none" stroke-linejoin="round" opacity=".7" ${route === 'stale' ? 'stroke-dasharray="7 5"' : ''}/></g>` : ''}
+    <g stroke="var(--fg)" stroke-width="2.5"><line x1="228" y1="78" x2="244" y2="90"/></g>
+    <circle cx="112" cy="120" r="7" fill="var(--bg)" stroke="var(--fg)" stroke-width="2.5"/>
+    <g font-family="Inter,system-ui" font-size="13" font-weight="800" fill="var(--fg)"><text x="248" y="98">Ε/Τ</text><text x="122" y="124">2</text></g>
+    <g transform="translate(40 18)" stroke="var(--fg)" stroke-width="2.5" fill="none"><path d="M0 26L22 4M22 4h-9M22 4v9"/></g>
+    <text x="68" y="30" font-family="Inter,system-ui" font-size="13" font-weight="800" fill="var(--fg)">14 kt</text>
+  </svg>`;
+}
+function prepMap(st, s) {
+  const fc = S.wind2 === 'forecast';
+  const noFc = st === 'none' || st === 'loading' || st === 'missing';
+  const canCalc = !(s.noCalc || (fc && (s.horizon || noFc)));
+  const why = s.noCalc || (fc && s.horizon ? '' : '');
+  const route = canCalc ? s.route : null;
+  const res = s.res || ['2 ώ 05′', '13:05', '9,4 NM', '9,8 NM'];
+  const calcTxt = s.route ? 'Ξανά υπολογισμός' : 'Υπολογισμός βέλτιστης πορείας';
+  const result = route ? `<section class="c ${route === 'stale' ? 'faded' : ''}" data-testid="plan-result"><h3>Αποτέλεσμα</h3>
+      ${s.note ? fcLine([s.note, 'warn', 'warn']) : ''}
+      ${route === 'stale' ? `<span class="calc">Η διαδρομή υπολογίστηκε για άλλη ώρα ή διαδρομή</span>` : ''}
+      <div class="stats"><div><span>Χρόνος</span><b>${res[0]}</b></div><div><span>Τερματισμός</span><b>${res[1]}</b></div>
+      <div class="wide2"><span>Απόσταση</span><b>${res[2]}</b><span>πλέουμε ${res[3]}</span></div></div></section>` : '';
+  const windCtl = fc
+    ? `<label class="fl" style="margin:10px 0 0">Μοντέλο<span class="fake sel" style="font-family:inherit"><span>${st === 'partial' ? 'Météo-France ARPEGE (10 km)' : 'Αυτόματο (best match)'}</span>▾</span></label>
+       <div class="brow">${s.busy ? `<button class="b out" disabled>Λήψη…</button><button class="b text">Άκυρο</button>` : `<button class="b out" ${s.offline ? 'disabled' : ''}>${icon('cloud')} ${s.fetch || 'Ανανέωση πρόγνωσης'}</button>`}</div>`
+    : `<div class="fl" style="margin:10px 0 0">TWS<div class="stp"><button aria-label="TWS μείον 1">−</button><output>12 kt</output><button aria-label="TWS συν 1">+</button></div></div>
+       <div class="fl" style="margin:10px 0 0">TWD<div class="stp"><button aria-label="TWD μείον 5">−</button><output>225°T</output><button aria-label="TWD συν 5">+</button></div></div>`;
+  return `${s.offline ? strip('Χωρίς ίντερνετ. Οι υπολογισμοί δουλεύουν· οι αλλαγές θα σωθούν μόλις επιστρέψει.') : ''}
+    <div class="scr" data-scr><header class="phead">
+      <button class="b out backb" data-go="form" aria-label="Πίσω στον αγώνα">${icon('back')} Αγώνας</button>
+      <h1 title="Βέλτιστη διαδρομή · ${RACE}">Βέλτιστη διαδρομή · ${RACE}</h1>
+      ${s.label.map(fcLine).join('')}
+    </header>
+      <div class="mapc">${mapSVG(route)}<span class="disc">Ενδεικτικό, όχι για ναυσιπλοΐα</span></div>
+      <section class="c" style="margin-top:12px">
+        <h3>Πηγή ανέμου</h3>
+        <div class="seg" role="radiogroup" aria-label="Πηγή ανέμου"><button role="radio" aria-checked="${fc}" class="${fc ? 'on' : ''}" data-wind="forecast">Πρόγνωση</button><button role="radio" aria-checked="${!fc}" class="${fc ? '' : 'on'}" data-wind="uniform">Σταθερός</button></div>
+        ${windCtl}
+        <button class="b fill main wide" style="margin-top:12px" ${canCalc ? '' : 'disabled'} ${s.noCalc ? 'aria-describedby="nocalc"' : ''}>${icon('route')} ${calcTxt}</button>
+        ${s.noCalc ? `<ul class="miss" id="nocalc"><li>${s.noCalc}</li></ul>` : ''}
+        ${s.err && canCalc ? `<div class="fc warn" role="alert" style="margin-top:8px">${icon('warn')}<span>Ο υπολογισμός απέτυχε.</span><button class="b out sm">Ξανά</button></div>` : ''}
+      </section>
+      ${s.err ? '' : result}
+      <section class="c"><h3>Διαδρομή</h3>
+        <ol class="marks" aria-label="Σημεία του αγώνα, μόνο για ανάγνωση">
+          <li><span class="mi">Ε</span><span>Φάληρο<span class="cap2">εκκίνηση</span></span></li>
+          <li><span class="mi">2</span><span>Ψυττάλεια<span class="cap2">αφήνεται αριστερά</span></span></li>
+          <li><span class="mi">Τ</span><span>Φάληρο<span class="cap2">τερματισμός</span></span></li>
+        </ol>
+      </section>
+      <details class="c"><summary style="min-height:44px;display:flex;align-items:center;font-weight:800">Ρυθμίσεις υπολογισμού</summary><p class="cap2">Ίδιες με σήμερα.</p></details>
+    </div>`;
+}
+
+/* ======================= Frame 3 · DateTimeField (§Κ) ======================= */
+function frame3(w) {
+  const st = S.st[3], old = S.ver === 'old';
+  const empty = st === 'empty';
+  const v = (a, b) => (empty ? ['', ''] : [a, b]);
+  if (old) {
+    const nat = (l, txt) => `<label class="fl">${l}<span class="fake"><span>${txt}</span>${icon('cal')}</span></label>`;
+    return `${topBar('Νέος αγώνας')}<div class="scr" data-scr>
+      <span class="ctx">Νέος αγώνας</span><section class="c">${nat('Εκκίνηση', '11/23/2026, 11:00 AM')}</section>
+      <span class="ctx">Σκάφη → Διαδρομές μου → Χάρτης</span><section class="c">${nat('Ώρα εκκίνησης', '11/23/2026, 11:00 AM')}</section>
+      <span class="ctx">Σκάφος</span><section class="c">${nat('Λήξη πιστοποιητικού', 'mm/dd/yyyy')}</section>
+      <p class="cap2">0.19.0: το εγγενές πεδίο του browser με αγγλικές ρυθμίσεις (μήνας πρώτα, 12ωρο).</p></div>${nav(NAV_OUT, 'home')}`;
+  }
+  const [d1, t1] = st === 'baddate' ? ['31/02/2026', '11:00'] : st === 'badtime' ? ['23/11/2026', '25:70'] : v('23/11/2026', '11:00');
+  const [d2, t2] = v('23/11/2026', '11:00');
+  const [d3] = v('31/03/2027', '');
+  return `${topBar('Νέος αγώνας')}<div class="scr" data-scr>
+    <span class="ctx">Νέος αγώνας</span><section class="c">${dtf('f1', d1, t1, { errD:st === 'baddate', errT:st === 'badtime' })}</section>
+    <span class="ctx">Σκάφη → Διαδρομές μου → Χάρτης</span><section class="c">${dtf('f2', d2, t2, { label:'Ώρα εκκίνησης' })}</section>
+    <span class="ctx">Σκάφος</span><section class="c">${dtf('f3', d3, '', { label:'Λήξη πιστοποιητικού', dateOnly:true })}</section>
+    <p class="cap2">Γράψε μόνο ψηφία: «23112026» γίνεται 23/11/2026, «1100» γίνεται 11:00. Δοκίμασε να γράψεις στα πεδία.</p>
+  </div>${nav(NAV_OUT, 'home')}`;
+}
+/* Live behaviour of the sketch field: auto-format digits, validate on blur, never "now". */
+function parseD(v) {
+  const m = v.trim().match(/^(\d{1,2})[\/.\- ](\d{1,2})[\/.\- ](\d{2}|\d{4})$/); if (!m) return null;
+  const dd = +m[1], mm = +m[2], yy = m[3].length === 2 ? 2000 + +m[3] : +m[3];
+  const dt = new Date(yy, mm - 1, dd);
+  return dt.getFullYear() === yy && dt.getMonth() === mm - 1 && dt.getDate() === dd ? `${String(dd).padStart(2, '0')}/${String(mm).padStart(2, '0')}/${yy}` : null;
+}
+function parseT(v) {
+  const s = v.trim(); let m = s.match(/^(\d{1,2})(?:[:.,](\d{2}))?$/); if (!m) return null;
+  const h = +m[1], mi = m[2] ? +m[2] : 0;
+  return h < 24 && mi < 60 ? `${String(h).padStart(2, '0')}:${String(mi).padStart(2, '0')}` : null;
+}
+function wireDtf(root) {
+  root.querySelectorAll('[data-dtf] input').forEach((inp) => {
+    inp.addEventListener('input', () => {
+      const v = inp.value;
+      if (/^\d+$/.test(v)) {
+        if (inp.dataset.kind === 'd' && v.length > 2) inp.value = v.slice(0, 2) + '/' + v.slice(2, 4) + (v.length > 4 ? '/' + v.slice(4, 8) : '');
+        if (inp.dataset.kind === 't' && v.length > 2) inp.value = v.slice(0, 2) + ':' + v.slice(2, 4);
+      }
+    });
+    inp.addEventListener('blur', () => {
+      const fl = inp.closest('.fl'); const kind = inp.dataset.kind; const id = fl.getAttribute('aria-labelledby') + '-' + kind + 'e';
+      fl.querySelector('#' + CSS.escape(id))?.remove();
+      inp.removeAttribute('aria-invalid'); inp.removeAttribute('aria-describedby');
+      if (!inp.value.trim()) return; // empty = undefined, never "now"
+      const ok = kind === 'd' ? parseD(inp.value) : parseT(inp.value);
+      if (ok) { inp.value = ok; return; }
+      inp.setAttribute('aria-invalid', 'true'); inp.setAttribute('aria-describedby', id);
+      const e = document.createElement('span'); e.className = 'ferr'; e.id = id;
+      e.textContent = kind === 'd' ? 'Γράψε ημερομηνία όπως 23/11/2026' : 'Γράψε ώρα όπως 11:00';
+      fl.querySelector('.dtf').after(e);
+    });
+  });
+}
+
+/* ======================= Frame 4 · Invite on sign-in (§Δ) ======================= */
+const INVITE = `<div class="invite" data-testid="invite-hint" role="status">${icon('crew')}<div><h2>Άνοιξες πρόσκληση πληρώματος</h2><p>Φτιάξε λογαριασμό ή συνδέσου. Μετά θα δεις ποιο σκάφος σε καλεί και θα αποφασίσεις αν θα μπεις.</p></div></div>`;
+function frame4(w) {
+  const st = S.st[4], old = S.ver === 'old';
+  const inv = old ? '' : INVITE;
+  const logo = old ? `<div class="alogo">${icon('logo', 'ic" style="width:56px;height:56px')}<h1>Sailing Navigator</h1><p>Ψηφιακός τακτικός για αγώνες ORC</p></div>`
+                   : `<div class="alogo compact">${icon('logo', 'ic" style="width:36px;height:36px')}<h1>Sailing Navigator</h1></div>`;
+  const off = st === 'offline';
+  if (st.startsWith('e') || st === 'slow') {
+    const M = { e404:'Η πρόσκληση δεν βρέθηκε. Ίσως ο σύνδεσμος κόπηκε στο αντίγραφο. Ζήτα νέο σύνδεσμο από τον κυβερνήτη.',
+      e410a:'Η πρόσκληση έληξε. Ζήτα καινούργια.', e410b:'Η πρόσκληση έχει ήδη χρησιμοποιηθεί. Ζήτα καινούργια.',
+      enet:'Δεν φορτώθηκε η πρόσκληση. Έλεγξε το ίντερνετ.', slow:'Αργεί. Ξανά;' };
+    const retry = st === 'enet' || st === 'slow';
+    return `${topBar('Πρόσκληση στο πλήρωμα', false)}<div class="scr" data-scr><div class="errpage">
+      <div class="msgb" role="${retry ? 'status' : 'alert'}">${icon(st === 'enet' ? 'off' : st === 'slow' ? 'cloud' : 'link')}<p>${M[st]}</p></div>
+      <div class="acts bstack">${retry ? '<button class="b fill main wide">Ξανά</button>' : ''}<button class="b out main wide">Στην αρχική</button></div>
+    </div></div>`;
+  }
+  if (st === 'signup') {
+    return `<div class="scr" data-scr><div class="auth">
+      <button class="b text" style="padding-left:0">${icon('back')} Πίσω</button>
+      <h1 style="margin:4px 0 12px;font-size:1.45em">Νέος λογαριασμός</h1>${inv}
+      <div class="aform"><label class="fl">Όνομα<input placeholder="Γιώργος"></label>
+      <label class="fl">Email<input inputmode="email" placeholder="name@example.gr"></label>
+      <label class="fl">Κωδικός<input type="password" placeholder="Τουλάχιστον 8 χαρακτήρες"></label>
+      <div class="cons"><i aria-hidden="true"></i><span>Αποδέχομαι τους <span class="lnk">Όρους χρήσης</span> *</span></div>
+      <div class="cons"><i aria-hidden="true"></i><span>Διάβασα την <span class="lnk">Πολιτική απορρήτου</span> και συναινώ στην επεξεργασία των δεδομένων μου (GDPR) *</span></div>
+      <button class="b fill main wide" style="margin-top:8px">Δημιουργία λογαριασμού</button>
+      <p class="legal cap2" style="font-size:max(13px,.9em)">Έχεις λογαριασμό; <span class="lnk">Σύνδεση</span></p></div>
+    </div></div>`;
+  }
+  return `${off ? strip('Χωρίς ίντερνετ. Η σύνδεση θέλει ίντερνετ· η πρόσκληση μένει για μετά.') : ''}<div class="scr" data-scr><div class="auth">${logo}${inv}
+    <div class="aform"><label class="fl">Email<input inputmode="email" placeholder="name@example.gr"></label>
+    <label class="fl">Κωδικός<input type="password" placeholder="Ο κωδικός σου"></label>
+    <div class="forgot"><button class="b text">Ξέχασα τον κωδικό</button></div>
+    <button class="b fill main wide" ${off ? 'disabled' : ''}>Σύνδεση</button>
+    <div class="aor"><span></span>ή<span></span></div>
+    <button class="b out main wide">Νέος λογαριασμός</button>
+    <p class="legal cap2"><span class="lnk">Όροι χρήσης</span> · <span class="lnk">Πολιτική απορρήτου</span></p></div>
+  </div></div>`;
+}
+
+/* ======================= Notes panel ======================= */
+const NOTES = {
+  1:`<h2>1 · Live αγώνα: «Θέση αντιπάλου / Τερματισμός» (§Ι)</h2>
+    <p><span class="tag">νέο</span>Μία σειρά, δύο κουμπιά 56 px. Η μπάρα είναι <b>σταθερή μόνο όταν χωράει</b> πάνω από αυτήν όλη η «Οθόνη αγώνα» (3 πλακίδια, άνεμος, επόμενη σημαδούρα, κατάταξη), <b>μαζί με μια ζώνη ειδοποίησης</b>. Αλλιώς μπαίνει μέσα στη ροή, αμέσως κάτω από την «Οθόνη αγώνα».</p>
+    <p>Εδώ υπάρχει και 390×844, το μέγεθος του ΚΑ-Ι2: εκεί, με «Κανονικά», η μπάρα είναι σταθερή. Στα 375×812 του σκίτσου η «Οθόνη αγώνα» περισσεύει κατά ~20 px, άρα η μπάρα μπαίνει στη ροή. Ο developer μετρά στην πραγματική οθόνη.</p>
+    <p>Η λεζάντα κάτω από κάθε κινητό δείχνει τι αποφασίστηκε και αν η μπάρα σκεπάζει νούμερα σε αυτή τη θέση κύλισης. Κύλησε μέσα στο κινητό. Το κόκκινο διακεκομμένο περίγραμμα δείχνει τι σκεπάζεται. Με «Σημερινό» φαίνεται το πρόβλημα της 0.19.0.</p>
+    <h3>Απόφαση UX</h3><ul><li>Η ζώνη ειδοποίησης μπαίνει <b>στη θέση</b> της γραμμής «Οθόνη αγώνα · Σίγαση 5′», αφού έχει δικό της κουμπί σίγασης «5′». Έτσι το ύψος μεγαλώνει μόνο κατά ~30 px. Αυτή τη διαφορά την κρατάμε από πριν. Έτσι η μπάρα δεν αλλάζει θέση τη στιγμή που βγαίνει «layline σε 2′», δηλαδή όταν ο τακτικός πάει να πατήσει. Η απόφαση ξαναγίνεται μόνο όταν αλλάξει το μέγεθος γραμμάτων, ο προσανατολισμός ή το ύψος της οθόνης (<code>ResizeObserver</code>, σε em, όπως το <code>useNavMode</code>).</li>
+    <li>Όταν είναι σταθερή, η μπάρα μπαίνει στο τέλος της σελίδας με <code>sticky; bottom:0</code>. Έτσι το τελευταίο στοιχείο ανεβαίνει πάντα πάνω της (ΚΑ-Ι3). Όταν είναι μέσα στη ροή, μπαίνει αμέσως μετά την «Οθόνη αγώνα». Είναι το ίδιο συστατικό σε δύο θέσεις, και η σειρά του Tab ακολουθεί αυτό που φαίνεται.</li>
+    <li>Η μπάρα γίνεται σταθερή μόνο αν τα δύο κουμπιά χωράνε σε <b>μία σειρά</b>. Όταν είναι μέσα στη ροή και μια λέξη δεν χωράει («Πολύ μεγάλα», 320 px), τα κουμπιά μπαίνουν το ένα κάτω από το άλλο. Λέξη κομμένη στη μέση δεν βγαίνει ποτέ.</li>
+    <li>Το ίδιο ισχύει στις φόρμες («Αποθήκευση για αργότερα / Αποθήκευση και έναρξη», καρέ 2): είναι σταθερή όταν χωράει σε μία σειρά, αλλιώς μένει στο τέλος της φόρμας.</li></ul>
+    <h3>Μένει ίδιο</h3><ul><li>Κείμενα, χρώματα και ενέργειες των κουμπιών. Φόντο <code>var(--bg)</code>. Στη Νύχτα κόκκινο <code>#ff3b30</code> σε μαύρο.</li></ul>`,
+  2:`<h2>2 · «Βέλτιστη διαδρομή» στην προετοιμασία (§Λ, §Μ)</h2>
+    <p><span class="tag">νέο</span>Κάρτα κάτω από «Εκκίνηση» και «Βαθμολογία». Έχει την ετικέτα πρόγνωσης, το «Λήψη / Ανανέωση πρόγνωσης» και το «Δες τη βέλτιστη διαδρομή», που είναι το κύριο κουμπί της κάρτας. Πάτα το: ανοίγει ο Χάρτης σε λειτουργία προετοιμασίας, με «← Αγώνας» για επιστροφή.</p>
+    <ul><li>Στον Χάρτη η ετικέτα πρόγνωσης είναι <b>στην κεφαλίδα</b>, κάτω από τον τίτλο, και φαίνεται χωρίς κύλιση. Ο τίτλος πιάνει το πολύ 2 γραμμές και μετά κόβεται με «…».</li>
+    <li>Δεν υπάρχει πεδίο ώρας. Τα σημεία φαίνονται ως λίστα χωρίς κουμπιά επεξεργασίας.</li>
+    <li>Το κουμπί υπολογισμού είναι μέσα στη ροή, πάνω από το «Αποτέλεσμα», άρα δεν το σκεπάζει (ΚΑ-Μ6).</li>
+    <li>Στην κατάσταση «Πέρα από τον ορίζοντα» άλλαξε στον Χάρτη σε «Σταθερός»: ο υπολογισμός ανοίγει.</li></ul>
+    <p><span class="tag same">ίδιο</span>Μοντέλο, «Σταθερός», ρυθμίσεις υπολογισμού, «Αποτέλεσμα». Η φόρμα κρατά ό,τι γράφτηκε (υπο-οθόνη όπως ο <code>CourseEditor</code>).</p>
+    <p class="muted">Τα κείμενα είναι αυτούσια από τα ΚΑ-Λ1…Λ11 και ΚΑ-Μ2/Μ4. Ο χάρτης είναι σκίτσο, ενδεικτικό, όχι για ναυσιπλοΐα.</p>`,
+  3:`<h2>3 · DateTimeField (§Κ)</h2>
+    <p><span class="tag">νέο</span>Δύο πεδία κειμένου, «ηη/μμ/εεεε» και «ΩΩ:ΛΛ», με <code>inputmode="numeric"</code>. Σε κάθε browser η μορφή είναι ίδια: πάντα μέρα/μήνας και 24ωρο. Στα 320 px με «Πολύ μεγάλα» η ώρα πάει κάτω από την ημερομηνία (flex-wrap) αντί να στενέψει.</p>
+    <h3>Συμπεριφορά (αποφάσεις UX)</h3><ul>
+    <li>Γράφεις μόνο ψηφία και οι «/» και «:» μπαίνουν μόνα τους. Δεκτά είναι και «23.11.2026», «23-11-26» και «9» ή «9.30» για ώρα. Όταν φεύγεις από το πεδίο, γίνεται 23/11/2026 και 09:30.</li>
+    <li>Ο έλεγχος γίνεται όταν φεύγεις από το πεδίο, όχι ενώ γράφεις. Το λάθος φαίνεται με παχύ περίγραμμα και με «!» μπροστά στο μήνυμα, ώστε να διαβάζεται και στη Νύχτα χωρίς χρώμα.</li>
+    <li>Ένα κενό πεδίο δίνει <code>undefined</code>, ποτέ «τώρα». Ημερομηνία χωρίς ώρα επιτρέπεται (ΚΑ-Λ8).</li>
+    <li>Το «Λήξη πιστοποιητικού» είναι <code>DateField</code>, μόνο με ημερομηνία.</li></ul>
+    <p>a11y: <code>role="group"</code> με την ετικέτα του πεδίου. Κάθε πεδίο έχει <code>aria-label</code> «Εκκίνηση, ημερομηνία» ή «Εκκίνηση, ώρα». Σε λάθος: <code>aria-invalid</code> και <code>aria-describedby</code> προς το μήνυμα.</p>`,
+  4:`<h2>4 · Πρόσκληση πριν από τη σύνδεση (§Δ)</h2>
+    <p><span class="tag">νέο</span>Πλαίσιο <code>data-testid="invite-hint"</code> πάνω από το «Email / Κωδικός», χωρίς όνομα σκάφους (Π4). Χρησιμοποιεί τα tokens <code>--accent-cont</code> και <code>--accent</code>, και στη Νύχτα μαύρο με κόκκινο περίγραμμα 3 px.</p>
+    <ul><li>Με πρόσκληση το λογότυπο γίνεται μία γραμμή χωρίς υπότιτλο, ώστε στα 320×568 με «Κανονικά» να φαίνονται πλαίσιο, Email και Κωδικός χωρίς κύλιση.</li>
+    <li>Ανοίγει στην «Εγγραφή» αν η συσκευή δεν είχε ποτέ λογαριασμό, αλλιώς στη «Σύνδεση». Το «Νέος λογαριασμός» ή το «Έχεις λογαριασμό; Σύνδεση» φαίνεται πάντα.</li>
+    <li>Οθόνες σφάλματος: δική τους σελίδα «Πρόσκληση στο πλήρωμα», με τα κουμπιά χαμηλά για το ένα χέρι. «Ξανά» υπάρχει μόνο σε σφάλμα δικτύου και όταν αργεί. Το «Στην αρχική» υπάρχει πάντα.</li></ul>
+    <p><span class="tag ask">ερώτημα</span>Το κείμενο της λωρίδας «Χωρίς ίντερνετ» στη σύνδεση είναι νέο. Δες το ερώτημα 1 στο <code>NOTES.md</code>.</p>`,
+};
+
+/* ======================= Render ======================= */
+function picks() {
+  const opts = {
+    frame:Object.entries(FRAMES).map(([k, f]) => [k, f.l]),
+    st:FRAMES[S.frame].st,
+    ver:[['old','Σημερινό (0.19.0)'],['new','Νέο (0.19.1)']],
+    theme:[['day','Μέρα'],['dark','Σούρουπο'],['night','Νύχτα']],
+    size:[['n','Κανονικά'],['l','Μεγάλα'],['xl','Πολύ μεγάλα']],
+  };
+  document.querySelectorAll('.pick').forEach((p) => {
+    const k = p.dataset.k, cur = k === 'st' ? S.st[S.frame] : S[k];
+    p.innerHTML = opts[k].map(([v, l]) => `<button data-v="${v}" class="${v === cur ? 'on' : ''}" aria-pressed="${v === cur}">${l}</button>`).join('');
+  });
+}
+function render() {
+  picks();
+  const fn = { 1:frame1, 2:frame2, 3:frame3, 4:frame4 }[S.frame];
+  document.getElementById('phones').innerHTML = phonesFor(S.frame).map(([w, h]) => `<div class="fw">
+      <div class="phone fr-${w} sz-${S.size}" data-theme="${S.theme}" data-w="${w}" style="width:${w}px;height:${h}px"><div class="shell">${fn(w)}</div></div>
+      <p class="cap">${w} × ${h} · ${FRAMES[S.frame].l.slice(4)}<span class="chk" id="chk-${w}"></span></p></div>`).join('');
+  document.getElementById('notes').innerHTML = NOTES[S.frame] + `<h3>Πώς το βλέπεις</h3><p class="muted">Ζωντανό: <code>python -m http.server 8086 --bind 127.0.0.1 --directory design/fixes-0.19.1</code> και άνοιγμα του http://127.0.0.1:8086/ · Σημειώσεις και ερωτήματα: <code>NOTES.md</code>.</p>`;
+  document.querySelectorAll('.phone').forEach((ph) => {
+    if (S.frame === '1') layout1(ph);
+    if (S.frame === '2') layoutForm(ph);
+    if (S.frame === '3' || S.frame === '2') wireDtf(ph);
+    const scr = ph.querySelector('[data-scr]');
+    const cap = document.getElementById('chk-' + ph.dataset.w);
+    if (S.frame !== '1' && cap && scr) { const ow = scr.scrollWidth > scr.clientWidth; cap.className = 'chk ' + (ow ? 'bad' : 'ok'); cap.textContent = ow ? 'Οριζόντια υπερχείλιση!' : 'Χωρίς οριζόντια υπερχείλιση'; }
+  });
+}
+document.querySelector('.controls').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-v]'); if (!b) return;
+  const k = b.closest('.pick').dataset.k;
+  if (k === 'st') S.st[S.frame] = b.dataset.v; else S[k] = b.dataset.v;
+  if (k === 'frame' || k === 'st') S.view2 = S.view2;
+  render();
+});
+document.getElementById('phones').addEventListener('click', (e) => {
+  const go = e.target.closest('[data-go]'); if (go && !go.disabled) { S.view2 = go.dataset.go; render(); return; }
+  const wb = e.target.closest('[data-wind]'); if (wb) { S.wind2 = wb.dataset.wind; render(); }
+});
+render();
+</script>
+</body>
+</html>

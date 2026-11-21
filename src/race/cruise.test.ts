@@ -372,3 +372,29 @@ describe('ETA frozen by a pause (P-036 QA fix)', () => {
     expect(pausedEta([], [P(11)], 0, from)).toBeUndefined();
   });
 });
+
+describe('speeds from the positions (P-056 KA-ΣΤ2)', () => {
+  // Points every 30″, `step`° of latitude north each.
+  const north = (i: number, step = 0.0007) => ({ t: T0 + i * 30_000, lat: 37.9 + i * step, lon: 23.6 });
+  it('meanSog and maxSog30 work without a sog on the points', async () => {
+    const { trackSpeeds } = await import('./cruise');
+    const pts = Array.from({ length: 11 }, (_, i) => north(i)); // 0.0007° ≈ 0,042 nm / 30 s ≈ 5,0 kt
+    const v = trackSpeeds(pts);
+    expect(v).toHaveLength(10);
+    expect(v[0].sog).toBeCloseTo(5.04, 1);
+    expect(meanSog(pts, T0 + 300_000)).toBeCloseTo(5.04, 1);
+    expect(maxSog30(pts)).toBeCloseTo(5.04, 1);
+  });
+  it('skips jumps over 2 nm, speeds over 30 kt and gaps (pauses)', async () => {
+    const { trackSpeeds } = await import('./cruise');
+    const jump = [north(0), { ...north(1), lat: 37.9 + 0.05 }]; // 3 nm in 30″
+    expect(trackSpeeds(jump)).toEqual([]);
+    const fast = [north(0), north(1, 0.004)]; // 0,24 nm in 30″ = 29 kt: kept; 0.005 → 36 kt: not
+    expect(trackSpeeds(fast)).toHaveLength(1);
+    expect(trackSpeeds([north(0), north(1, 0.005)])).toEqual([]);
+    const gap = [north(0), { ...north(20), lat: 37.9 + 0.001 }]; // 10′ later
+    expect(trackSpeeds(gap)).toEqual([]);
+    // A point's own SOG always wins.
+    expect(trackSpeeds([{ t: T0, sog: 6.5 }])).toEqual([{ t: T0, sog: 6.5 }]);
+  });
+});

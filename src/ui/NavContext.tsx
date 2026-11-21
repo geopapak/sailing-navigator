@@ -13,6 +13,8 @@ import { useApp } from './AppContext';
 import { useGps, useStoredState, type GpsFix, type GpsStatus } from './hooks';
 import { queryGeoPermission, shouldWatchGps, toGeoPermission, type GeoPermission } from './gpsGate';
 import { useInstruments } from './InstrumentsContext';
+import { angle, dir, num, qty } from '../format';
+import { forecastRange, widenRange, marksKey, plannedKey, shouldAutoRefresh, type PlanTarget, type StoredPlan } from '../routing/planTarget';
 
 export interface PlanSettings {
   /** datetime-local value (device local time). */
@@ -71,17 +73,34 @@ interface NavState {
   setPlan: (p: Partial<PlanSettings>) => void;
 
   forecast?: GridForecast;
-  forecastStatus: { busy: boolean; error?: string };
-  loadForecast: () => Promise<void>;
+  forecastStatus: { busy: boolean; error?: string; beyond?: boolean };
+  /**
+   * P-067: the forecast for a target's start (default: «Διαδρομές μου», the map's «Ώρα εκκίνησης»),
+   * from [now − 1 h, max(now, start) + 2 days], cut at the model horizon; nothing past it.
+   */
+  loadForecast: (target?: PlanTarget) => Promise<void>;
+  /** Stops a slow download («Άκυρο»). */
+  cancelForecast: () => void;
+  /** KA-Λ9: one automatic refresh (old forecast, start within 72 h, once in 6 h). Resolves true when it refreshed. */
+  autoRefreshForecast: (target: PlanTarget) => Promise<boolean>;
 
   /** Many models compared at one point (start mark by default). */
   comparison?: Comparison;
   comparisonStatus: { busy: boolean; error?: string };
-  loadComparison: () => Promise<void>;
+  loadComparison: (target?: PlanTarget) => Promise<void>;
 
+  /** «Διαδρομές μου»: the course and the «Ώρα εκκίνησης» of the map (KA-Λ14). */
+  coursesTarget: PlanTarget;
+  /** The route of «Διαδρομές μου» (the old `planned` key). */
   planned?: RouteResult;
   planStatus: { busy: boolean; error?: string };
-  computePlan: () => Promise<void>;
+  /** Computes for a target; a race's route is kept as `planned:<raceId>`, a session's from-here route only in memory. */
+  computePlan: (target?: PlanTarget, opts?: { transient?: boolean }) => Promise<void>;
+  /** Routes stored per race (loaded on demand); null: none. */
+  racePlans: Record<string, StoredPlan | null>;
+  loadRacePlan: (raceId: string) => void;
+  /** A route computed from the boat's position inside a session (not stored). */
+  transientPlan?: RouteResult;
 
   /** Live re-routing from the current position. */
   nextMark: number;
@@ -102,12 +121,21 @@ interface NavState {
 
 const Ctx = createContext<NavState | null>(null);
 
-export function localToMs(s: string): number {
+/** A `datetime-local` text → ms; undefined when empty or wrong (never a silent «now», P-064). */
+export function localToMs(s: string): number | undefined {
+  if (!s) return undefined;
   const t = new Date(s).getTime();
-  return Number.isFinite(t) ? t : Date.now();
+  return Number.isFinite(t) ? t : undefined;
 }
 
-const isoDate = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+/** ms → the `datetime-local` text kept in the plan settings. */
+export function msToLocal(ms: number): string {
+  const d = new Date(ms);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+const AUTO_KEY = 'forecast-auto-at';
 
 export function NavProvider({ children }: { children: ReactNode }) {
   const { activeBoat, settings } = useApp();
@@ -118,8 +146,13 @@ export function NavProvider({ children }: { children: ReactNode }) {
   });
   const [plan, setPlanState] = useStoredState<PlanSettings>('plan-settings', DEFAULT_PLAN);
   const [forecast, setForecast] = useState<GridForecast>();
-  const [forecastStatus, setForecastStatus] = useState<{ busy: boolean; error?: string }>({ busy: false });
+  const forecastRef = useRef<GridForecast>();
+  forecastRef.current = forecast;
+  const [forecastStatus, setForecastStatus] = useState<NavState['forecastStatus']>({ busy: false });
   const [planned, setPlanned] = useState<RouteResult>();
+  const [racePlans, setRacePlans] = useState<Record<string, StoredPlan | null>>({});
+  const [transientPlan, setTransientPlan] = useState<RouteResult>();
+  const forecastAbort = useRef<AbortController>();
   const [comparison, setComparison] = useState<Comparison>();
   const [comparisonStatus, setComparisonStatus] = useState<{ busy: boolean; error?: string }>({ busy: false });
   const [planStatus, setPlanStatus] = useState<{ busy: boolean; error?: string }>({ busy: false });
@@ -201,41 +234,80 @@ export function NavProvider({ children }: { children: ReactNode }) {
     [updateCourse, setUi],
   );
 
-  const loadForecast = useCallback(async () => {
-    setForecastStatus({ busy: true });
-    try {
-      const start = localToMs(plan.startLocal);
-      const from = Math.min(start, Date.now());
-      const f = await fetchOpenMeteo({
-        box: SARONIKOS_BOX,
-        step: 0.1,
-        model: normalizeModel(plan.model),
-        startDate: isoDate(from - 3600_000),
-        endDate: isoDate(start + 2 * 86400_000),
-      });
-      setForecast(f);
-      await setKV('forecast', f);
-      setForecastStatus({ busy: false });
-    } catch (e) {
-      setForecastStatus({
-        busy: false,
-        error: navigator.onLine === false ? 'Χωρίς ίντερνετ: κρατάμε την αποθηκευμένη πρόγνωση.' : (e as Error).message,
-      });
-    }
-  }, [plan.startLocal, plan.model]);
+  const coursesTarget = useMemo<PlanTarget>(
+    () => ({ start: localToMs(plan.startLocal), marks: course?.marks ?? [], label: course?.name ?? '' }),
+    [plan.startLocal, course],
+  );
 
-  const loadComparison = useCallback(async () => {
+  const loadForecast = useCallback(
+    async (target?: PlanTarget) => {
+      const t = target ?? coursesTarget;
+      const model = normalizeModel(plan.model);
+      const now = Date.now();
+      const asked = forecastRange(now, t.start ?? t.day, model);
+      // Past the model horizon: no request (it would fail), the label says when to try again.
+      if ('beyond' in asked) return setForecastStatus({ busy: false, beyond: true });
+      // Never narrower than the forecast on the device (QA Μ2: the Home card must not cut a race off).
+      const range = widenRange(asked, forecastRef.current, now, model);
+      forecastAbort.current?.abort();
+      const ac = new AbortController();
+      forecastAbort.current = ac;
+      setForecastStatus({ busy: true });
+      try {
+        const f = await fetchOpenMeteo({ box: SARONIKOS_BOX, step: 0.1, model, startDate: range.startDate, endDate: range.endDate }, ac.signal);
+        setForecast(f);
+        await setKV('forecast', f);
+        setForecastStatus({ busy: false });
+      } catch (e) {
+        if (ac.signal.aborted) return setForecastStatus({ busy: false });
+        setForecastStatus({
+          busy: false,
+          error: navigator.onLine === false ? 'Χωρίς ίντερνετ: κρατάμε την αποθηκευμένη πρόγνωση.' : (e as Error).message,
+        });
+      } finally {
+        if (forecastAbort.current === ac) forecastAbort.current = undefined;
+      }
+    },
+    [coursesTarget, plan.model],
+  );
+
+  const cancelForecast = useCallback(() => forecastAbort.current?.abort(), []);
+
+  const autoRefreshForecast = useCallback(
+    async (target: PlanTarget) => {
+      const now = Date.now();
+      const lastAutoAt = await getKV<number | null>(AUTO_KEY, null).catch(() => null);
+      if (!shouldAutoRefresh({ now, start: target.start, fetchedAt: forecast?.fetchedAt, lastAutoAt: lastAutoAt ?? undefined, online: navigator.onLine !== false })) return false;
+      await setKV(AUTO_KEY, now).catch(() => undefined);
+      const before = forecast?.fetchedAt;
+      await loadForecast(target);
+      const f = await getKV<GridForecast | null>('forecast', null).catch(() => null);
+      return !!f && f.fetchedAt !== before;
+    },
+    [forecast?.fetchedAt, loadForecast],
+  );
+
+  const loadRacePlan = useCallback((raceId: string) => {
+    getKV<StoredPlan | null>(plannedKey(raceId), null)
+      .then((p) => setRacePlans((m) => (m[raceId] === p ? m : { ...m, [raceId]: p })))
+      .catch(() => undefined);
+  }, []);
+
+  const loadComparison = useCallback(async (target?: PlanTarget) => {
+    const tg = target ?? coursesTarget;
     setComparisonStatus({ busy: true });
     try {
-      const start = localToMs(plan.startLocal);
-      const first = course?.marks[0];
+      // The same time and marks as the target (KA-Λ12); a target without a time: its day, else now.
+      const start = tg.start ?? tg.day ?? Date.now();
+      const first = tg.marks[0];
       const fix = gps.fix;
       const pt = first
         ? { lat: first.lat, lon: first.lon, place: first.name }
         : fix
           ? { lat: fix.lat, lon: fix.lon, place: 'Θέση GPS' }
           : { lat: 37.75, lon: 23.55, place: 'Κέντρο Σαρωνικού' };
-      const end = planned && planned.start === start ? planned.end : start + 8 * 3_600_000;
+      const own = tg.raceId ? racePlans[tg.raceId]?.route : planned;
+      const end = own && own.start === start ? own.end : start + 8 * 3_600_000;
       const cfg = advisorConfig(settings);
       const windy = advisorReady(cfg) ? (la: number, lo: number) => fetchWindySeries(cfg, la, lo) : undefined;
       const c = await fetchComparison(pt.lat, pt.lon, pt.place, start, end, windy);
@@ -248,7 +320,7 @@ export function NavProvider({ children }: { children: ReactNode }) {
         error: navigator.onLine === false ? 'Χωρίς ίντερνετ: δείχνουμε την αποθηκευμένη σύγκριση.' : (e as Error).message,
       });
     }
-  }, [plan.startLocal, course, gps.fix, planned, settings]);
+  }, [coursesTarget, gps.fix, planned, racePlans, settings]);
 
   const windSpec = useCallback(
     (calibration?: { twsFactor: number; twdOffset: number }): WindSpec | undefined => {
@@ -263,23 +335,39 @@ export function NavProvider({ children }: { children: ReactNode }) {
     [plan.stepMin, plan.tackPenaltySec, plan.gybePenaltySec],
   );
 
-  const computePlan = useCallback(async () => {
-    if (!activeBoat || !course) return;
-    const wind = windSpec();
-    if (!wind) {
-      setPlanStatus({ busy: false, error: 'Κατέβασε πρώτα πρόγνωση ή διάλεξε σταθερό άνεμο.' });
-      return;
-    }
-    setPlanStatus({ busy: true });
-    try {
-      const r = await routeInWorker({ boat: activeBoat, marks: course.marks, startTime: localToMs(plan.startLocal), wind, options });
-      setPlanned(r);
-      setKV('planned', r).catch(() => undefined);
-      setPlanStatus({ busy: false });
-    } catch (e) {
-      setPlanStatus({ busy: false, error: (e as Error).message });
-    }
-  }, [activeBoat, course, windSpec, plan.startLocal, options]);
+  const computePlan = useCallback(
+    async (target?: PlanTarget, opts?: { transient?: boolean }) => {
+      const tg = target ?? coursesTarget;
+      if (!activeBoat || tg.marks.length < 2) return;
+      if (tg.start === undefined) {
+        setPlanStatus({ busy: false, error: 'Βάλε ώρα εκκίνησης για τη βέλτιστη διαδρομή.' });
+        return;
+      }
+      const wind = windSpec();
+      if (!wind) {
+        setPlanStatus({ busy: false, error: 'Κατέβασε πρώτα πρόγνωση ή διάλεξε σταθερό άνεμο.' });
+        return;
+      }
+      setPlanStatus({ busy: true });
+      try {
+        // P-067 KA-Λ2: the target's start and marks, never the map's time or `nav.course` for a race.
+        const r = await routeInWorker({ boat: activeBoat, marks: tg.marks, startTime: tg.start, wind, options });
+        if (opts?.transient) setTransientPlan(r);
+        else if (tg.raceId) {
+          const sp: StoredPlan = { route: r, start: tg.start, marksKey: marksKey(tg.marks), forecastAt: wind.kind === 'grid' ? forecast?.fetchedAt : undefined, at: Date.now() };
+          setRacePlans((m) => ({ ...m, [tg.raceId!]: sp }));
+          setKV(plannedKey(tg.raceId), sp).catch(() => undefined);
+        } else {
+          setPlanned(r);
+          setKV('planned', r).catch(() => undefined);
+        }
+        setPlanStatus({ busy: false });
+      } catch (e) {
+        setPlanStatus({ busy: false, error: (e as Error).message });
+      }
+    },
+    [activeBoat, coursesTarget, windSpec, options, forecast?.fetchedAt],
+  );
 
   const rerouteLive = useCallback(
     async (observed?: WindSample, howMeasured?: string) => {
@@ -301,10 +389,10 @@ export function NavProvider({ children }: { children: ReactNode }) {
         const fc = gridField(forecast).at(fix.lat, fix.lon, now);
         const cal = calibrationFrom(fc, observed);
         wind = { kind: 'grid', forecast, calibration: cal };
-        note = `Πρόγνωση εδώ ${fc.tws.toFixed(0)} kt / ${fc.twd.toFixed(0)}°, μετρημένο ${observed.tws.toFixed(0)} kt / ${observed.twd.toFixed(0)}° → διόρθωση ×${cal.twsFactor.toFixed(2)}, ${cal.twdOffset >= 0 ? '+' : ''}${cal.twdOffset.toFixed(0)}°.`;
+        note = `Πρόγνωση εδώ ${qty(fc.tws, 'kt', 0)} / ${dir(fc.twd, 'T')}, μετρημένο ${qty(observed.tws, 'kt', 0)} / ${dir(observed.twd, 'T')} → διόρθωση ×${num(cal.twsFactor, 2)}, ${cal.twdOffset >= 0 ? '+' : ''}${angle(cal.twdOffset)}.`;
       } else if (observed && (plan.windSource === 'uniform' || !forecast)) {
         wind = { kind: 'uniform', tws: observed.tws, twd: observed.twd };
-        note = `Σταθερός άνεμος από τις ενδείξεις: ${observed.tws.toFixed(0)} kt / ${observed.twd.toFixed(0)}°.`;
+        note = `Σταθερός άνεμος από τις ενδείξεις: ${qty(observed.tws, 'kt', 0)} / ${dir(observed.twd, 'T')}.`;
       } else {
         wind = windSpec();
         note = 'Χωρίς μετρημένο TWD: χρησιμοποιείται η πρόγνωση όπως είναι.';
@@ -347,12 +435,18 @@ export function NavProvider({ children }: { children: ReactNode }) {
     forecast,
     forecastStatus,
     loadForecast,
+    cancelForecast,
+    autoRefreshForecast,
     comparison,
     comparisonStatus,
     loadComparison,
+    coursesTarget,
     planned,
     planStatus,
     computePlan,
+    racePlans,
+    loadRacePlan,
+    transientPlan,
     nextMark: Math.min(Math.max(1, ui.nextMark), Math.max(1, (course?.marks.length ?? 2) - 1)),
     setNextMark: (i) => setUi((u) => ({ ...u, nextMark: i })),
     liveRoute,

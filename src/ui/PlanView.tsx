@@ -1,6 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useApp } from './AppContext';
-import { useNav } from './NavContext';
+import { localToMs, msToLocal, useNav } from './NavContext';
+import { DateTimeField } from './DateTimeField';
+import { useOnline } from './CruiseViews';
+import { PLAN_TEXT, coverage, forecastStatus, planState, type PlanTarget } from '../routing/planTarget';
+import type { Race } from '../race/types';
 import { offerUndo } from './Dialogs';
 import { MapView, type WindArrow } from './MapView';
 import { NumberStepper, NumField } from './NumberStepper';
@@ -12,7 +16,7 @@ import type { LegResult, Mark, RouteResult } from '../routing/isochrones';
 import { formatDM } from '../nav/geo';
 import { knowledgeHints } from '../knowledge/match';
 import { corrected, formatDuration } from '../scoring/corrected';
-import { STANDARD_SCORING_OPTIONS } from '../boat/scoringOptions';
+import { optionLabel, scoringChoices, scoringOptionFor } from '../scoring/options';
 import { sailColor } from './PolarChart';
 import { BtnIcon, Icon } from './Icons';
 import { useStoredState } from './hooks';
@@ -24,23 +28,44 @@ import { useLaylines } from './useLaylines';
 import { useSessionMarks } from './useSession';
 import { useRace } from './RaceContext';
 import { MAP_TEXT } from './sessionText';
+import { date, dayTime, dir, num, pct as fpct, qty, span, time } from '../format';
 
-const fmtTime = (ms: number) =>
-  new Date(ms).toLocaleString('el-GR', { weekday: 'short', hour: '2-digit', minute: '2-digit' });
-const fmtHM = (sec: number) => {
-  const m = Math.round(sec / 60);
-  return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}'`;
-};
-const pct = (x: number) => `${Math.round(x * 100)}%`;
+const fmtTime = (ms: number) => dayTime(ms);
+const fmtHM = (sec: number) => span(sec);
+const pct = (x: number) => fpct(x * 100);
 
-export function PlanView() {
-  const { activeBoat: boat } = useApp();
+/** P-067 §Μ: the map of the race setup, before «Έναρξη» (the race as typed, not saved). */
+export interface PlanPrep {
+  race: Pick<Race, 'id' | 'name' | 'marks' | 'scoringOptionId'>;
+  start?: number;
+  /** The start day when the time is missing. */
+  day?: number;
+  onBack: () => void;
+}
+
+export function PlanView({ prep }: { prep?: PlanPrep } = {}) {
+  const { activeBoat: boat, settings } = useApp();
   const nav = useNav();
+  const online = useOnline();
   const lay = useLaylines();
   // P-034: inside a session the map shows the session's own marks (read only), not the saved course.
   const sm = useSessionMarks();
-  const inSession = sm.from === 'session';
+  const inSession = !prep && sm.from === 'session';
   const race = useRace();
+  // P-067 §Λ: the plan target. A race (setup, or its session): its start and marks; else «Διαδρομές μου».
+  const sessionRace = inSession && race.kind === 'race' ? race.session : undefined;
+  const target: PlanTarget = prep
+    ? { raceId: prep.race.id, start: prep.start, day: prep.day, marks: prep.race.marks, label: prep.race.name }
+    : sessionRace
+      ? { raceId: sessionRace.id, start: sessionRace.start, marks: sessionRace.marks, label: sessionRace.name }
+      : nav.coursesTarget;
+  const raceTarget = !!target.raceId;
+  useEffect(() => {
+    if (target.raceId) nav.loadRacePlan(target.raceId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target.raceId]);
+  const stored = target.raceId ? (nav.racePlans[target.raceId] ?? undefined) : undefined;
+  const pState = raceTarget ? planState(stored, target, nav.forecast?.fetchedAt) : 'none';
   const track = inSession ? race.session?.track : undefined;
   const lastPoint = track?.length ? track[track.length - 1] : undefined;
   // Without GPS the map keeps the last known position of the session.
@@ -51,14 +76,23 @@ export function PlanView() {
   const [fitKey, setFitKey] = useState(course?.id ?? '');
   const [ui, setUi] = useStoredState<{ bigMap: boolean }>('plan-ui', { bigMap: false });
 
-  const marks = course?.marks ?? [];
-  const setMarks = (m: Mark[]) => course && nav.updateCourse({ ...course, marks: m });
+  const marks = raceTarget ? target.marks : (course?.marks ?? []);
+  const setMarks = (m: Mark[]) => !raceTarget && course && nav.updateCourse({ ...course, marks: m });
+  // Inside a race that started, «Υπολογισμός» goes from the boat's position (as «Ξανά από εδώ», KA-Λ4).
+  const fix = nav.gps.fix;
+  const fromHere = !!sessionRace && Date.now() > sessionRace.start && !!fix && sm.index < sessionRace.marks.length;
+  const computeTarget: PlanTarget = fromHere
+    ? { start: Date.now(), marks: [{ id: 'gps', name: 'Θέση', lat: fix!.lat, lon: fix!.lon }, ...sessionRace!.marks.slice(Math.max(1, sm.index))], label: target.label }
+    : target;
+  const compute = () => nav.computePlan(computeTarget, fromHere ? { transient: true } : undefined);
 
   // Time shown on the map (wind arrows + simulated boat position).
-  const route = nav.planned;
+  const route = raceTarget ? ((fromHere && nav.transientPlan) || stored?.route) : nav.planned;
   const tMin = route?.start ?? forecast?.times[0] ?? Date.now();
   const tMax = route?.end ?? forecast?.times[forecast.times.length - 1] ?? Date.now();
-  const t = simT !== undefined ? Math.min(Math.max(simT, tMin), tMax) : route?.start ?? tMin;
+  // Before a route exists the arrows show the wind at the start (QA Μ3), not the forecast's first hour.
+  const clampT = (x: number) => Math.min(Math.max(x, tMin), tMax);
+  const t = simT !== undefined ? clampT(simT) : (route?.start ?? (target.start !== undefined ? clampT(target.start) : tMin));
 
   const windArrows = useMemo<WindArrow[] | undefined>(() => {
     if (!plan.showWind || plan.windSource !== 'forecast' || !forecast) return undefined;
@@ -85,11 +119,44 @@ export function PlanView() {
 
   if (!boat) return null;
 
-  const canCompute = marks.length >= 2 && !nav.planStatus.busy;
-  const computeLabel = nav.planStatus.busy ? 'Υπολογισμός…' : route ? 'Ξανά υπολογισμός' : 'Υπολογισμός βέλτιστης πορείας';
+  const fs = raceTarget
+    ? forecastStatus({
+        target,
+        forecast,
+        modelLabel: forecast ? modelLabel(forecast.model) : '',
+        now: Date.now(),
+        online,
+        model: normalizeModel(plan.model),
+        estEnd: stored?.route.end,
+      })
+    : undefined;
+  const forecastOk = plan.windSource === 'uniform' || !fs || fs.canCompute;
+  const timeOk = computeTarget.start !== undefined;
+  const canCompute = marks.length >= 2 && !nav.planStatus.busy && forecastOk && timeOk;
+  const computeLabel = nav.planStatus.busy ? 'Υπολογισμός…' : route ? PLAN_TEXT.again : 'Υπολογισμός βέλτιστης πορείας';
+  const fsLines = fs ? (plan.windSource === 'uniform' ? fs.lines.filter((l) => !l.startsWith('Η πρόγνωση φτάνει') && l !== PLAN_TEXT.none) : fs.lines) : [];
+  const forecastLabel = fsLines.length > 0 && (
+    <div className="plan-fc">
+      {fsLines.map((l) => (
+        <div key={l} className={`fc ${fs!.warn && l !== fsLines[0] ? 'warn' : ''} ${l.startsWith('Η ώρα') || l.startsWith('Η πρόγνωση φτάνει') || l.startsWith('Χωρίς ίντερνετ') ? 'warn' : ''}`} data-testid="forecast-label" role="status">
+          <span>{l}</span>
+        </div>
+      ))}
+    </div>
+  );
 
   return (
-    <div className={`plan ${ui.bigMap ? 'big-map' : ''}`}>
+    <div className={`plan ${ui.bigMap ? 'big-map' : ''} ${prep ? 'prep' : ''}`}>
+      {prep && (
+        <header className="phead" data-testid="prep-head">
+          <button type="button" className="btn backb" aria-label="Πίσω στον αγώνα" onClick={prep.onBack}>
+            <BtnIcon name="back" />
+            Αγώνας
+          </button>
+          <h1 title={`Βέλτιστη διαδρομή · ${prep.race.name}`}>Βέλτιστη διαδρομή · {prep.race.name || 'Αγώνας'}</h1>
+          {forecastLabel}
+        </header>
+      )}
       {noFix && (
         <p className="msg warn" role="status">
           {MAP_TEXT.noFix}
@@ -99,8 +166,8 @@ export function PlanView() {
         <MapView
           boat={boat}
           marks={inSession ? sm.marks : marks}
-          editable={!inSession}
-          addMode={addMode && !inSession}
+          editable={!inSession && !raceTarget}
+          addMode={addMode && !inSession && !raceTarget}
           onAdd={(p) => {
             if (!course) return;
             const n = marks.length;
@@ -108,6 +175,7 @@ export function PlanView() {
           }}
           onMove={(id, p) => setMarks(marks.map((m) => (m.id === id ? { ...m, ...p } : m)))}
           planned={route}
+          plannedFaded={raceTarget && !fromHere && pState === 'stale'}
           live={nav.liveRoute}
           showIsochrones={plan.showIsochrones}
           showSeamarks={plan.showSeamarks}
@@ -130,7 +198,7 @@ export function PlanView() {
             <Icon name={ui.bigMap ? 'shrink' : 'expand'} />
           </button>
           {ui.bigMap && (
-            <button type="button" className="map-fab map-fab-go btn primary" disabled={!canCompute} onClick={nav.computePlan}>
+            <button type="button" className="map-fab map-fab-go btn primary" disabled={!canCompute} onClick={compute}>
               {computeLabel}
             </button>
           )}
@@ -158,14 +226,30 @@ export function PlanView() {
             />
             <div className="small">
               {fmtTime(t)}
-              {sim && ` · ${sim.tp.tws.toFixed(0)} kt από ${sim.tp.twd.toFixed(0)}° · ${sim.tp.sailId ?? ''}`}
+              {sim && ` · ${qty(sim.tp.tws, 'kt', 0)} από ${dir(sim.tp.twd, settings)} · ${sim.tp.sailId ?? ''}`}
             </div>
           </div>
         )}
       </div>
 
       <div className="plan-panel">
-        {inSession ? (
+        {prep ? (
+          <section className="card">
+            <h3>Διαδρομή</h3>
+            {marks.length ? (
+              <ol className="marks" aria-label="Σημεία του αγώνα, μόνο για ανάγνωση">
+                {marks.map((m, i) => (
+                  <li key={m.id}>
+                    <span className="mark-idx">{i === 0 ? 'Ε' : i === marks.length - 1 ? 'Τ' : i}</span>
+                    <span>{m.name}</span>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="muted small">{MAP_TEXT.noMarks}</p>
+            )}
+          </section>
+        ) : inSession ? (
           <section className="card">
             <h3>{MAP_TEXT.sessionCourse}</h3>
             {sm.marks.length ? (
@@ -207,7 +291,7 @@ export function PlanView() {
             <button
               className="btn"
               onClick={() => {
-                const c = nav.newCourse(`Διαδρομή ${new Date().toLocaleDateString('el-GR')}`);
+                const c = nav.newCourse(`Διαδρομή ${date(Date.now())}`);
                 setFitKey(c.id);
                 setAddMode(true);
               }}
@@ -286,11 +370,17 @@ export function PlanView() {
         )}
 
         <section className="card form-grid">
-          <h3>Άνεμος & εκκίνηση</h3>
-          <label>
-            Ώρα εκκίνησης
-            <input type="datetime-local" value={plan.startLocal} onChange={(e) => setPlan({ startLocal: e.target.value })} />
-          </label>
+          <h3>{raceTarget ? 'Πηγή ανέμου' : 'Άνεμος & εκκίνηση'}</h3>
+          {sessionRace && forecastLabel}
+          {!raceTarget && (
+            // «Διαδρομές μου» only (KA-Λ14): a race has its own start.
+            <DateTimeField
+              label="Ώρα εκκίνησης"
+              testId="plan-start"
+              value={localToMs(plan.startLocal)}
+              onChange={(v) => setPlan({ startLocal: v.ms !== undefined ? msToLocal(v.ms) : '' })}
+            />
+          )}
           <label>
             Πηγή ανέμου
             <div className="seg">
@@ -315,12 +405,19 @@ export function PlanView() {
                 </select>
               </label>
               <div className="full">
-                <button className="btn primary" disabled={nav.forecastStatus.busy} onClick={nav.loadForecast}>
-                  {nav.forecastStatus.busy ? 'Λήψη…' : forecast ? 'Ανανέωση πρόγνωσης' : 'Λήψη πρόγνωσης'}
-                </button>
-                {forecast && (
+                <div className="brow">
+                  <button className="btn primary" disabled={nav.forecastStatus.busy || (raceTarget && !online)} onClick={() => nav.loadForecast(target)}>
+                    {nav.forecastStatus.busy ? 'Λήψη…' : forecast ? 'Ανανέωση πρόγνωσης' : 'Λήψη πρόγνωσης'}
+                  </button>
+                  {nav.forecastStatus.busy && (
+                    <button type="button" className="btn" onClick={nav.cancelForecast}>
+                      Άκυρο
+                    </button>
+                  )}
+                </div>
+                {forecast && !raceTarget && (
                   <p className="muted small">
-                    {modelLabel(forecast.model)} · λήψη {new Date(forecast.fetchedAt).toLocaleString('el-GR')} · έως{' '}
+                    {modelLabel(forecast.model)} · λήψη {dayTime(forecast.fetchedAt)} · έως{' '}
                     {fmtTime(forecast.times[forecast.times.length - 1])}
                   </p>
                 )}
@@ -387,17 +484,50 @@ export function PlanView() {
           </div>
         </section>
 
-        <ModelCompareCard />
+        <ModelCompareCard target={target} />
 
         <div className="compute-bar">
-          <button className="btn primary big-btn" disabled={!canCompute} onClick={nav.computePlan}>
+          <button className="btn primary big-btn" disabled={!canCompute} onClick={compute} data-testid="plan-compute">
             {computeLabel}
           </button>
         </div>
         {marks.length < 2 && <p className="muted small">Βάλε τουλάχιστον εκκίνηση και μία σημαδούρα ή τερματισμό.</p>}
-        {nav.planStatus.error && <p className="errors">{nav.planStatus.error}</p>}
+        {!timeOk && marks.length >= 2 && (
+          <ul className="miss">
+            <li>{PLAN_TEXT.noTime}</li>
+          </ul>
+        )}
+        {nav.planStatus.error && (
+          <div className="fc warn" role="alert">
+            <span>{nav.planStatus.error.startsWith('Βάλε') ? nav.planStatus.error : `${PLAN_TEXT.failed} ${nav.planStatus.error}`}</span>
+            {canCompute && (
+              <button type="button" className="btn small-btn" onClick={compute}>
+                Ξανά
+              </button>
+            )}
+          </div>
+        )}
+        {raceTarget && route && !fromHere && pState === 'stale' && (
+          <p className="calc" data-testid="plan-stale">
+            {PLAN_TEXT.stale}
+          </p>
+        )}
+        {raceTarget && route && !fromHere && pState === 'oldForecast' && stored?.forecastAt !== undefined && (
+          <p className="calc" data-testid="plan-old-forecast">
+            {PLAN_TEXT.oldForecast(stored.forecastAt)}
+          </p>
+        )}
+        {raceTarget && route && fs && coverage(forecast, target.start, route.end) === 'partial' && plan.windSource === 'forecast' && forecast && (
+          <div className="fc warn" role="status">
+            <span>{PLAN_TEXT.partial(forecast.times[forecast.times.length - 1])}</span>
+          </div>
+        )}
 
-        {route && <RouteSummary route={route} boat={boat} scoringOptionId={plan.scoringOptionId} onScoring={(id) => setPlan({ scoringOptionId: id })} />}
+        {route && (
+          <div className={raceTarget && !fromHere && pState === 'stale' ? 'faded' : ''} data-testid="plan-result">
+            <RouteSummary route={route} boat={boat} scoringOptionId={plan.scoringOptionId} onScoring={(id) => setPlan({ scoringOptionId: id })} />
+          </div>
+        )}
         {route && (
           <AdvisorCard
             storageKey="advisor-plan"
@@ -405,18 +535,20 @@ export function PlanView() {
             presets={['Ποια πλευρά πληρώνει;', 'Κίνδυνοι;', 'Πανιά;']}
             onOpenSettings={() => openTab('settings')}
             build={(question) => {
-              const opt = boat.scoring.find((o) => o.id === plan.scoringOptionId);
+              const ids = planScoringIds(boat);
+              const optId = ids.includes(plan.scoringOptionId) ? plan.scoringOptionId : ids[0];
+              const opt = scoringOptionFor({ boat }, { scoringOptionId: optId });
               const ctx = buildPlanContext(
                 boat,
                 {
-                  courseName: course?.name ?? '',
+                  courseName: raceTarget ? target.label : (course?.name ?? ''),
                   windSource: plan.windSource,
                   model: plan.windSource === 'forecast' ? forecast && modelLabel(forecast.model) : undefined,
                   forecastFetched: plan.windSource === 'forecast' && forecast ? localIso(forecast.fetchedAt) : undefined,
                   route,
                   corrected: opt
                     ? {
-                        option: STANDARD_SCORING_OPTIONS.find((o) => o.id === opt.id)?.label ?? opt.id,
+                        option: optionLabel(optId),
                         tot: formatDuration(corrected('ToT', route.elapsedSec, opt, route.rhumbNm)),
                         tod: formatDuration(corrected('ToD', route.elapsedSec, opt, route.rhumbNm)),
                       }
@@ -425,7 +557,7 @@ export function PlanView() {
                 question,
               );
               // The crew's notes along the course (any wind: the plan spans hours).
-              if (course?.marks.length) ctx.localKnowledge = knowledgeHints(course.marks);
+              if (marks.length) ctx.localKnowledge = knowledgeHints(marks);
               return ctx;
             }}
           />
@@ -435,8 +567,15 @@ export function PlanView() {
   );
 }
 
-function RouteSummary({ route, boat, scoringOptionId, onScoring }: { route: RouteResult; boat: BoatProfile; scoringOptionId: string; onScoring: (id: string) => void }) {
-  const opt = boat.scoring.find((o) => o.id === scoringOptionId);
+/** The scoring ids of the plan's select: the boat's certificate options, else GPH, and «Χωρίς διόρθωση» (P-056 §Α). */
+export function planScoringIds(boat: BoatProfile): string[] {
+  return [...new Set(scoringChoices(boat).map((c) => c.id))];
+}
+
+function RouteSummary({ route, boat, scoringOptionId: wanted, onScoring }: { route: RouteResult; boat: BoatProfile; scoringOptionId: string; onScoring: (id: string) => void }) {
+  const ids = planScoringIds(boat);
+  const scoringOptionId = ids.includes(wanted) ? wanted : ids[0];
+  const opt = scoringOptionFor({ boat }, { scoringOptionId });
   return (
     <>
       <section className="card">
@@ -452,16 +591,16 @@ function RouteSummary({ route, boat, scoringOptionId, onScoring }: { route: Rout
           </div>
           <div>
             <div className="tile-label">Απόσταση</div>
-            <div className="big-num">{route.rhumbNm.toFixed(1)} NM</div>
-            <div className="muted small">πλέουμε {route.sailedNm.toFixed(1)} NM</div>
+            <div className="big-num">{qty(route.rhumbNm, 'NM')}</div>
+            <div className="muted small">πλέουμε {qty(route.sailedNm, 'NM')}</div>
           </div>
         </div>
         <label className="stack">
           Διορθωμένος χρόνος (εκτίμηση)
           <select value={scoringOptionId} onChange={(e) => onScoring(e.target.value)}>
-            {STANDARD_SCORING_OPTIONS.filter((o) => boat.scoring.some((s) => s.id === o.id)).map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.label}
+            {ids.map((id) => (
+              <option key={id} value={id}>
+                {optionLabel(id)}
               </option>
             ))}
           </select>
@@ -481,6 +620,7 @@ function RouteSummary({ route, boat, scoringOptionId, onScoring }: { route: Rout
 }
 
 function LegCard({ leg, index, boat }: { leg: LegResult; index: number; boat: BoatProfile }) {
+  const { settings } = useApp();
   const m = leg.modeShare;
   const modes = [
     m.upwind > 0.05 && `όρτσα ${pct(m.upwind)}`,
@@ -498,9 +638,9 @@ function LegCard({ leg, index, boat }: { leg: LegResult; index: number; boat: Bo
           {fmtHM(leg.durationSec)}
         </span>
         <span>ETA {fmtTime(leg.end)}</span>
-        <span>{leg.rhumbNm.toFixed(1)} NM</span>
+        <span>{qty(leg.rhumbNm, 'NM')}</span>
         <span>
-          {leg.avgTws.toFixed(0)} kt (έως {leg.maxTws.toFixed(0)}) από {leg.avgTwd.toFixed(0)}°
+          {qty(leg.avgTws, 'kt', 0)} (έως {num(leg.maxTws, 0)}) από <span data-dir>{dir(leg.avgTwd, settings)}</span>
         </span>
         <span>{modes.join(' · ')}</span>
         <span>
@@ -512,7 +652,7 @@ function LegCard({ leg, index, boat }: { leg: LegResult; index: number; boat: Bo
         {leg.sails.map((s, i) => (
           <span key={i} className="chip static" style={{ borderColor: sailColor(boat, s.sailId) }}>
             {boat.sails.find((x) => x.id === s.sailId)?.name ?? s.sailId}
-            <span className="muted small"> {new Date(s.from).toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit' })}</span>
+            <span className="muted small"> {time(s.from)}</span>
           </span>
         ))}
       </div>

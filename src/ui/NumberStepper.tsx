@@ -25,7 +25,8 @@ function clamp(v: number, min?: number, max?: number) {
 
 /** Large touch-friendly numeric input: −big −small [value] +small +big. Tap the value to type. */
 export function NumberStepper({ label, unit, value, onChange, small, big, min, max, decimals = 0, wrap, hint, id }: Props) {
-  const fmt = (v: number | null) => (v === null ? '' : v.toFixed(decimals));
+  // The field shows a decimal comma (P-064) and takes a comma or a dot.
+  const fmt = (v: number | null) => (v === null ? '' : v.toFixed(decimals).replace('.', ',')); // fmt-ok: an input's own text
   const [text, setText] = useState(fmt(value));
   const [editing, setEditing] = useState(false);
 
@@ -107,8 +108,9 @@ export function NumField({
   placeholder?: string;
   ariaLabel?: string;
 }) {
-  const [text, setText] = useState(value === undefined ? '' : String(value));
-  useEffect(() => setText(value === undefined ? '' : String(value)), [value]);
+  const show = (v: number | undefined) => (v === undefined ? '' : String(v).replace('.', ','));
+  const [text, setText] = useState(show(value));
+  useEffect(() => setText(show(value)), [value]);
   return (
     <input
       className="numfield"
@@ -123,7 +125,7 @@ export function NumField({
         if (t === '') return onChange(undefined);
         const n = Number(t);
         if (Number.isFinite(n)) onChange(n);
-        else setText(value === undefined ? '' : String(value));
+        else setText(show(value));
       }}
     />
   );

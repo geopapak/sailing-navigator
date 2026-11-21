@@ -7,6 +7,7 @@ import { stallMinutes } from '../race/session';
 import { distanceNm } from '../nav/geo';
 import { clearWind, meanWind, pushWind, type WindReading } from '../weather/windAverage';
 import { fmtAge } from '../race/manualWind';
+import { clock, timeSec } from '../format';
 import { useApp } from './AppContext';
 import { useNav } from './NavContext';
 import { useInstruments } from './InstrumentsContext';
@@ -310,10 +311,8 @@ export function useAlerts(): AlertsState {
   return c;
 }
 
-export const mmss = (sec: number) => {
-  const s = Math.max(0, Math.round(sec));
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-};
+/** A countdown body «6′48″» (P-056 §Ε). */
+export const mmss = (sec: number) => clock(sec);
 
 /** Full-width alert band, always in the same place, in every tab (P-023). */
 export function AlertBanner() {
@@ -326,7 +325,7 @@ export function AlertBanner() {
       <span className="big">{b.big}</span>
       <span className="sub">{b.sub}</span>
       <span className="meta">
-        {new Date(b.at).toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+        {timeSec(b.at)}
         {how && ` · ${how}`} · πάτα για απόκρυψη
       </span>
     </button>

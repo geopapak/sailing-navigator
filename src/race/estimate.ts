@@ -8,6 +8,8 @@ import type { BoatProfile } from '../boat/types';
 import { bearingDeg, distanceNm, type LatLon } from '../nav/geo';
 import { computeLive } from '../performance/targets';
 import { corrected } from '../scoring/corrected';
+import { gap } from '../format';
+import { missingScoring, scoringOptionFor } from '../scoring/options';
 import type { Mark } from '../routing/isochrones';
 import type { Race, RaceEntry, RaceFix } from './types';
 
@@ -100,8 +102,8 @@ export function estimateRace(race: Race, wind: Wind | undefined, now = Date.now(
     const fix = fixes.reduce<RaceFix | undefined>((a, f) => (!a || f.t > a.t ? f : a), undefined);
     const row: EstimateRow = { entryId: e.id, name: e.name, own: !!e.own, fix, ageSec: fix ? Math.max(0, (now - fix.t) / 1000) : undefined };
     const finished = race.results?.[e.id];
-    const opt = e.boat?.scoring?.find((o) => o.id === race.scoringOptionId);
-    if (!opt) return { ...row, missing: 'χωρίς βαθμολογία' };
+    const opt = scoringOptionFor(e, race);
+    if (!opt) return { ...row, missing: missingScoring(race) };
     const code = race.resultCodes?.[e.id];
     if (code && finished === undefined) return { ...row, missing: code };
     if (finished !== undefined) return { ...row, elapsed: finished, corrected: corrected(race.method, finished, opt, dist), nextMark: race.marks.length };
@@ -120,9 +122,33 @@ export function estimateRace(race: Race, wind: Wind | undefined, now = Date.now(
   });
   const ownRow = rows.find((r) => r.own);
   const ranked = rows.filter((r) => r.corrected !== undefined).sort((a, b) => a.corrected! - b.corrected!);
-  ranked.forEach((r, i) => (r.rank = i + 1));
+  // «1ος» only when there is a comparison: at least two boats with a corrected time (P-056 §Γ).
+  if (ranked.length >= 2) ranked.forEach((r, i) => (r.rank = i + 1));
   for (const r of rows) if (ownRow?.corrected !== undefined && r.corrected !== undefined) r.gap = r.corrected - ownRow.corrected;
   return [...ranked, ...rows.filter((r) => r.corrected === undefined)];
+}
+
+const WHY: Record<string, string> = {
+  'χωρίς θέση': 'λείπει θέση αντιπάλου',
+  'χωρίς άνεμο': 'λείπει άνεμος',
+  'χωρίς GPH': 'λείπει GPH αντιπάλου',
+  'χωρίς βαθμολογία': 'λείπει βαθμολογία αντιπάλου',
+  'χωρίς polars/GPH': 'λείπουν polars ή GPH αντιπάλου',
+};
+
+/**
+ * What the Live shows instead of a place when there is no comparison (P-056 §Γ):
+ * «Χωρίς αντιπάλους», or «Χωρίς σύγκριση: λείπει θέση αντιπάλου» (the first reason).
+ * Undefined when we have a place.
+ */
+export function noComparison(rows: EstimateRow[]): { none: true; text: string } | { none: false; text: string } | undefined {
+  const own = rows.find((r) => r.own);
+  if (own?.rank !== undefined) return undefined;
+  const others = rows.filter((r) => !r.own);
+  if (!others.length) return { none: true, text: 'Χωρίς αντιπάλους' };
+  const miss = own?.corrected === undefined ? own?.missing : others.find((r) => r.corrected === undefined)?.missing;
+  const why = (miss && (WHY[miss] ?? (own?.corrected === undefined ? miss : undefined))) || 'λείπει εκτίμηση αντιπάλου';
+  return { none: false, text: `Χωρίς σύγκριση: ${why}` };
 }
 
 /** Position from "seen from us": quadrant and distance, relative to our heading. */
@@ -134,11 +160,5 @@ export function relativeFix(own: LatLon, headingTrue: number, side: 'ahead-l' | 
   return { lat, lon };
 }
 
-/** "+1:05" / "−0:48" from seconds. */
-export function fmtGap(sec: number): string {
-  const s = Math.round(Math.abs(sec));
-  const m = Math.floor(s / 60);
-  const h = Math.floor(m / 60);
-  const body = h ? `${h}:${String(m % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}` : `${m}:${String(s % 60).padStart(2, '0')}`;
-  return `${sec < 0 ? '−' : '+'}${body}`;
-}
+/** "+1:05" / "−0:48" from seconds. Alias of `gap` (src/format). */
+export const fmtGap = gap;

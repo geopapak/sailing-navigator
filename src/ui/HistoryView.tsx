@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { StickyBar } from './StickyBar';
 import { useHoldUpdate } from './useHoldUpdate';
 import { useRace } from './RaceContext';
 import { BtnIcon, Icon } from './Icons';
@@ -7,7 +8,7 @@ import { ScoringView } from './ScoringView';
 import { SharedRaces } from './CrewViews';
 import { dayStr, hhmm, type Ended } from './SessionBar';
 import { holdShare, releaseShare } from './crewShare';
-import { analyseRace, toGpx } from '../race/analysis';
+import { analyseRace, placeLine, toGpx } from '../race/analysis';
 import { estimateRace } from '../race/estimate';
 import { KIND_INFO, isCancelled, kindOf, reopen, sessionStats } from '../race/session';
 import { formatDuration } from '../scoring/corrected';
@@ -24,11 +25,12 @@ import { useRaceEvent } from './eventHooks';
 import { classN, eventBoats, placeText, raceResult } from '../race/event';
 import { hhmmss } from './SessionBar';
 import type { RaceEvent } from '../race/types';
+import { count, num } from '../format';
 
 /** A shared training, or a cruise whose training part is shared (P-035 AC 27, 29). */
 const sharedTraining = (r: Race) => !!r.crewShared && (kindOf(r) === 'training' || (!!r.finish && kindSpans(r, r.finish).some((k) => k.kind === 'training')));
 
-const n1 = (x: number) => x.toFixed(1).replace('.', ',');
+const n1 = (x: number) => num(x);
 const durTxt = (sec: number) => {
   const m = Math.round(sec / 60);
   return m >= 60 ? `${Math.floor(m / 60)} ώ ${String(m % 60).padStart(2, '0')}′` : `${m}′`;
@@ -52,7 +54,7 @@ export function SessionCard({ r, fresh, onOpen }: { r: Race; fresh?: boolean; on
     if (isCancelled(r)) return { dist: sessionStats(r).distanceNm, dur: undefined, m: 'Ακύρωση / αναβολή · χωρίς αποτέλεσμα' };
     if (kind === 'race') {
       const a = analyseRace(r);
-      return { dist: a.sailedNm, dur: a.durationSec, m: [a.rank ? `${a.rank}ος σε διορθωμένο` : undefined, `${a.tacks} αναστροφές`].filter(Boolean).join(' · ') };
+      return { dist: a.sailedNm, dur: a.durationSec, m: [a.rank ? `${a.rank}ος / ${a.compared} σε διορθωμένο` : undefined, count(a.tacks, 'αναστροφή', 'αναστροφές', 'χωρίς αναστροφές')].filter(Boolean).join(' · ') };
     }
     const s = sessionStats(r);
     if (kind === 'training') {
@@ -279,7 +281,7 @@ function OtherSummary({ r, onAnalysis }: { r: Race; onAnalysis?: () => void }) {
     const a = analyseRace(r);
     const own = estimateRace(r, undefined, r.finish ?? Date.now()).find((x) => x.own);
     // «θέση» once every boat has a time or a code, else «εκτίμηση θέσης» (P-040 AC 30).
-    let place = a.rank ? `${a.rank}ος` : '—';
+    let place = placeLine(a) ?? '—';
     let official = r.entries.every((e) => r.results?.[e.id] !== undefined || !!r.resultCodes?.[e.id]);
     if (event) {
       const boats = eventBoats(evRaces);
@@ -395,11 +397,11 @@ export function EndedScreen({ ended, onUndone, onHistory }: { ended: Ended; onUn
       )}
       {r && <SessionSummary r={r} onAnalysis={() => onHistory(r.id)} />}
       {r?.eventId && <EventAfterCard r={r} onEvent={() => onHistory(`event:${r.eventId}`)} onResults={() => onHistory(`results:${r.id}`)} />}
-      <div className="btn-row sticky-actions">
+      <StickyBar>
         <button type="button" className="btn primary big-btn wide" onClick={() => onHistory()}>
           Στο Ιστορικό
         </button>
-      </div>
+      </StickyBar>
     </div>
   );
 }

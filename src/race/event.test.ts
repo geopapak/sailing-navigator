@@ -489,3 +489,32 @@ describe('resultSource', () => {
     expect(resultSource(r, e(r, 'own'))).toBeUndefined();
   });
 });
+
+describe('P-056 KA-A8: an event with «gph» or «none»', () => {
+  it('ranks every race with the same computed coefficient', () => {
+    const gphEntry = (id: string, gph?: number): RaceEntry => ({ ...entry(id), boat: { gph, scoring: [] } });
+    const mk = (id: string, day: number, res: Record<string, number>) => {
+      const r = race(id, day, res, { scoringOptionId: 'gph', method: 'ToT' });
+      r.entries = [gphEntry('own', 600), gphEntry('b', 540)];
+      return r;
+    };
+    // ToT = 600 / GPH: b (540) has 1,111; own (600) has 1,000.
+    const a = mk('a', 0, { own: 1000, b: 950 });
+    const b = mk('b', 1, { own: 1000, b: 880 });
+    const ra = raceResult(a, eventBoats([a, b]), 2).byKey;
+    expect(ra.own.place).toBe(1);
+    expect(ra.b.corrected).toBe(Math.round((950 * 600) / 540));
+    const rb = raceResult(b, eventBoats([a, b]), 2).byKey;
+    expect(rb.b.place).toBe(1);
+    const s = standing(ev({ scoring: 'time' }), [a, b]);
+    expect(s.rows.find((r) => r.key === 'own')!.total).toBe(2000);
+  });
+
+  it('«none»: the elapsed times rank, also boats without any rating', () => {
+    const r = race('a', 0, { own: 1000, b: 990 }, { scoringOptionId: 'none' });
+    r.entries = r.entries.map((e) => ({ ...e, boat: undefined }));
+    const res = raceResult(r, eventBoats([r]), 2).byKey;
+    expect(res.b).toMatchObject({ corrected: 990, place: 1 });
+    expect(res.own).toMatchObject({ corrected: 1000, place: 2 });
+  });
+});

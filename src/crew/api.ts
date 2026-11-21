@@ -141,3 +141,22 @@ export function entryListText(boatName: string, people: { name: string; athleteC
   const lines = people.map((p, i) => `${i + 1}. ${p.name}${p.role ? ` (${ROLE_LABEL[p.role]})` : ''} — ${p.athleteCard || 'χωρίς αριθμό δελτίου'}`);
   return [`Πλήρωμα ${boatName}`, ...lines].join('\n');
 }
+
+const HAD_ACCOUNT = 'had-account';
+
+/** The device has been signed in at least once (an invite link then opens on «Σύνδεση», P-056 §Δ). */
+export function markHadAccount(): void {
+  try {
+    localStorage.setItem(HAD_ACCOUNT, '1');
+  } catch {
+    /* ignore */
+  }
+}
+
+export function hadAccount(): boolean {
+  try {
+    return localStorage.getItem(HAD_ACCOUNT) === '1';
+  } catch {
+    return false;
+  }
+}

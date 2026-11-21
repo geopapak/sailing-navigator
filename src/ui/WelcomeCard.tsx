@@ -13,6 +13,16 @@ export function startNewBoat(how: 'choose' | 'pdf' | 'manual' = 'choose') {
   openTab('boats');
 }
 
+/** Opens the editor of a boat in the Boats tab (P-056: «Άνοιξε το σκάφος» from the race setup). */
+export function openBoatEditor(boatId: string) {
+  try {
+    sessionStorage.setItem(NEW_BOAT_FLAG, `edit:${boatId}`);
+  } catch {
+    /* ignore */
+  }
+  openTab('boats');
+}
+
 /** Shown instead of Live / Map / Polar until the user has a boat. */
 export function WelcomeCard() {
   const { account, syncStatus } = useApp();

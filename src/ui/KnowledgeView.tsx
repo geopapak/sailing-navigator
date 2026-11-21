@@ -9,6 +9,7 @@ import { SECTORS, SPEEDS, sectorOf, type KnowledgeNote, type Sector } from '../k
 import { relevantNotes, windLabel } from '../knowledge/match';
 import { getLiveSnapshot } from '../ai/snapshot';
 import { formatDM } from '../nav/geo';
+import { date } from '../format';
 
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 
@@ -74,7 +75,7 @@ export function KnowledgeView() {
                     <span className="muted small"> · {crew ? n.author ?? 'Πλήρωμα' : 'εμείς'}</span>
                     <span className="note-text">{n.text}</span>
                     <span className="muted small">
-                      {windLabel(n)} · {new Date(n.updatedAt || n.createdAt).toLocaleDateString('el-GR')} · {n.scope === 'crew' ? 'πλήρωμα' : 'μόνο εγώ'}
+                      {windLabel(n)} · {date(n.updatedAt || n.createdAt)} · {n.scope === 'crew' ? 'πλήρωμα' : 'μόνο εγώ'}
                     </span>
                   </span>
                 </button>

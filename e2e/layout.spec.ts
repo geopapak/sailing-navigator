@@ -9,6 +9,7 @@ import { boatItem, courseItem } from './fixtures/handlers';
 import { ASTARTI_LONG } from './fixtures/data/boat-astarti';
 import { LONG_RACE_NAME } from './fixtures/data/course-saronic';
 import { expectActiveBoat } from './fixtures/boat';
+import { fillDateTime } from './fixtures/datetime';
 
 test.use({ scenario: { boats: [boatItem(ASTARTI_LONG), courseItem()] } });
 
@@ -60,7 +61,7 @@ async function walk(app: AppFixture, theme: Theme, size: 'n' | 'xl') {
   // Νέος αγώνας with a 60+ character name, then its Live
   await page.getByRole('button', { name: /^Αγώνας:/ }).click();
   await page.getByLabel('Όνομα', { exact: true }).fill(LONG_RACE_NAME);
-  await page.getByLabel('Εκκίνηση', { exact: true }).fill('2026-11-14T10:01');
+  await fillDateTime(page, 'Εκκίνηση', '2026-11-14T10:01');
   await check(app, theme, 'neos-agonas');
   await page.getByRole('button', { name: 'Αποθήκευση και έναρξη' }).click();
   await app.advance(2 * 60_000);

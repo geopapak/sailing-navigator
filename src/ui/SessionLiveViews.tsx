@@ -19,8 +19,9 @@ import { CruiseNoWind, NoWindPrompt, WindReading, useSessionWindSheet } from './
 import { legOf, nextChange, trainingHint, type WindAt } from '../race/liveNumbers';
 import { DestSheet, DestTile, depthNum, useCruiseDepth, useOnline } from './CruiseViews';
 import { gridField } from '../weather/field';
+import { dir, num } from '../format';
 
-const f1 = (v?: number) => (v === undefined || !Number.isFinite(v) ? '—' : v.toFixed(1).replace('.', ','));
+const f1 = (v?: number) => num(v);
 
 /** «ενδεικτικό» next to a number without instruments (current, manual wind). */
 const Ind = ({ on }: { on: boolean }) => (on ? <span className="ind">{LIVE_TEXT.indicative}</span> : null);
@@ -390,8 +391,16 @@ export function CruiseLive() {
             <span className="lab">{LIVE_TEXT.speed}</span>
             <span className="ab">{LIVE_TEXT.sogGround}</span>
             <span className="sub">
-              {LIVE_TEXT.course} {fix?.cog === undefined ? '—' : `${Math.round(fix.cog)}°`}
+              {LIVE_TEXT.course}{' '}
+              <span data-dir data-testid="cruise-cog">
+                {fix?.cog === undefined ? '—' : dir(fix.cog, settings)}
+              </span>
             </span>
+            {fix?.fromFixes && (
+              <span className="sub" data-testid="sog-from-fixes">
+                {LIVE_TEXT.fromFixes}
+              </span>
+            )}
           </span>
           <span className="val">
             {f1(fix?.sog)}

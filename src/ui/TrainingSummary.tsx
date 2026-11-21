@@ -31,8 +31,9 @@ import type { OwnedCrew } from '../crew/api';
 import type { BoatProfile } from '../boat/types';
 import type { Race, TrainingGoal } from '../race/types';
 import type { LatLon } from '../nav/geo';
+import { num } from '../format';
 
-const n1 = (x: number) => x.toFixed(1).replace('.', ',');
+const n1 = (x: number) => num(x);
 const Ind = ({ on }: { on: boolean }) => (on ? <span className="ind">ενδεικτικό</span> : null);
 const pctTxt = (p: number | null) => (p === null ? '—' : `${p}%`);
 

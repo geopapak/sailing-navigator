@@ -1,6 +1,7 @@
 import type { StyleSpecification } from '@maplibre/maplibre-gl-style-spec';
 import type { AllPaintProperties } from 'maplibre-gl';
 import type { Theme } from './settings';
+import { num } from '../format';
 
 /** Map look: chart-like (depths, no roads) or the street map we had before. */
 export type ChartKind = 'nautical' | 'road';
@@ -171,7 +172,7 @@ export function parseDepth(j: { avg?: number | null; min?: number | null; max?: 
 }
 
 export function formatDepth(s: DepthSample): string {
-  const r = (x: number) => (x < 10 ? Math.round(x * 10) / 10 : Math.round(x)).toLocaleString('el-GR');
+  const r = (x: number) => num(x, x < 10 && Math.round(x * 10) % 10 !== 0 ? 1 : 0);
   const range = s.min !== undefined && s.max !== undefined && s.max - s.min >= 1 ? ` (${r(s.min)}–${r(s.max)} m)` : '';
   return `Βάθος ≈ ${r(s.depth)} m${range}`;
 }
@@ -215,3 +216,8 @@ export const SHALLOW_COLOR: Record<Theme, string> = { day: '#b45309', dark: '#fb
 export const DEST_COLOR: Record<Theme, string> = { day: '#a21caf', dark: '#e879f9', night: '#d1342a' };
 export const DEST_WIDTH: Record<Theme, number> = { day: 2.5, dark: 2.5, night: 4 };
 export const shallowTiles = (theme: Theme) => wmsTiles('emodnet:mean', shallowSld(SHALLOW_COLOR[theme]));
+
+/** MapLibre's scale text in the app's format (P-064): «0.4 nm» → «0,4 NM», «12 nm» → «12 NM». */
+export function scaleText(t: string): string {
+  return t.replace(/(\d)\.(\d)/g, '$1,$2').replace(/\bnm\b/g, 'NM');
+}

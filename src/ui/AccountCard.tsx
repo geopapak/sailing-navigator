@@ -5,9 +5,10 @@ import { DEFAULT_SERVER } from './settings';
 import { ApiError, accountApi, type AdminUser } from '../sync/api';
 import { PrivacyText, TermsText, useServerConfig } from './legal';
 import { BtnIcon, Icon } from './Icons';
+import { date, time } from '../format';
 
 const errText = (e: unknown) => (e instanceof ApiError || e instanceof Error ? e.message : 'Κάτι πήγε στραβά. Δοκίμασε ξανά.');
-const fmtDate = (ms: number) => new Date(ms).toLocaleDateString('el-GR');
+const fmtDate = (ms: number) => date(ms);
 
 function download(name: string, text: string) {
   const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
@@ -53,7 +54,7 @@ export function AccountCard() {
                 : syncStatus.error
                   ? syncStatus.error
                   : syncStatus.at
-                    ? `OK · ${new Date(syncStatus.at).toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit' })}`
+                    ? `OK · ${time(syncStatus.at)}`
                     : 'αναμονή'}
             </span>
           </li>

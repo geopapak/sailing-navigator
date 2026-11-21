@@ -21,6 +21,8 @@ export interface LegStats {
   tacks: number;
   gybes: number;
   mode: 'upwind' | 'reach' | 'downwind';
+  /** Marks of the course inside this leg that were not found in the track (their legs joined). */
+  missed?: string[];
 }
 
 export interface RaceAnalysis {
@@ -35,8 +37,14 @@ export interface RaceAnalysis {
   timeline: { t: number; pct: number }[];
   /** Moments worth a look: long stretches well under target. */
   lowSpots: { t: number; durationSec: number; avgPct: number; twa?: number; tws?: number }[];
+  /** No «Τερματισμός» was pressed: the window closes at the last track point. */
+  noFinish: boolean;
+  /** Only with at least two boats with a time or an estimate. */
   rank?: number;
+  /** All boats of the race (the AI summary's «boats»). */
   of: number;
+  /** Boats with a time or an estimate: the «/ N» of the place. */
+  compared: number;
   gaps: { name: string; gap?: number }[];
 }
 
@@ -104,35 +112,88 @@ function modeOf(points: TrackPoint[]): LegStats['mode'] {
   return a < 70 ? 'upwind' : a > 120 ? 'downwind' : 'reach';
 }
 
+/** A mark counts as found in the track when the boat came this close to it (nm). */
+export const MARK_FOUND_NM = 0.3;
+
+/**
+ * Where each mark between the start and the finish was rounded, inside `track` (sorted):
+ * the closest approach after the previous rounding, if it comes within `foundNm`.
+ * A mark not found stays out (its two legs become one), the search goes on from the last found one.
+ */
+export function roundings(track: TrackPoint[], marks: Race['marks'], radiusNm = 0.15, foundNm = MARK_FOUND_NM): { mark: number; i: number }[] {
+  const out: { mark: number; i: number }[] = [];
+  let k = 0;
+  for (let m = 1; m < marks.length - 1; m++) {
+    let best = -1;
+    let bestD = Infinity;
+    for (let i = k + 1; i < track.length; i++) {
+      const d = distanceNm(track[i], marks[m]);
+      if (d < bestD) {
+        bestD = d;
+        best = i;
+      }
+      if (bestD <= radiusNm && d > bestD + 0.05) break;
+    }
+    if (best < 0 || bestD > foundNm) continue;
+    out.push({ mark: m, i: best });
+    k = best;
+  }
+  return out;
+}
+
+const markName = (marks: Race['marks'], i: number) => marks[i]?.name || `Σημείο ${i + 1}`;
+
+/**
+ * The analysed window of a session: from the start to the finish (or the last track point).
+ * Nothing before the gun or after the finish counts (P-056 §Β).
+ */
+export function analysisWindow(race: Pick<Race, 'start' | 'finish' | 'track'>): { from: number; to: number } {
+  const last = race.track.reduce((m, p) => Math.max(m, p.t), -Infinity);
+  const to = race.finish ?? (Number.isFinite(last) ? last : race.start);
+  return { from: race.start, to: Math.max(race.start, to) };
+}
+
 export function analyseRace(race: Race): RaceAnalysis {
-  const track = [...race.track].sort((a, b) => a.t - b.t);
+  const win = analysisWindow(race);
+  const track = [...race.track].filter((p) => p.t >= win.from && p.t <= win.to).sort((a, b) => a.t - b.t);
   const marks = race.marks;
   const courseNm = marks.slice(1).reduce((d, m, i) => d + distanceNm(marks[i], m), 0);
-  const pass = track.length > 1 ? markPassings(track, marks) : [];
+  // Leg bounds: the start, every mark found in the track, the finish. They add up to the race time.
+  const bounds: { mark: number; t: number }[] = [];
+  if (marks.length >= 2) {
+    bounds.push({ mark: 0, t: win.from });
+    for (const r of roundings(track, marks)) bounds.push({ mark: r.mark, t: track[r.i].t });
+    bounds.push({ mark: marks.length - 1, t: win.to });
+  }
   const legs: LegStats[] = [];
-  for (let i = 1; i < pass.length; i++) {
-    const pts = track.slice(pass[i - 1], pass[i] + 1);
-    if (pts.length < 2) continue;
+  for (let b = 1; b < bounds.length; b++) {
+    const a = bounds[b - 1];
+    const z = bounds[b];
+    const pts = track.filter((p) => p.t >= a.t && p.t <= z.t);
     const man = countManoeuvres(pts);
+    let rhumb = 0;
+    for (let i = a.mark + 1; i <= z.mark; i++) rhumb += distanceNm(marks[i - 1], marks[i]);
+    const missed = Array.from({ length: Math.max(0, z.mark - a.mark - 1) }, (_, j) => markName(marks, a.mark + 1 + j));
     legs.push({
-      from: marks[i - 1]?.name ?? `Σημείο ${i}`,
-      to: marks[i]?.name ?? `Σημείο ${i + 1}`,
-      start: pts[0].t,
-      end: pts[pts.length - 1].t,
-      durationSec: (pts[pts.length - 1].t - pts[0].t) / 1000,
-      rhumbNm: marks[i] && marks[i - 1] ? distanceNm(marks[i - 1], marks[i]) : 0,
+      from: markName(marks, a.mark),
+      to: markName(marks, z.mark),
+      start: a.t,
+      end: z.t,
+      durationSec: (z.t - a.t) / 1000,
+      rhumbNm: rhumb,
       sailedNm: sailed(pts),
       avgPct: avg(pts.map((p) => p.pct).filter((x): x is number => x !== undefined && x > 0.3 && x < 1.5)),
       avgTws: avg(pts.map((p) => p.tws).filter((x): x is number => x !== undefined)),
       tacks: man.tacks,
       gybes: man.gybes,
       mode: modeOf(pts),
+      ...(missed.length ? { missed } : {}),
     });
   }
   const man = countManoeuvres(track);
   const pcts = track.filter((p) => p.pct !== undefined && p.pct > 0.3 && p.pct < 1.5);
-  const t0 = track[0]?.t ?? race.start;
-  const t1 = track[track.length - 1]?.t ?? race.finish ?? race.start;
+  const t0 = win.from;
+  const t1 = win.to;
   const buckets = 60;
   const timeline: RaceAnalysis['timeline'] = [];
   if (pcts.length && t1 > t0) {
@@ -165,12 +226,14 @@ export function analyseRace(race: Race): RaceAnalysis {
   flush();
   lowSpots.sort((a, b) => b.durationSec * (1 - b.avgPct) - a.durationSec * (1 - a.avgPct));
 
-  const rows = estimateRace(race, undefined, race.finish ?? t1);
+  const rows = estimateRace(race, undefined, t1);
   const own = rows.find((r) => r.own);
   // Pauses (training, cruise; never a race) count in neither time nor distance.
-  const paused = pausedMs(race, race.finish ?? t1) / 1000;
+  const paused = pausedMs(race, t1) / 1000;
+  const compared = rows.filter((r) => r.corrected !== undefined).length;
   return {
-    durationSec: Math.max(0, (race.finish ? (race.finish - race.start) / 1000 : (t1 - t0) / 1000) - paused),
+    durationSec: Math.max(0, (t1 - t0) / 1000 - paused),
+    noFinish: race.finish === undefined,
     sailedNm: trackSegments({ track, pauses: race.pauses }).reduce((d, seg) => d + sailed(seg), 0),
     courseNm,
     avgPct: avg(pcts.map((p) => p.pct!)),
@@ -181,8 +244,19 @@ export function analyseRace(race: Race): RaceAnalysis {
     lowSpots: lowSpots.slice(0, 5),
     rank: own?.rank,
     of: race.entries.length,
+    compared,
     gaps: rows.filter((r) => !r.own).map((r) => ({ name: r.name, gap: r.gap })),
   };
+}
+
+/**
+ * «2ος / 3» only with a time or an estimate for two or more boats; «/ N» counts only them,
+ * then «· 1 χωρίς χρόνο» for the others (P-056 §Γ). Undefined without a comparison.
+ */
+export function placeLine(a: Pick<RaceAnalysis, 'rank' | 'of' | 'compared'>): string | undefined {
+  if (!a.rank) return undefined;
+  const missing = a.of - a.compared;
+  return `${a.rank}ος / ${a.compared}${missing > 0 ? ` · ${missing} χωρίς χρόνο` : ''}`;
 }
 
 const hm = (sec: number) => {

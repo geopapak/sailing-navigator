@@ -1,5 +1,6 @@
 import type { SessionKind } from './types';
 import { ARRIVE_ALERT_NM, shallowStretch, type DepthReading } from './cruise';
+import { num } from '../format';
 
 /**
  * Manoeuvre alerts during a session (P-023, per kind since P-034), code only, no AI.
@@ -373,7 +374,7 @@ export function startAlert(now: number): Alert {
 export const isMuted = (st: EngineState, now: number) => now < st.muteUntil;
 export const MUTE_MS = 5 * 60_000;
 
-const nm1 = (x: number) => x.toFixed(1).replace('.', ',');
+const nm1 = (x: number) => num(x);
 /** Depth as said on the band: one decimal below 10 m. */
 const depthText = (m: number) => (m < 10 ? nm1(m) : String(Math.round(m)));
 

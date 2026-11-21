@@ -1,4 +1,5 @@
 import { magToTrue, norm360, trueToMag, twaFromTwd } from '../performance/angles';
+import { ago, num as fnum } from '../format';
 import { computeLive, type LiveResult } from '../performance/targets';
 import type { BoatProfile } from '../boat/types';
 import type { InstrumentValues } from '../instruments/types';
@@ -45,11 +46,7 @@ export const ageMin = (at: number, now: number): number => Math.max(0, Math.floo
 export const isStale = (at: number, now: number): boolean => ageMin(at, now) >= STALE_MIN;
 
 /** W10–W12: «τώρα», «πριν από 12′», «πριν από 1 ώ 05′». */
-export function fmtAge(min: number): string {
-  if (min < 1) return 'τώρα';
-  if (min < 60) return `πριν από ${min}′`;
-  return `πριν από ${Math.floor(min / 60)} ώ ${String(min % 60).padStart(2, '0')}′`;
-}
+export const fmtAge = (min: number): string => ago(Math.max(0, Math.floor(min)) * 60);
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
@@ -84,9 +81,9 @@ export function fmtBoth(twdTrue: number, o: DirOpts): string {
   return o.manualMagnetic ? `${m}°M = ${t}°T` : `${t}°T = ${m}°M`;
 }
 /** «12,0» */
-export const fmtKt = (v: number): string => v.toFixed(1).replace('.', ',');
+export const fmtKt = (v: number): string => fnum(v);
 /** The TWS field: «12», «12,5». */
-export const fmtTwsField = (v: number): string => (Number.isInteger(v) ? String(v) : v.toFixed(1).replace('.', ','));
+export const fmtTwsField = (v: number): string => (Number.isInteger(v) ? String(v) : fnum(v, 1));
 
 const r1 = (x: number) => Math.round(x * 10) / 10;
 const clampTws = (v: number) => Math.max(0, Math.min(TWS_MAX, v));

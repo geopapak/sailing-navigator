@@ -42,6 +42,12 @@
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "http.server", "8087", "--bind", "127.0.0.1", "--directory", "design/refresh-2026-11-b"],
       "port": 8087
+    },
+    {
+      "name": "proto-fixes",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8086", "--bind", "127.0.0.1", "--directory", "design/fixes-0.19.1"],
+      "port": 8086
     }
   ]
 }

@@ -1,0 +1,70 @@
+{
+  "study": "Συνθετική μελέτη ευχρηστίας Sailing Navigator 0.19.0",
+  "date": "2026-11-20",
+  "caveat": "Φανταστικές περσόνες προσομοιωμένες με AI, όχι πραγματικοί χρήστες. Υποθέσεις προς επιβεβαίωση· οι βαθμοί είναι μόνο σχετικά σήματα.",
+  "sample": { "personas": 100, "screens": 90, "browser": 10, "tour_steps": 234 },
+  "scales": { "first_impression": "1-5", "ease_of_use": "1-5", "usefulness_for_me": "1-5", "readability_at_sea": "1-5", "trust_in_numbers": "1-5", "would_use_next_outing": "1-5", "would_recommend": "0-10" },
+  "overall": {
+    "n": 100,
+    "first_impression": 3.25,
+    "ease_of_use": 3.08,
+    "usefulness_for_me": 2.95,
+    "readability_at_sea": 3.42,
+    "trust_in_numbers": 2.98,
+    "would_use_next_outing": 2.86,
+    "would_recommend": 5.3,
+    "would_recommend_distribution": { "0-6": 75, "7-8": 25, "9-10": 0 }
+  },
+  "groups": [
+    { "group": "skipper", "label": "Κυβερνήτες ORC", "n": 25, "first_impression": 3.56, "ease_of_use": 3.08, "usefulness_for_me": 3.72, "readability_at_sea": 3.24, "trust_in_numbers": 2.96, "would_use_next_outing": 3.36, "would_recommend": 6.2, "would_pay": { "yes": 5, "maybe": 11, "no": 9 } },
+    { "group": "tactician", "label": "Τακτικοί / ναυτίλοι", "n": 15, "first_impression": 3.47, "ease_of_use": 3.4, "usefulness_for_me": 3.07, "readability_at_sea": 3.33, "trust_in_numbers": 2.93, "would_use_next_outing": 3.13, "would_recommend": 5.87, "would_pay": { "yes": 3, "maybe": 4, "no": 8 } },
+    { "group": "crew", "label": "Πλήρωμα", "n": 25, "first_impression": 3.08, "ease_of_use": 2.84, "usefulness_for_me": 2.92, "readability_at_sea": 3.44, "trust_in_numbers": 3.08, "would_use_next_outing": 2.88, "would_recommend": 5.12, "would_pay": { "yes": 3, "maybe": 10, "no": 12 } },
+    { "group": "cruise", "label": "Αναψυχή / ναύλωση", "n": 20, "first_impression": 3.0, "ease_of_use": 3.25, "usefulness_for_me": 2.25, "readability_at_sea": 3.5, "trust_in_numbers": 2.8, "would_use_next_outing": 2.25, "would_recommend": 4.2, "would_pay": { "yes": 2, "maybe": 3, "no": 15 } },
+    { "group": "beginner", "label": "Αρχάριοι", "n": 10, "first_impression": 3.5, "ease_of_use": 3.1, "usefulness_for_me": 2.7, "readability_at_sea": 3.7, "trust_in_numbers": 3.0, "would_use_next_outing": 2.7, "would_recommend": 5.4, "would_pay": { "yes": 0, "maybe": 5, "no": 5 } },
+    { "group": "committee", "label": "Επιτροπή / όμιλος", "n": 5, "first_impression": 2.4, "ease_of_use": 2.6, "usefulness_for_me": 2.2, "readability_at_sea": 3.6, "trust_in_numbers": 3.4, "would_use_next_outing": 2.2, "would_recommend": 4.2, "would_pay": { "yes": 0, "maybe": 3, "no": 2 } }
+  ],
+  "devices": [
+    { "device": "iphone", "label": "iPhone κανονικό/μεγάλο", "n": 19, "first_impression": 3.58, "ease_of_use": 3.37, "usefulness_for_me": 3.0, "readability_at_sea": 3.58, "trust_in_numbers": 2.89, "would_use_next_outing": 3.05, "would_recommend": 5.68 },
+    { "device": "iphone_small", "label": "iPhone mini / SE", "n": 14, "first_impression": 3.29, "ease_of_use": 2.93, "usefulness_for_me": 3.07, "readability_at_sea": 3.07, "trust_in_numbers": 2.93, "would_use_next_outing": 2.93, "would_recommend": 5.36 },
+    { "device": "android", "label": "Android μεσαίο/ακριβό", "n": 36, "first_impression": 3.19, "ease_of_use": 3.06, "usefulness_for_me": 2.92, "readability_at_sea": 3.5, "trust_in_numbers": 3.0, "would_use_next_outing": 2.75, "would_recommend": 5.22 },
+    { "device": "android_budget", "label": "Android οικονομικό", "n": 14, "first_impression": 3.07, "ease_of_use": 2.93, "usefulness_for_me": 2.93, "readability_at_sea": 3.21, "trust_in_numbers": 3.14, "would_use_next_outing": 2.93, "would_recommend": 5.21 },
+    { "device": "tablet", "label": "Tablet", "n": 17, "first_impression": 3.12, "ease_of_use": 3.06, "usefulness_for_me": 2.88, "readability_at_sea": 3.53, "trust_in_numbers": 2.94, "would_use_next_outing": 2.76, "would_recommend": 5.06 }
+  ],
+  "languages": [
+    { "language": "greek", "label": "Μητρική ελληνικά", "n": 92, "first_impression": 3.3, "ease_of_use": 3.16, "usefulness_for_me": 2.93, "readability_at_sea": 3.45, "trust_in_numbers": 3.01, "would_use_next_outing": 2.9, "would_recommend": 5.41, "would_pay": { "yes": 13, "maybe": 34, "no": 45 } },
+    { "language": "foreign", "label": "Ξένοι, λίγα ελληνικά", "n": 8, "first_impression": 2.63, "ease_of_use": 2.13, "usefulness_for_me": 3.13, "readability_at_sea": 3.13, "trust_in_numbers": 2.63, "would_use_next_outing": 2.38, "would_recommend": 4.0, "would_pay": { "yes": 0, "maybe": 2, "no": 6 } }
+  ],
+  "methods": [
+    { "method": "screens", "n": 90, "first_impression": 3.24, "ease_of_use": 3.04, "usefulness_for_me": 2.96, "readability_at_sea": 3.38, "trust_in_numbers": 3.01, "would_use_next_outing": 2.84, "would_recommend": 5.29 },
+    { "method": "browser", "n": 10, "first_impression": 3.3, "ease_of_use": 3.4, "usefulness_for_me": 2.9, "readability_at_sea": 3.8, "trust_in_numbers": 2.7, "would_use_next_outing": 3.0, "would_recommend": 5.4 }
+  ],
+  "would_pay": { "yes": 13, "maybe": 36, "no": 51 },
+  "top_findings": [
+    { "rank": 1, "title": "Ο σύνδεσμος πρόσκλησης ανοίγει σκέτη οθόνη σύνδεσης, χωρίς να λέει ότι είναι πρόσκληση", "count": 18, "severity": "blocker", "kind": "ux", "refs": ["12-21", "12-22", "browser:P068/real-chromium-signup-1-landing"] },
+    { "rank": 2, "title": "Όργανα μόνο μέσω Signal K / NMEA 0183 WebSocket, χωρίς οδηγό για B&G, Garmin, Raymarine, NMEA 2000", "count": 17, "severity": "major", "kind": "missing_feature", "refs": ["05-03"] },
+    { "rank": 3, "title": "Τα σταθερά κουμπιά «Θέση αντιπάλου / Τερματισμός» σκεπάζουν το Live· στα «Πολύ μεγάλα» χάνονται τα νούμερα", "count": 17, "severity": "blocker", "kind": "ux", "refs": ["07-15", "07-21", "07-61", "17-05", "browser:P068/07-live-simple"] },
+    { "rank": 4, "title": "Αναψυχή χωρίς ορατή πρόγνωση («Δεν υπάρχει πρόγνωση για σήμερα»)", "count": 15, "severity": "major", "kind": "missing_feature", "refs": ["09-01", "09-04", "browser:P005/08-cruise-live"] },
+    { "rank": 5, "title": "Τα σκέλη της ανάλυσης δεν αθροίζουν στον χρόνο του αγώνα", "count": 13, "severity": "major", "kind": "bug_confirmed", "refs": ["07-30", "browser:P008/13-analysis-1", "browser:P029/57-finish-analysis-1"] },
+    { "rank": 6, "title": "Ο Σύμβουλος περιμένει έγκριση και κοστίζει ανά ερώτηση· είναι η μόνη πηγή για όρους", "count": 18, "severity": "major", "kind": "ux", "refs": ["13-01", "13-21", "browser:P055/21-advisor-typed"] },
+    { "rank": 7, "title": "Μόνο ελληνικά, μαζί και οι όροι χρήσης", "count": 8, "severity": "blocker", "kind": "missing_feature", "refs": ["01-01", "01-02", "browser:P030/04-settings-no-language"] },
+    { "rank": 8, "title": "Δεν γράφονται συντεταγμένες σημαδούρων", "count": 9, "severity": "major", "kind": "missing_feature", "refs": ["07-04", "14-41", "browser:P016/04-course-editor-1"] },
+    { "rank": 9, "title": "Ακρωνύμια και αγγλικά ακόμη και στο «Απλό», χωρίς λεξικό", "count": 15, "severity": "major", "kind": "ux", "refs": ["06-01", "06-05", "07-15", "05-12"] },
+    { "rank": 10, "title": "Χωρίς σκάφος κλειδώνουν Αγώνας και Προπόνηση («Θέλει πρώτα σκάφος με polar»)", "count": 9, "severity": "blocker", "kind": "ux", "refs": ["01-13", "03-01", "03-04"] },
+    { "rank": 11, "title": "Το «Επόμενη αναστροφή 6:48» διαβάζεται σαν ώρα της μέρας", "count": 10, "severity": "major", "kind": "ux", "refs": ["07-15", "17-25", "10-06"] },
+    { "rank": 12, "title": "«1ος σε διορθωμένο» ενώ ο αντίπαλος είναι «χωρίς θέση»", "count": 7, "severity": "major", "kind": "bug_confirmed", "refs": ["07-18", "07-11", "07-28"] }
+  ],
+  "confirmed_browser_bugs": [
+    { "title": "Χειροκίνητο σκάφος (με ή χωρίς GPH): άδεια «Βαθμολογία», γκρι «Αποθήκευση και έναρξη»", "count": 2, "severity": "blocker", "kind": "bug_confirmed", "refs": ["browser:P004/13-race-start-disabled", "browser:P030/09-race-start-disabled"] },
+    { "title": "«Πολύ μεγάλα»: η φόρμα νέου σκάφους πλατιάζει στα 514 px σε οθόνη 384 px", "count": 2, "severity": "major", "kind": "bug_browser", "refs": ["browser:P004/07-boat-save-blocked", "browser:P055/14-boat-form"] },
+    { "title": "Αναψυχή: ταχύτητα και ETA «—» όταν οι θέσεις GPS δεν έχουν ταχύτητα", "count": 11, "severity": "major", "kind": "bug_partly_confirmed", "refs": ["09-04", "browser:P005/08-cruise-live"] },
+    { "title": "Δεν υπάρχει διακόπτης Απλό/Πλήρες στο Live αγώνα", "count": 1, "severity": "minor", "kind": "missing_feature", "refs": ["browser:P008/06-live-simple-night"] }
+  ],
+  "quotes": [
+    { "persona": "P091", "role": "crew", "text": "Μια διαδρομή θέλω να δω. Όχι λογαριασμό." },
+    { "persona": "P004", "role": "skipper", "text": "Έγραψα το GPH και πάλι δεν με αφήνει να τρέξω. Τι άλλο θέλει;" },
+    { "persona": "P008", "role": "skipper", "text": "Ωραίο το Live, αλλά τα σκέλη στην ανάλυση δεν βγαίνουν." },
+    { "persona": "P066", "role": "skipper", "text": "Looks good, but I cannot read it. I need English." },
+    { "persona": "P022", "role": "crew", "text": "Κόκκινη και πράσινη. Για μένα είναι δύο γκρι γραμμές." },
+    { "persona": "P071", "role": "cruise", "text": "Ωραία η ETA, αλλά εμένα με νοιάζει πού θα κοιμηθώ αν πιάσει το μελτέμι." }
+  ]
+}

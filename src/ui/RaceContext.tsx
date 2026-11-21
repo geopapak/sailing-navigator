@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { deleteEvent as dbDeleteEvent, deleteRace as dbDelete, listEvents, listRaces, saveEvent as dbSaveEvent, saveRace } from '../boat/store';
+import { allRaceIds, deleteEvent as dbDeleteEvent, deleteKV, kvKeys, deleteRace as dbDelete, listEvents, listRaces, saveEvent as dbSaveEvent, saveRace } from '../boat/store';
+import { plannedKey } from '../routing/planTarget';
 import type { Race, RaceEvent, RaceFix, SessionKind, TrackPoint } from '../race/types';
 import { MAX_ACCURACY_M, finishStep, type Pos } from '../race/finishLine';
 import { finishTones } from './sound';
@@ -110,6 +111,16 @@ export function RaceProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoaded(true));
   }, [account?.id]);
 
+  // Once per start: a route stored for a race that was never saved (setup left, app closed) goes.
+  useEffect(() => {
+    Promise.all([kvKeys('planned:'), allRaceIds()])
+      .then(([keys, ids]) => {
+        const known = new Set(ids.map(plannedKey));
+        return Promise.all(keys.filter((k) => !known.has(k)).map((k) => deleteKV(k)));
+      })
+      .catch(() => undefined);
+  }, []);
+
   // Events (P-040): per account, like the races.
   const [events, setEvents] = useState<RaceEvent[]>([]);
   useEffect(() => {
@@ -166,6 +177,8 @@ export function RaceProvider({ children }: { children: ReactNode }) {
 
   const remove = useCallback(async (id: string) => {
     await dbDelete(id);
+    // P-067: the race's own optimal route stays on the device only while the race exists.
+    deleteKV(plannedKey(id)).catch(() => undefined);
     setRaces((list) => list.filter((r) => r.id !== id));
     if (ui.activeId === id) setUi((u) => ({ freshId: u.freshId }));
   }, [setUi, ui.activeId]);

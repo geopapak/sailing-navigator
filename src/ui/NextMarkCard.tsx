@@ -8,8 +8,9 @@ import { laylineText, nextManoeuvre } from '../nav/laylines';
 import { useLaylines } from './useLaylines';
 import { fmtWind } from '../race/manualWind';
 import { BtnIcon, Icon } from './Icons';
+import { num, span, time } from '../format';
 
-const f1 = (v: number) => v.toFixed(1);
+const f1 = (v: number) => num(v);
 const f0 = (v: number) => Math.round(v).toString();
 
 /** Next mark: distance, bearing, VMC, ETA and the re-routed recommendation. */
@@ -75,7 +76,7 @@ export function NextMarkCard({ observed, fromCog }: { observed?: WindSample; fro
           </div>
           <div>
             <div className="tile-label">ETA</div>
-            <div className="nm-val">{eta ? new Date(eta).toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit' }) : '—'}</div>
+            <div className="nm-val">{eta ? time(eta) : '—'}</div>
           </div>
         </div>
       ) : (
@@ -104,13 +105,13 @@ export function NextMarkCard({ observed, fromCog }: { observed?: WindSample; fro
             {first.sailId && ` · ${boat.sails.find((s) => s.id === first.sailId)?.name ?? first.sailId}`}
           </div>
           <div className="muted small">
-            Τερματισμός σε {Math.floor(lr!.elapsedSec / 3600)}h {String(Math.round((lr!.elapsedSec % 3600) / 60)).padStart(2, '0')}′ ·{' '}
+            Τερματισμός σε {span(lr!.elapsedSec)} ·{' '}
             {lr!.legs[0].tacks + lr!.legs[0].gybes} μανούβρες ως τη σημαδούρα
           </div>
           {nextMan && (
             <div className="small">
               Επόμενη {nextMan.kind === 'tack' ? 'αναστροφή' : 'υποσταύρωση'} ~
-              {new Date(nextMan.at).toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit' })} (σε{' '}
+              {time(nextMan.at)} (σε{' '}
               {Math.max(0, Math.round((nextMan.at - Date.now()) / 60_000))}′)
             </div>
           )}

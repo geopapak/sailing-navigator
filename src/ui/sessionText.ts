@@ -17,6 +17,8 @@ export const LIVE_TEXT = {
   leg: 'σκέλος',
   sogFromGps: 'SOG από GPS',
   sogGround: 'SOG · ως προς βυθό',
+  /** P-056 §ΣΤ: the phone gave no speed, it comes from the positions. */
+  fromFixes: 'από τις θέσεις GPS',
   course: 'πορεία',
   depth: 'Βάθος',
   depthSounder: 'βυθόμετρο',

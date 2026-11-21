@@ -51,5 +51,6 @@ export function formatDM(value: number, isLat: boolean): string {
   const v = Math.abs(value);
   const d = Math.floor(v);
   const m = (v - d) * 60;
-  return `${d}°${m.toFixed(3).padStart(6, '0')}'${hemi}`;
+  // On screen: decimal comma (P-064), «37°52,341'N».
+  return `${d}°${m.toFixed(3).padStart(6, '0').replace('.', ',')}'${hemi}`;
 }

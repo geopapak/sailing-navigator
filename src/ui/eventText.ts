@@ -1,3 +1,4 @@
+import { clock } from '../format';
 /**
  * Greek texts of the multi-race event («Διοργάνωση», P-040) and of the finish line, in one place
  * for the copywriter (P-041). Wording: spec `docs/product/specs/P-040-events.md` and the glossary
@@ -212,8 +213,5 @@ export const FINISH_TEXT = {
   forgotten: (t: string) => `Τέλος στο πέρασμα της γραμμής (${t})`,
 } as const;
 
-/** «2:05» for the live «πριν από m:ss». */
-export const mmss = (sec: number) => {
-  const s = Math.max(0, Math.floor(sec));
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-};
+/** «2′05″» for the live «πριν από …» (P-056 §Ε: never «2:05», which reads as a time of day). */
+export const mmss = (sec: number) => clock(Math.max(0, Math.floor(sec)));

@@ -1,4 +1,6 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { hadAccount, pendingInvite } from '../crew/api';
+import { INVITE_TEXT } from '../crew/inviteText';
 import { useApp } from './AppContext';
 import { DEFAULT_SERVER } from './settings';
 import { ApiError, accountApi } from '../sync/api';
@@ -7,7 +9,19 @@ import { TestBadge } from './TestBadge';
 
 const errText = (e: unknown) => (e instanceof ApiError || e instanceof Error ? e.message : 'Κάτι πήγε στραβά. Δοκίμασε ξανά.');
 
-function Logo() {
+function Logo({ compact }: { compact?: boolean }) {
+  // With an invite the logo is one line, so the hint, Email, Κωδικός and «Σύνδεση» fit at 320×568.
+  if (compact)
+    return (
+      <div className="auth-logo compact">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M12 3v15M12 3l7 13H12M12 6 6 16h6M4 19h16l-2 2H6z" />
+        </svg>
+        <h1>
+          Sailing Navigator <TestBadge />
+        </h1>
+      </div>
+    );
   return (
     <div className="auth-logo">
       <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -36,6 +50,47 @@ function Screen({ children }: { children: ReactNode }) {
   return <div className="auth">{children}</div>;
 }
 
+/** P-056 §Δ: an invite link opened signed out. No boat name: the preview needs the server (Φ-B). */
+function InviteHint() {
+  return (
+    <div className="invite-hint" data-testid="invite-hint" role="status">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <circle cx="9" cy="8" r="3.2" />
+        <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 4.5a3 3 0 0 1 0 6M21 20c0-2.6-1.6-4.8-4-5.6" />
+      </svg>
+      <div>
+        <h2>{INVITE_TEXT.hintTitle}</h2>
+        <p>{INVITE_TEXT.hintBody}</p>
+      </div>
+    </div>
+  );
+}
+
+/** QA Μ9: the same approved strip on «Σύνδεση» and «Νέος λογαριασμός» with an invite and no internet. */
+function OfflineStrip() {
+  return (
+    <div className="net-strip auth-strip" role="status" data-testid="auth-offline">
+      <span className="dot" aria-hidden="true" />
+      <span>{INVITE_TEXT.offline}</span>
+    </div>
+  );
+}
+
+function useOnlineNow() {
+  const [on, setOn] = useState(() => typeof navigator === 'undefined' || navigator.onLine !== false);
+  useEffect(() => {
+    const up = () => setOn(true);
+    const down = () => setOn(false);
+    window.addEventListener('online', up);
+    window.addEventListener('offline', down);
+    return () => {
+      window.removeEventListener('online', up);
+      window.removeEventListener('offline', down);
+    };
+  }, []);
+  return on;
+}
+
 type View = 'login' | 'signup' | 'forgot' | 'forgotSent' | 'terms' | 'privacy';
 
 /** First screen when nobody is signed in: sign in, sign up, forgot password, terms. */
@@ -43,9 +98,19 @@ export function AuthFlow() {
   const { settings, signedIn } = useApp();
   const server = settings.aiUrl || DEFAULT_SERVER;
   const cfg = useServerConfig(server);
-  const [view, setView] = useState<View>('login');
+  // KA-Δ2: an invite on a device that never had an account opens on «Νέος λογαριασμός».
+  const [invite] = useState(() => !!pendingInvite());
+  const online = useOnlineNow();
+  const [view, setView] = useState<View>(() => (pendingInvite() && !hadAccount() ? 'signup' : 'login'));
   const [back, setBack] = useState<View>('login');
-  const [f, setF] = useState({ name: '', email: '', password: '', terms: false, privacy: false, marketing: false });
+  const [f, setF] = useState({
+    name: '',
+    email: '',
+    password: '',
+    terms: false,
+    privacy: false,
+    marketing: false,
+  });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const go = (v: View) => {
@@ -125,8 +190,10 @@ export function AuthFlow() {
     const ready = f.terms && f.privacy;
     return (
       <Screen>
+        {invite && !online && <OfflineStrip />}
         <Back onClick={() => go('login')} />
         <h1 className="auth-title">Νέος λογαριασμός</h1>
+        {invite && <InviteHint />}
         <form
           className="auth-form"
           onSubmit={(e) => {
@@ -203,7 +270,7 @@ export function AuthFlow() {
             <span className="req">*</span> υποχρεωτικό
           </p>
           {error && <p className="warn-text">{error}</p>}
-          <button className="btn primary auth-cta" disabled={busy} aria-disabled={!ready}>
+          <button className="btn primary auth-cta" disabled={busy || (invite && !online)} aria-disabled={!ready}>
             {busy ? 'Περίμενε…' : 'Δημιουργία λογαριασμού'}
           </button>
         </form>
@@ -219,7 +286,9 @@ export function AuthFlow() {
 
   return (
     <Screen>
-      <Logo />
+      {invite && !online && <OfflineStrip />}
+      <Logo compact={invite} />
+      {invite && <InviteHint />}
       <form
         className="auth-form"
         onSubmit={(e) => {
@@ -245,7 +314,7 @@ export function AuthFlow() {
           </button>
         </div>
         {error && <p className="warn-text">{error}</p>}
-        <button className="btn primary auth-cta" disabled={busy}>
+        <button className="btn primary auth-cta" disabled={busy || (invite && !online)}>
           {busy ? 'Σύνδεση…' : 'Σύνδεση'}
         </button>
       </form>

@@ -27,7 +27,9 @@ const SW = /(update|offline)\.spec\.ts$/;
 export default defineConfig({
   testDir: 'e2e',
   // Only the Playwright specs (e2e/*.test.ts are Vitest checks run by `npm test`).
-  testMatch: /\.spec\.ts$/,
+  // e2e/tour/ is the visual tour: its own config (e2e/tour/playwright.tour.config.ts), never CI.
+  // (testMatch, not testIgnore: the projects' own testIgnore would replace a top-level one.)
+  testMatch: /^(?!.*[\\/](tour|\.out)[\\/]).*\.spec\.ts$/,
   outputDir: `${OUT}/test-results`,
   timeout: 60_000,
   expect: { timeout: 7_000 },

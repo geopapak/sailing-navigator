@@ -1,0 +1,75 @@
+{
+  "id": "P054",
+  "method": "screens",
+  "flows_tried": [
+    "07",
+    "06",
+    "14",
+    "05"
+  ],
+  "scores": {
+    "first_impression": 3,
+    "ease_of_use": 3,
+    "usefulness_for_me": 3,
+    "readability_at_sea": 3,
+    "trust_in_numbers": 3,
+    "would_use_next_outing": 3,
+    "would_recommend": 5,
+    "would_pay": "no"
+  },
+  "likes": [
+    "The wind sheet shows «010°M = 015°T» — at last someone writes both (07-20).",
+    "Laylines on the race map together with the track (14-01).",
+    "Big numbers in Live, readable without my reading glasses (17-45)."
+  ],
+  "problems": [
+    {
+      "screen": "05-05",
+      "flow": "05",
+      "what": "Τα όργανα δείχνουν «HDG · πλώρη (°T)» και COG 346°T, ενώ ο άνεμος στο Live είναι σε °M (07-15: 009°M).",
+      "why_it_matters_to_me": "Ακριβώς η ασυνέπεια αληθής/μαγνητική που με ενοχλεί σε κάθε εφαρμογή· στην κάρτα ανέμου δεν γράφει αν η layline υπολογίζεται σε T ή M.",
+      "severity": "major"
+    },
+    {
+      "screen": "01-01",
+      "flow": "01",
+      "what": "Δεν υπάρχει αγγλική γλώσσα.",
+      "why_it_matters_to_me": "Μιλάω ελληνικά αλλά διαβάζω αργά· στο κόκπιτ δεν προλαβαίνω.",
+      "severity": "major"
+    },
+    {
+      "screen": "07-11",
+      "flow": "07",
+      "what": "Δεν είδα πλεονεκτική άκρη της γραμμής εκκίνησης στο προ-εκκίνησης Live.",
+      "why_it_matters_to_me": "Είναι ο λόγος που θα κρατούσα το tablet στην εκκίνηση.",
+      "severity": "major"
+    },
+    {
+      "screen": "13-01",
+      "flow": "13",
+      "what": "Ο Σύμβουλος AI είναι καρτέλα ισότιμη με Live και Χάρτη μέσα στον αγώνα.",
+      "why_it_matters_to_me": "Δεν θέλω το πλήρωμα να ρωτά μηχανή τι να κάνει την ώρα του αγώνα.",
+      "severity": "minor"
+    }
+  ],
+  "confusing_words": [
+    "μούρες",
+    "σκέλος 1/2",
+    "Γρήγορη ματιά",
+    "Οθόνη αγώνα"
+  ],
+  "missing_for_me": [
+    "English UI",
+    "Line bias",
+    "Current in laylines"
+  ],
+  "suggestions": [
+    "Choose one reference (T or M) and show it in every number, or a setting.",
+    "An English switch for the race screens."
+  ],
+  "quotes": [
+    "Finally °M = °T on the same line. Now do it everywhere.",
+    "No line bias, no deal for the start."
+  ],
+  "summary": "Ο Ιταλός τακτικός εκτιμά τη διπλή ένδειξη M/T στο φύλλο ανέμου αλλά βλέπει ασυνέπεια στα όργανα. Χωρίς αγγλικά, bias γραμμής και με AI μέσα στον αγώνα δεν τον πείθει."
+}

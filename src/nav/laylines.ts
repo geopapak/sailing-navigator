@@ -5,6 +5,7 @@
  */
 import type { LatLon } from './geo';
 import { norm180, norm360 } from '../performance/angles';
+import { num } from '../format';
 
 export type Leg = 'up' | 'down' | 'reach';
 export type Board = 'stbd' | 'port';
@@ -115,7 +116,7 @@ export function laylineText(l: LaylineResult): string {
   const word = l.leg === 'up' ? 'Αναστροφή' : 'Υποσταύρωση';
   if (l.overstood) return `Πέρασες τη layline: ${word.toLowerCase()} τώρα.`;
   if (l.toLayNm === undefined) return `${word}: η layline δεν είναι μπροστά με αυτές τις μούρες.`;
-  const nm = l.toLayNm.toFixed(l.toLayNm < 1 ? 2 : 1).replace('.', ',');
+  const nm = num(l.toLayNm, l.toLayNm < 1 ? 2 : 1);
   const min = l.toLayMin !== undefined ? ` (~${Math.max(1, Math.round(l.toLayMin))}′)` : '';
   return `${word} στη layline σε ${nm} NM${min}`;
 }

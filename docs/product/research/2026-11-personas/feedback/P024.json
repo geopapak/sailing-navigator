@@ -1,0 +1,92 @@
+{
+  "id": "P024",
+  "method": "screens",
+  "flows_tried": [
+    "01",
+    "04",
+    "14",
+    "07",
+    "17"
+  ],
+  "scores": {
+    "first_impression": 2,
+    "ease_of_use": 2,
+    "usefulness_for_me": 3,
+    "readability_at_sea": 3,
+    "trust_in_numbers": 2,
+    "would_use_next_outing": 2,
+    "would_recommend": 3,
+    "would_pay": "no"
+  },
+  "likes": [
+    "The ORC certificate PDF is read by AI and I check the yellow fields (04-03). No typing of polars.",
+    "Model comparison before the start (14-03): ECMWF, ICON, ARPEGE… I know these names.",
+    "On the tablet the event standing shows all races without scrolling (17-44)."
+  ],
+  "problems": [
+    {
+      "screen": "01-01",
+      "flow": "01",
+      "what": "Η εφαρμογή υπάρχει μόνο στα ελληνικά, και δεν είδα επιλογή γλώσσας στις Ρυθμίσεις (17-42).",
+      "why_it_matters_to_me": "Διαβάζω ελάχιστα ελληνικά. Τους όρους, τον Οδηγό και τις ειδοποιήσεις δεν τους καταλαβαίνω χωρίς μεταφραστή, και στον αγώνα δεν προλαβαίνω.",
+      "severity": "blocker"
+    },
+    {
+      "screen": "07-18",
+      "flow": "07",
+      "what": "Στον αγώνα ο διορθωμένος χρόνος είναι μόνο «1ος σε διορθωμένο (εκτίμηση)», ενώ η «Διαφορά από εμάς» είναι «—».",
+      "why_it_matters_to_me": "Στον αγώνα κοιτάζω μόνο αυτό. Μια θέση χωρίς χρόνο δεν μου λέει αν πρέπει να πιέσω.",
+      "severity": "major"
+    },
+    {
+      "screen": "14-03",
+      "flow": "14",
+      "what": "Εννέα μοντέλα καιρού σε μια λίστα, «Αυτόματο (best match)» και «Συμφωνία 5 μοντέλων». Το κουμπί «Υπολογισμός βέλτιστης πορείας» σκεπάζει τις ρυθμίσεις από κάτω.",
+      "why_it_matters_to_me": "Με αγχώνει να διαλέξω. Δεν λέει ποιο να εμπιστευτώ για τον Σαρωνικό.",
+      "severity": "minor"
+    },
+    {
+      "screen": "07-09",
+      "flow": "07",
+      "what": "Ώρα εκκίνησης «11/14/2026 10:05 AM».",
+      "why_it_matters_to_me": "Ούτε γαλλική ούτε ελληνική μορφή. Γράφω 14/11.",
+      "severity": "minor"
+    },
+    {
+      "screen": "05-03",
+      "flow": "05",
+      "what": "Στις συνδέσεις δεν είδα Garmin / NMEA 2000.",
+      "why_it_matters_to_me": "Έχω Garmin με WiFi gateway. Δεν ξέρω αν συνδέεται.",
+      "severity": "major"
+    },
+    {
+      "screen": "17-41",
+      "flow": "17",
+      "what": "Στο tablet η αρχική είναι μια στενή στήλη από κάρτες με τεράστιο κενό από κάτω, και τα γράμματα είναι μικρά.",
+      "why_it_matters_to_me": "Το iPad mini είναι σε θήκη στο κόκπιτ. Θέλω μεγάλα νούμερα, όχι κενό.",
+      "severity": "minor"
+    }
+  ],
+  "confusing_words": [
+    "Αναψυχή",
+    "μούρες",
+    "Παράρτημα A",
+    "ιστιοδρομία",
+    "Γρήγορη ματιά",
+    "σε διορθωμένο (εκτίμηση)"
+  ],
+  "missing_for_me": [
+    "Αγγλικά ή γαλλικά στο UI",
+    "Διαφορά διορθωμένου χρόνου σε δευτερόλεπτα",
+    "Σύσταση μοντέλου για τον Σαρωνικό"
+  ],
+  "suggestions": [
+    "English UI first for Live, Settings and alerts.",
+    "Show “+0:42 corrected” instead of only a position."
+  ],
+  "quotes": [
+    "“I prepare at home with a translator. On the water I cannot.”",
+    "“First place — by how many seconds? That is all I want to see.”"
+  ],
+  "summary": "Η ανάγνωση πιστοποιητικού και η σύγκριση μοντέλων τής αρέσουν, όμως το UI μόνο στα ελληνικά είναι για εκείνη εμπόδιο. Στον αγώνα, το μόνο που θέλει (διαφορά σε διορθωμένο) δεν εμφανίζεται, και δεν είδε υποστήριξη για Garmin."
+}

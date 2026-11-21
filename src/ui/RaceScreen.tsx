@@ -5,14 +5,15 @@ import { getSessionSnapshot } from '../ai/snapshot';
 import { distanceNm } from '../nav/geo';
 import { words } from '../race/alerts';
 import { fmtGap } from '../race/estimate';
-import { mmss, useAlerts } from './RaceAlerts';
+import { useAlerts } from './RaceAlerts';
+import { clock, clockWords, inTime, inTimeWords, num, qty } from '../format';
 import { useLiveNumbers, usePublishLive, useSessionMarks } from './useSession';
 import { LIVE_TEXT, WIND_TEXT as WT } from './sessionText';
 import { BtnIcon, Icon } from './Icons';
 import { NoWindPrompt, WindReading, useSessionWindSheet } from './WindReading';
 import { fmtAge } from '../race/manualWind';
 
-const f1 = (v: number) => v.toFixed(1).replace('.', ',');
+const f1 = (v: number) => num(v);
 
 /** «~11′» / «~1 ώ 40′» */
 const approx = (sec: number) => {
@@ -62,10 +63,11 @@ export function RaceScreen() {
   const man = up ? w.tack : w.gybe;
   const laySide = lay?.board === 'stbd' ? 'αριστερών' : 'δεξιών';
   let nextVal = '—';
+  let nextIn: number | undefined;
   let nextSub = 'χρειάζεται άνεμο, θέση και διαδρομή';
   if (lay) {
     if (lay.overstood) [nextVal, nextSub] = ['ΤΩΡΑ', 'πέρασες τη layline'];
-    else if (al.layInSec !== undefined) [nextVal, nextSub] = [mmss(al.layInSec), `στη layline ${laySide}`];
+    else if (al.layInSec !== undefined) [nextIn, nextVal, nextSub] = [al.layInSec, inTime(al.layInSec), `στη layline ${laySide}`];
     else if (lay.leg === 'reach') nextSub = 'φτάνεις τη σημαδούρα χωρίς μανούβρα';
     else nextSub = 'η layline δεν είναι μπροστά';
   }
@@ -84,10 +86,11 @@ export function RaceScreen() {
       <span className="sub lay-note">{WT.layForecast}</span>
     ) : null;
   const twaSub = nb.windFrom === 'none' ? WT.needsWind : nb.windFrom === 'manual' && twa === undefined ? WT.needsSog : undefined;
-  const idle = !al.banner && lay && !lay.overstood && al.layInSec !== undefined ? `${LIVE_TEXT.next}: ${man} στη layline ${laySide} σε ${mmss(al.layInSec)}` : undefined;
+  const idle = !al.banner && lay && !lay.overstood && al.layInSec !== undefined ? `${LIVE_TEXT.next}: ${man} στη layline ${laySide} ${inTime(al.layInSec)}` : undefined;
 
   const mark = sm.mark;
-  const markLine = mark && fix ? `${sm.isFinish ? `${LIVE_TEXT.finish} · ${mark.name}` : `${LIVE_TEXT.markShort(sm.index)} · ${mark.name}`} · ${f1(distanceNm(fix, mark))} NM` : undefined;
+  const markLine =
+    mark && fix ? `${sm.isFinish ? `${LIVE_TEXT.finish} · ${mark.name}` : `${LIVE_TEXT.markShort(sm.index)} · ${mark.name}`} · ${qty(distanceNm(fix, mark), 'NM')}` : undefined;
 
   // «2ος · +0:42»: behind the boat ahead; first: ahead of the second (negative).
   const own = race.rows.find((x) => x.own);
@@ -97,23 +100,31 @@ export function RaceScreen() {
 
   return (
     <section className="card race-screen" aria-label="Οθόνη αγώνα">
-      {idle && (
-        <div className="alert-band idle" role="status">
-          <span className="sub">{idle}</span>
+      {nb.windFrom === 'manual' ? <p className="msg info">{WT.manualStrip}</p> : nb.windFrom === 'quick' && <p className="msg warn">{LIVE_TEXT.noInstRace}</p>}
+      {idle ? (
+        // P-056 §Ι: the band takes the place of the «Οθόνη αγώνα» row, with its own mute button.
+        <div className="rs-band" role="status" data-testid="rs-band">
+          <span className="big">{idle}</span>
+          <button
+            type="button"
+            className={`mute ${al.muteLeft ? 'on' : ''}`}
+            aria-pressed={al.muteLeft > 0}
+            aria-label={al.muteLeft ? `Σίγαση ${clockWords(al.muteLeft)}` : 'Σίγαση ειδοποιήσεων για 5 λεπτά'}
+            onClick={al.toggleMute}
+          >
+            <BtnIcon name="mute" />
+            <span aria-hidden="true">{al.muteLeft ? clock(al.muteLeft) : '5′'}</span>
+          </button>
+        </div>
+      ) : (
+        <div className="rs-top">
+          <h3>Οθόνη αγώνα</h3>
+          <button type="button" className={`btn small-btn ${al.muteLeft ? 'on' : ''}`} aria-pressed={al.muteLeft > 0} onClick={al.toggleMute}>
+            <BtnIcon name="mute" />
+            {al.muteLeft ? <span aria-label={`Σίγαση ${clockWords(al.muteLeft)}`}>Σίγαση {clock(al.muteLeft)}</span> : 'Σίγαση 5′'}
+          </button>
         </div>
       )}
-      {nb.windFrom === 'manual' ? (
-        <p className="msg info">{WT.manualStrip}</p>
-      ) : (
-        nb.windFrom === 'quick' && <p className="msg warn">{LIVE_TEXT.noInstRace}</p>
-      )}
-      <div className="rs-top">
-        <h3>Οθόνη αγώνα</h3>
-        <button type="button" className={`btn small-btn ${al.muteLeft ? 'on' : ''}`} aria-pressed={al.muteLeft > 0} onClick={al.toggleMute}>
-          <BtnIcon name="mute" />
-          {al.muteLeft ? mmss(al.muteLeft) : 'Σίγαση 5′'}
-        </button>
-      </div>
       {!al.audioOk && settings.alerts.sound !== 'off' && (
         <p className="rs-audio">
           <BtnIcon name="sound" />
@@ -140,7 +151,8 @@ export function RaceScreen() {
         <span>
           <span className="lab">{LIVE_TEXT.windAngle}</span>
           <span className="ab">
-            TWA{twa !== undefined && ` · ${twa >= 0 ? 'δεξιές' : 'αριστερές'} μούρες`}
+            TWA
+            {twa !== undefined && ` · ${twa >= 0 ? 'δεξιές' : 'αριστερές'} μούρες`}
           </span>
           {targetTwa !== undefined && (
             <span className="sub">
@@ -151,24 +163,33 @@ export function RaceScreen() {
         </span>
         <span className="val">{twa === undefined ? '—' : `${Math.round(Math.abs(twa))}°`}</span>
       </div>
-      <div className="rs-tile">
+      <div className="rs-tile" data-fit-end>
         <span>
           <span className="lab">Επόμενη {man}</span>
           <span className="ab">{up ? 'αναστροφή (τακ)' : 'υποσταύρωση (τζάιμπ)'}</span>
           <span className="sub">{nextSub}</span>
           {layNote}
         </span>
-        <span className={`val ${nextVal === 'ΤΩΡΑ' ? 'now' : ''}`}>{nextVal}</span>
+        {nextIn !== undefined && Math.round(nextIn) > 0 ? (
+          <span className="val in-time" aria-label={inTimeWords(nextIn)} data-testid="next-in">
+            <span className="in" aria-hidden="true">
+              σε
+            </span>
+            <span aria-hidden="true">{clock(nextIn)}</span>
+          </span>
+        ) : (
+          <span className={`val ${nextVal === 'ΤΩΡΑ' ? 'now' : ''}`}>{nextVal}</span>
+        )}
       </div>
       <WindReading w={wind.view} dir={settings} onOpen={wind.openSheet} />
       {markLine && (
-        <div className="rs-next">
+        <div className="rs-next" data-fit-end>
           <span>{markLine}</span>
           <span>{al.markInSec !== undefined ? approx(al.markInSec) : ''}</span>
         </div>
       )}
       {rankLine && (
-        <div className="rs-next">
+        <div className="rs-next" data-fit-end>
           <span>{LIVE_TEXT.ranking}</span>
           <span>{rankLine}</span>
         </div>

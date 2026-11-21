@@ -8,6 +8,7 @@ import { boatItem, courseItem } from './fixtures/handlers';
 import { NO_POLAR } from './fixtures/data/boat-no-polar';
 import { download, runningSession, storedSessions } from './fixtures/session';
 import { expectActiveBoat } from './fixtures/boat';
+import { fillDateTime } from './fixtures/datetime';
 
 const MIN = 60_000;
 
@@ -24,7 +25,7 @@ async function setupRace(app: AppFixture) {
   const { page } = app;
   await page.getByRole('button', { name: /^Αγώνας:/ }).click();
   await page.getByLabel('Όνομα', { exact: true }).fill('Δοκιμή ανέμου');
-  await page.getByLabel('Εκκίνηση', { exact: true }).fill('2026-11-14T10:01');
+  await fillDateTime(page, 'Εκκίνηση', '2026-11-14T10:01');
   await page.getByRole('button', { name: 'Αποθήκευση και έναρξη' }).click();
   await expect(page.getByTestId('session-end')).toBeVisible();
 }

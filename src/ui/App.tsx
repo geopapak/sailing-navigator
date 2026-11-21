@@ -9,7 +9,8 @@ import { AlertBanner, AlertsProvider } from './RaceAlerts';
 import { TrainingProvider } from './TrainingContext';
 import { useShareRetry } from './crewShare';
 import { InviteScreen } from './CrewViews';
-import { pendingInvite } from '../crew/api';
+import { markHadAccount, pendingInvite } from '../crew/api';
+import { runBackOverride } from './backStack';
 import { KnowledgeProvider } from './KnowledgeContext';
 import { ChatView } from './ChatView';
 import { AcceptTermsScreen, AuthFlow, SetPasswordScreen } from './AuthFlow';
@@ -110,6 +111,10 @@ function Shell() {
 
   // All hooks must run before the early returns below (else React throws and the page is blank).
   const [invite, setInvite] = useState(() => pendingInvite());
+  // P-056 §Δ: a device that once had an account opens an invite on «Σύνδεση», not «Νέος λογαριασμός».
+  useEffect(() => {
+    if (account?.id) markHadAccount();
+  }, [account?.id]);
   // A11: a side rail on a low landscape screen (computed in JS: em of the text size setting).
   const navMode = useNavMode();
   // The browser bar follows the top bar: light outside a session, the session bar's colour inside.
@@ -202,7 +207,7 @@ function Shell() {
       ) : (
         <header className="topbar">
           {hasBack ? (
-            <button type="button" className="icon-btn top-btn back" aria-label="Πίσω" onClick={goHome}>
+            <button type="button" className="icon-btn top-btn back" aria-label="Πίσω" onClick={() => runBackOverride() || goHome()}>
               <Icon name="back" stroke={2.4} />
             </button>
           ) : tab === 'home' && !screen ? (
