@@ -5,6 +5,7 @@ import { DEFAULT_SERVER } from './settings';
 import { ApiError, accountApi } from '../sync/api';
 import { checkExtract, extractToBoat, type Flag } from '../boat/certificate';
 import type { BoatProfile } from '../boat/types';
+import { qty } from '../format';
 
 const MAX_BYTES = 10 * 1024 * 1024;
 const TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
@@ -19,7 +20,7 @@ export function toBase64(file: File): Promise<string> {
   });
 }
 
-const kb = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.round(n / 1024)} KB`);
+const kb = (n: number) => (n > 1024 * 1024 ? qty(n / 1024 / 1024, 'MB') : qty(n / 1024, 'KB', 0));
 
 /** Upload an ORC certificate (PDF or photo); the AI reads it into a boat the user then reviews. */
 export function CertificateImport({ isOwn, onCancel, onRead }: { isOwn: boolean; onCancel: () => void; onRead: (boat: BoatProfile, flags: Flag[]) => void }) {

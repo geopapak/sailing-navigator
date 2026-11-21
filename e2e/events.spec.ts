@@ -9,6 +9,7 @@ import { NO_POLAR } from './fixtures/data/boat-no-polar';
 import { COURSE } from './fixtures/data/course-saronic';
 import type { Page } from '@playwright/test';
 import { expectActiveBoat } from './fixtures/boat';
+import { fillDateTime } from './fixtures/datetime';
 
 const MIN = 60_000;
 const EVENT = 'Διήμερος Δοκιμής';
@@ -84,7 +85,7 @@ test('διήμερος: νέα διοργάνωση → 1η → αποτελέσ
   await page.getByRole('group', { name: 'Απορρίψεις', exact: true }).getByRole('button', { name: '0', exact: true }).click();
   await page.getByLabel('Όνομα ιστιοδρομίας').fill('Πειραιάς–Αίγινα');
   await expect(page.getByTestId('course-card').filter({ hasText: COURSE.name })).toHaveAttribute('aria-pressed', 'true');
-  await page.getByLabel('Εκκίνηση', { exact: true }).fill('2026-11-14T10:02');
+  await fillDateTime(page, 'Εκκίνηση', '2026-11-14T10:02');
   await page.getByRole('combobox', { name: 'Πρόσθεσε σκάφος από τα σκάφη μου' }).selectOption({ label: RIVAL.name });
   await page.getByRole('button', { name: 'Προσθήκη', exact: true }).click();
   await expect(page.getByText('Βάλε μόνο τα σκάφη της κλάσης σου.')).toBeVisible();
@@ -175,7 +176,7 @@ test('διήμερος: νέα διοργάνωση → 1η → αποτελέσ
   await expect(page.getByTestId('same-entries')).toHaveText('ίδιοι 2 με την 1η ιστιοδρομία');
   await expect(page.locator('.race-setup .entries')).toContainText(RIVAL.name);
   await page.getByLabel('Όνομα ιστιοδρομίας').fill('Αίγινα–Πειραιάς');
-  await page.getByLabel('Εκκίνηση', { exact: true }).fill('2026-11-14T10:20');
+  await fillDateTime(page, 'Εκκίνηση', '2026-11-14T10:20');
 
   // AC 11: saved for later, it shows only in the event card.
   await page.getByRole('button', { name: 'Αποθήκευση για αργότερα' }).click();
@@ -235,7 +236,7 @@ test('γραμμή τερματισμού: πέρασμα → «Όχι» → ξ�
   await ready(app);
   await page.getByRole('button', { name: /^Αγώνας:/ }).click();
   await page.getByLabel('Όνομα', { exact: true }).fill('Γραμμή');
-  await page.getByLabel('Εκκίνηση', { exact: true }).fill('2026-11-14T10:02');
+  await fillDateTime(page, 'Εκκίνηση', '2026-11-14T10:02');
   await page.getByRole('button', { name: 'Αποθήκευση και έναρξη' }).click();
   await expect(page.getByTestId('session-end')).toBeVisible();
   await app.advance(3 * MIN);
@@ -271,7 +272,7 @@ test('γραμμή τερματισμού: πέρασμα → «Όχι» → ξ�
   const crossAt = title.match(/(\d\d:\d\d:\d\d)/)![1];
   // AC 20: «Ναι» 2′ later keeps the time of the crossing.
   await app.advance(2 * MIN);
-  await expect(sheet).toContainText(/πριν από 2:0\d/);
+  await expect(sheet).toContainText(/πριν από 2′0\d″/);
   await sheet.getByTestId('finish-yes').click();
   await expect(page.getByTestId('ended-line')).toHaveText(`Τερματισμός ${crossAt} · από το πέρασμα της γραμμής, για τον διορθωμένο χρόνο`);
   const r = (await stored(page)).races.find((x) => x.name === 'Γραμμή')!;

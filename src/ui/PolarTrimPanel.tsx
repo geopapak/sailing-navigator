@@ -6,8 +6,9 @@ import { LIVE_TEXT } from './sessionText';
 import { polarSpeed } from '../performance/polar';
 import { sailOutlook } from '../performance/sails';
 import { adviceFor } from '../performance/advice';
+import { num } from '../format';
 
-const f1 = (v: number) => v.toFixed(1).replace('.', ',');
+const f1 = (v: number) => num(v);
 /** Reaching target shown in the panel (prototype: «ανοιχτά · 110°»). */
 const REACH_TWA = 110;
 

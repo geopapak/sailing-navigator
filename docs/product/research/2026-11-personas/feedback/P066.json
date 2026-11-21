@@ -1,0 +1,73 @@
+{
+  "id": "P066",
+  "method": "screens",
+  "flows_tried": [
+    "01",
+    "05",
+    "07",
+    "12"
+  ],
+  "scores": {
+    "first_impression": 2,
+    "ease_of_use": 1,
+    "usefulness_for_me": 3,
+    "readability_at_sea": 3,
+    "trust_in_numbers": 3,
+    "would_use_next_outing": 1,
+    "would_recommend": 2,
+    "would_pay": "no"
+  },
+  "likes": [
+    "The numbers in Live are huge and the units (kt, °) I understand without Greek (17-45).",
+    "Signal K on Raspberry Pi is listed — that is what I have (05-03)."
+  ],
+  "problems": [
+    {
+      "screen": "01-01",
+      "flow": "01",
+      "what": "Όλη η εφαρμογή είναι μόνο στα ελληνικά, χωρίς επιλογή γλώσσας.",
+      "why_it_matters_to_me": "Δεν διαβάζω σχεδόν καθόλου ελληνικά· δεν μπορώ να φτιάξω λογαριασμό ούτε να βρω τις ρυθμίσεις μόνος μου.",
+      "severity": "blocker"
+    },
+    {
+      "screen": "01-02",
+      "flow": "01",
+      "what": "Τα υποχρεωτικά κουτάκια όρων/απορρήτου είναι στα ελληνικά.",
+      "why_it_matters_to_me": "Δεν αποδέχομαι όρους που δεν μπορώ να διαβάσω.",
+      "severity": "major"
+    },
+    {
+      "screen": "17-25",
+      "flow": "07",
+      "what": "Η ειδοποίηση «ΣΤΡΟΦΗ ΑΝΕΜΟΥ 7° · Δυσμενής, σε κατεβάζει · πρόταση: αναστροφή» είναι μόνο κείμενο στα ελληνικά.",
+      "why_it_matters_to_me": "Στον αγώνα δεν θα καταλάβω τι μου λέει.",
+      "severity": "major"
+    },
+    {
+      "screen": "13-01",
+      "flow": "13",
+      "what": "Ο Σύμβουλος AI είναι μέσα στον αγώνα.",
+      "why_it_matters_to_me": "Δεν εμπιστεύομαι AI στον αγώνα, ούτε το θέλω στην οθόνη.",
+      "severity": "minor"
+    }
+  ],
+  "confusing_words": [
+    "σχεδόν όλες οι ελληνικές ετικέτες",
+    "Γρήγορη ματιά",
+    "Οθόνη αγώνα",
+    "μούρες"
+  ],
+  "missing_for_me": [
+    "English UI",
+    "Εικονίδια/σύμβολα για τις ειδοποιήσεις"
+  ],
+  "suggestions": [
+    "English first for Live, alerts and onboarding.",
+    "Use arrows/icons for wind shift (header vs lift)."
+  ],
+  "quotes": [
+    "Looks good, but I cannot read it. I need English.",
+    "My partner would have to set it up for me."
+  ],
+  "summary": "Ο Σουηδός κυβερνήτης δεν μπορεί να χρησιμοποιήσει την εφαρμογή μόνος του χωρίς αγγλικά· αυτό είναι για εκείνον εμπόδιο από την πρώτη οθόνη. Τα νούμερα και το Signal K τα αναγνωρίζει, αλλά δεν θα την ξαναάνοιγε."
+}

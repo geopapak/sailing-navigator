@@ -9,7 +9,7 @@ import { NextMarkCard } from './NextMarkCard';
 import { computeLive } from '../performance/targets';
 import { sailOutlook, selectableSails } from '../performance/sails';
 import { adviceFor } from '../performance/advice';
-import { magToTrue, trueToMag, twaFromTwd, twdFromTwa } from '../performance/angles';
+import { magToTrue, twaFromTwd, twdFromTwa } from '../performance/angles';
 import { bearingDeg, distanceNm, formatDM, vmc } from '../nav/geo';
 import { AdvisorCard } from './AdvisorCard';
 import { buildLiveContext, localIso, routeSnapshot } from '../ai/context';
@@ -24,6 +24,7 @@ import { InstrumentBar, type LockField } from './InstrumentBar';
 import { MIN_SOG_FOR_COG, pushWind, type WindFrom } from '../weather/windAverage';
 import { markTyped } from '../race/manualWind';
 import { BtnIcon, Icon } from './Icons';
+import { dir, displayText, num, pct as fpct, qty, timeSec } from '../format';
 
 interface LiveState {
   windInput: 'twa' | 'twd';
@@ -76,9 +77,9 @@ export function getLiveSail(): string | undefined {
   }
 }
 
-const f1 = (v?: number) => (v === undefined || !Number.isFinite(v) ? '—' : v.toFixed(1));
+const f1 = (v?: number) => num(v);
 const f0 = (v?: number) => (v === undefined || !Number.isFinite(v) ? '—' : Math.round(v).toString());
-const pct = (v?: number) => (v === undefined ? '—' : `${Math.round(v * 100)}%`);
+const pct = (v?: number) => (v === undefined ? '—' : fpct(v * 100));
 
 function pctClass(v?: number) {
   if (v === undefined) return '';
@@ -237,7 +238,7 @@ export function LiveView() {
 
   const sails = selectableSails(boat);
   const headingDisplay =
-    headingTrue === undefined ? '—' : `${f0(settings.manualMagnetic ? trueToMag(headingTrue, settings.declination) : headingTrue)}°`;
+    headingTrue === undefined ? '—' : dir(headingTrue, settings);
 
   const buildCtx = (question?: string) => {
     if (!result) return undefined;
@@ -345,7 +346,7 @@ export function LiveView() {
           <div className="tile-value">{f1(result?.targetBsp)}</div>
           <div className="tile-sub">
             {result?.bsp !== undefined && result.targetBsp !== undefined
-              ? `${result.bsp - result.targetBsp >= 0 ? '+' : '−'}${Math.abs(result.bsp - result.targetBsp).toFixed(1)} kt από target`
+              ? `${result.bsp - result.targetBsp >= 0 ? '+' : '−'}${qty(Math.abs(result.bsp - result.targetBsp), 'kt')} από target`
               : 'kt'}
           </div>
         </div>
@@ -406,7 +407,7 @@ export function LiveView() {
         <ul className="advice">
           {advice.map((a) => (
             <li key={a.id} className={`advice-${a.level}`}>
-              {a.text}
+              {displayText(a.text)}
             </li>
           ))}
         </ul>
@@ -525,9 +526,9 @@ export function LiveView() {
             <span>{formatDM(gps.fix.lat, true)}</span>
             <span>{formatDM(gps.fix.lon, false)}</span>
             <span>SOG {f1(gps.fix.sog)} kt</span>
-            <span>COG {gps.fix.cog === undefined ? '—' : `${f0(gps.fix.cog)}°T`}</span>
+            <span>COG <span data-dir>{gps.fix.cog === undefined ? '—' : dir(gps.fix.cog, 'T')}</span></span>
             <span className="muted">±{f0(gps.fix.accuracy)} m</span>
-            <span className="muted">{new Date(gps.fix.t).toLocaleTimeString('el-GR')}</span>
+            <span className="muted">{timeSec(gps.fix.t)}</span>
           </div>
         ) : (
           <p className="muted">{gps.message ?? (nav.gpsEnabled ? 'Αναμονή σήματος…' : 'Ανενεργό')}</p>

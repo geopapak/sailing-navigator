@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { INVITE_SLOW_MS, INVITE_TEXT, inviteError } from '../crew/inviteText';
 import { useApp } from './AppContext';
 import { DEFAULT_SERVER } from './settings';
 import { askConfirm, showAlert } from './Dialogs';
@@ -23,13 +24,17 @@ import { isTrainingShare, type TrainingShare } from '../race/training';
 import { SharedTrainingView } from './TrainingSummary';
 import { dayStr } from './SessionBar';
 import { BtnIcon } from './Icons';
+import { dayTime } from '../format';
 
 /** Loads my crews (P-022) when signed in. */
 export function useCrews() {
   const { settings, account } = useApp();
   const server = settings.aiUrl || DEFAULT_SERVER;
   const token = settings.authToken;
-  const [data, setData] = useState<{ owned: OwnedCrew[]; member: MemberCrew[] }>();
+  const [data, setData] = useState<{
+    owned: OwnedCrew[];
+    member: MemberCrew[];
+  }>();
   const [error, setError] = useState<string>();
   const refresh = useCallback(async () => {
     if (!account || !token) return;
@@ -43,7 +48,14 @@ export function useCrews() {
   useEffect(() => {
     void refresh();
   }, [refresh]);
-  return { data, error, refresh, server, token, signedIn: !!account && !!token };
+  return {
+    data,
+    error,
+    refresh,
+    server,
+    token,
+    signedIn: !!account && !!token,
+  };
 }
 
 const shareResult = (r: 'shared' | 'copied' | 'failed', what: string) =>
@@ -89,7 +101,11 @@ export function CrewCard({ boats }: { boats: BoatProfile[] }) {
   const invite = async (b: BoatProfile) => {
     setBusy(true);
     try {
-      const { crew } = await crewApi.ensure(c.server, c.token, { boatId: b.id, boatName: b.name, sailNo: b.sailNumber });
+      const { crew } = await crewApi.ensure(c.server, c.token, {
+        boatId: b.id,
+        boatName: b.name,
+        sailNo: b.sailNumber,
+      });
       const inv = await crewApi.invite(c.server, c.token, crew.id, 'crew');
       const r = await shareText(`Πλήρωμα ${b.name}`, `Έλα στο πλήρωμα του σκάφους «${b.name}» στο Sailing Navigator. Ο σύνδεσμος ισχύει μία φορά, για 7 μέρες.`, inviteLink(inv.token));
       await shareResult(r, 'Ο σύνδεσμος');
@@ -210,8 +226,7 @@ export function CrewCard({ boats }: { boats: BoatProfile[] }) {
   );
 }
 
-const when = (t: number) =>
-  new Date(t).toLocaleString('el-GR', { weekday: 'short', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' });
+const when = (t: number) => dayTime(t);
 
 /** «Οι έξοδοί μου»: races and trainings that boat owners shared with me (read-only). */
 export function SharedRaces() {
@@ -315,7 +330,11 @@ export function RaceCrew({ race, boat, onChange }: { race: Race; boat?: BoatProf
   const send = async () => {
     setBusy(true);
     try {
-      const { crew: cr } = await crewApi.ensure(c.server, c.token, { boatId: boat.id, boatName: boat.name, sailNo: boat.sailNumber });
+      const { crew: cr } = await crewApi.ensure(c.server, c.token, {
+        boatId: boat.id,
+        boatName: boat.name,
+        sailNo: boat.sailNumber,
+      });
       await crewApi.shareRace(c.server, c.token, cr.id, race.id, plan());
       onChange({ crewSharedAt: Date.now() });
       return cr.id;
@@ -398,7 +417,16 @@ export function RaceCrew({ race, boat, onChange }: { race: Race; boat?: BoatProf
             className="btn"
             onClick={async () =>
               shareResult(
-                await shareText(race.name, entryListText(boat.name, places.map((p) => ({ ...p, athleteCard: permanent.find((m) => m.userId === p.userId)?.athleteCard })))),
+                await shareText(
+                  race.name,
+                  entryListText(
+                    boat.name,
+                    places.map((p) => ({
+                      ...p,
+                      athleteCard: permanent.find((m) => m.userId === p.userId)?.athleteCard,
+                    })),
+                  ),
+                ),
                 'Η λίστα',
               )
             }
@@ -420,28 +448,57 @@ export function InviteScreen({ token, onDone }: { token: string; onDone: () => v
   const { settings } = useApp();
   const server = settings.aiUrl || DEFAULT_SERVER;
   const [p, setP] = useState<InvitePreview>();
-  const [err, setErr] = useState<string>();
+  // P-056 §Δ: a failed preview is its own page (404 / 410 / no answer), never a line above other content.
+  const [err, setErr] = useState<{ text: string; retry: boolean }>();
+  const [slow, setSlow] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const [card, setCard] = useState('');
   const [busy, setBusy] = useState(false);
   useEffect(() => {
-    crewApi.preview(server, settings.authToken, token).then(setP, (e) => setErr((e as Error).message));
-  }, [server, settings.authToken, token]);
+    let live = true;
+    setErr(undefined);
+    setSlow(false);
+    const t = window.setTimeout(() => live && setSlow(true), INVITE_SLOW_MS);
+    crewApi.preview(server, settings.authToken, token).then(
+      (x) => live && setP(x),
+      (e) => live && setErr(inviteError(e as { status?: number; message?: string })),
+    );
+    return () => {
+      live = false;
+      window.clearTimeout(t);
+    };
+  }, [server, settings.authToken, token, attempt]);
   const close = () => {
     clearPendingInvite();
     onDone();
   };
+  if (!p && (err || slow)) {
+    const text = err?.text ?? INVITE_TEXT.slow;
+    const retry = err ? err.retry : true;
+    return (
+      <section className="errpage" data-testid="invite-error">
+        <h1 className="screen-title">{INVITE_TEXT.title}</h1>
+        <div className="msgb" role={retry ? 'status' : 'alert'}>
+          <p>{text}</p>
+        </div>
+        <div className="acts bstack">
+          {retry && (
+            <button type="button" className="btn primary big-btn" onClick={() => setAttempt((n) => n + 1)}>
+              {INVITE_TEXT.retry}
+            </button>
+          )}
+          <button type="button" className="btn big-btn" onClick={close}>
+            {INVITE_TEXT.home}
+          </button>
+        </div>
+      </section>
+    );
+  }
   return (
     <section className="card invite">
-      <h2>Πρόσκληση στο πλήρωμα</h2>
-      {err && (
-        <>
-          <p className="warn-text">{err}</p>
-          <button className="btn" onClick={close}>
-            Εντάξει
-          </button>
-        </>
-      )}
-      {!p && !err && <p className="muted">Φόρτωση…</p>}
+      <h2>{INVITE_TEXT.title}</h2>
+      {!p && <p className="muted">{INVITE_TEXT.loading}</p>}
+      {err && p && <p className="warn-text">{err.text}</p>}
       {p && (
         <>
           <p>
@@ -472,7 +529,7 @@ export function InviteScreen({ token, onDone }: { token: string; onDone: () => v
                   await showAlert(`Είσαι στο πλήρωμα του σκάφους «${p.boatName}».`);
                   close();
                 } catch (e) {
-                  setErr((e as Error).message);
+                  setErr({ text: (e as Error).message, retry: false });
                 } finally {
                   setBusy(false);
                 }

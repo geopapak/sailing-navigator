@@ -5,6 +5,7 @@
  * the corrected time itself stays in `src/scoring/corrected.ts`.
  */
 import { corrected } from '../scoring/corrected';
+import { scoringOptionFor } from '../scoring/options';
 import { courseLengthNm, type EstimateRow } from './estimate';
 import { isCancelled, kindOf } from './session';
 import type { Race, RaceEntry, RaceEvent, ResultCode, ResultSource } from './types';
@@ -151,7 +152,7 @@ export function raceResult(race: Race, boats: EventBoat[], N: number): RaceResul
     // A cancelled race sailed without us: we start as DNC (AC 33).
     if (elapsed === undefined)
       return b.own && race.held ? { key: b.key, entryId: e.id, code: 'DNC', points: N + 1 } : { key: b.key, entryId: e.id, missing: true, points: N + 1 };
-    const opt = e.boat?.scoring?.find((o) => o.id === race.scoringOptionId);
+    const opt = scoringOptionFor(e, race);
     if (!opt || !(elapsed > 0))
       return {
         key: b.key,

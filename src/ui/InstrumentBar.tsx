@@ -1,9 +1,10 @@
 import type { InstrumentsState } from './InstrumentsContext';
 import { openTab } from './openTab';
+import { num } from '../format';
 
 export type LockField = 'tws' | 'twa' | 'bsp';
 
-const f1 = (v?: number) => (v === undefined ? '—' : v.toFixed(1));
+const f1 = (v?: number) => num(v);
 const twaText = (v?: number) => (v === undefined ? '—' : `${Math.round(Math.abs(v))}° ${v < 0 ? 'αριστ.' : 'δεξ.'}`);
 
 /**

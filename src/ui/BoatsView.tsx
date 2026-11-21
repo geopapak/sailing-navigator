@@ -1,3 +1,4 @@
+import { num } from '../format';
 import { useEffect, useRef, useState } from 'react';
 import { NEW_BOAT_FLAG } from './WelcomeCard';
 import { useApp } from './AppContext';
@@ -41,7 +42,11 @@ export function BoatsView() {
       const how = sessionStorage.getItem(NEW_BOAT_FLAG);
       if (how) {
         sessionStorage.removeItem(NEW_BOAT_FLAG);
-        if (how === 'pdf') setMode('pdf');
+        const editId = how.startsWith('edit:') ? how.slice(5) : undefined;
+        const toEdit = editId ? boats.find((b) => b.id === editId) : undefined;
+        if (toEdit) setEditing({ boat: structuredClone(toEdit), isNew: false });
+        else if (editId) setMode('list');
+        else if (how === 'pdf') setMode('pdf');
         else if (how === 'manual') setEditing({ boat: blankBoat(!hasOwn), isNew: true });
         else setMode('add');
       }
@@ -175,10 +180,10 @@ export function BoatsView() {
               <div>
                 <strong>{b.name}</strong> {b.sailNumber && <span className="muted">{b.sailNumber}</span>}
                 <div className="muted small">
-                  {b.design ?? ''}
-                  {b.gph ? ` · GPH ${b.gph}` : ''}
-                  {b.polar ? ' · polars' : ' · μόνο συντελεστές'}
-                  {b.isOwn ? ' · δικό μας' : ''}
+                  {/* QA Μ6: no leading «·», and «μόνο συντελεστές» only when there are coefficients. */}
+                  {[b.design, b.gph ? `GPH ${num(b.gph, 1)}` : undefined, b.polar ? 'polars' : b.scoring.length ? 'μόνο συντελεστές' : 'χωρίς polars', b.isOwn ? 'δικό μας' : undefined]
+                    .filter(Boolean)
+                    .join(' · ')}
                 </div>
               </div>
               {b.id === activeBoat?.id ? (

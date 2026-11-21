@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import RELEASES from '../releases.json';
+import { date } from '../format';
 
 export interface Release {
   version: string;
@@ -35,7 +36,7 @@ function ReleaseItems({ r }: { r: Release }) {
   return (
     <>
       <p className="release-title">
-        <b>{r.version}</b> · {r.title} <span className="muted small">{new Date(r.date).toLocaleDateString('el-GR')}</span>
+        <b>{r.version}</b> · {r.title} <span className="muted small">{date(new Date(r.date).getTime())}</span>
       </p>
       <ul>
         {[...r.app, ...r.server].map((x, i) => (
@@ -91,7 +92,7 @@ export function ReleaseHistory() {
       {releases.map((r) => (
         <div key={r.version}>
           <p className="release-title">
-            <b>{r.version}</b> · {r.title} <span className="muted small">{new Date(r.date).toLocaleDateString('el-GR')}</span>
+            <b>{r.version}</b> · {r.title} <span className="muted small">{date(new Date(r.date).getTime())}</span>
           </p>
           {r.app.length > 0 && (
             <ul>

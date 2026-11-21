@@ -23,6 +23,7 @@ import { CRUISE_TEXT as CT } from './sessionText';
 import { cachedDepth, chartDepthAt, type ChartDepth } from './depthCache';
 import { useCruiseNav } from './useSession';
 import { useOnline } from './hooks';
+import { num } from '../format';
 
 export { useOnline };
 
@@ -34,7 +35,7 @@ export { useOnline };
 // The map (MapLibre) is large: load it only when «Πάτα στον χάρτη» is opened.
 const MapPick = lazy(() => import('./CruiseMap').then((m) => ({ default: m.MapPick })));
 
-export const n1 = (x?: number) => (x === undefined || !Number.isFinite(x) ? '—' : x.toFixed(1).replace('.', ','));
+export const n1 = (x?: number) => num(x);
 
 const RECENT_KEY = 'recent-destinations';
 const RECENT_EVENT = 'recent-destinations';

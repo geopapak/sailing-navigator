@@ -138,6 +138,11 @@ export async function listRaces(owner?: string): Promise<Race[]> {
   return all.filter((r) => !r.owner || r.owner === owner).sort((a, b) => b.start - a.start);
 }
 
+/** Ids of every race on this device, of any account. */
+export async function allRaceIds(): Promise<string[]> {
+  return (await db.races.toCollection().primaryKeys()) as string[];
+}
+
 /** Tags untagged races with an account, so another account on this phone does not see them. */
 export async function tagRaces(owner: string): Promise<void> {
   const untagged = (await db.races.toArray()).filter((r) => !r.owner);
@@ -196,6 +201,15 @@ export async function getKV<T>(key: string, fallback: T): Promise<T> {
 
 export async function setKV<T>(key: string, value: T): Promise<void> {
   await db.kv.put({ key, value });
+}
+
+export async function deleteKV(key: string): Promise<void> {
+  await db.kv.delete(key);
+}
+
+/** The KV keys that start with `prefix` (e.g. every stored race route, «planned:»). */
+export async function kvKeys(prefix: string): Promise<string[]> {
+  return (await db.kv.where('key').startsWith(prefix).primaryKeys()) as string[];
 }
 
 export { newBoatId } from './ids';

@@ -1,0 +1,76 @@
+{
+  "id": "P042",
+  "method": "screens",
+  "flows_tried": [
+    "01",
+    "04",
+    "06",
+    "14",
+    "07"
+  ],
+  "scores": {
+    "first_impression": 3,
+    "ease_of_use": 2,
+    "usefulness_for_me": 3,
+    "readability_at_sea": 3,
+    "trust_in_numbers": 3,
+    "would_use_next_outing": 3,
+    "would_recommend": 5,
+    "would_pay": "no"
+  },
+  "likes": [
+    "The map lists the weather models with resolution (ECMWF 9 km, ICON…) and a «Σύγκριση μοντέλων» button (14-01).",
+    "Laylines are drawn on the race map with the track (14-01).",
+    "Manual wind sheet shows 015°M = 020°T, so I know what the app uses (17-46)."
+  ],
+  "problems": [
+    {
+      "screen": "01-01",
+      "flow": "01",
+      "what": "Δεν υπάρχει επιλογή αγγλικών· όλη η εφαρμογή είναι ελληνικά.",
+      "why_it_matters_to_me": "Διαβάζω ελληνικά αργά (A2). Στο κατάστρωμα δεν έχω χρόνο να μεταφράζω «Επόμενη αναστροφή στη layline αριστερών».",
+      "severity": "major"
+    },
+    {
+      "screen": "07-11",
+      "flow": "07",
+      "what": "Δεν είδα πουθενά πλεονεκτική άκρη της γραμμής εκκίνησης ή bias σε μοίρες· η αντίστροφη μέτρηση δείχνει μόνο ταχύτητα/γωνία/layline.",
+      "why_it_matters_to_me": "Αυτό είναι το κρίσιμο νούμερο πριν το σήμα.",
+      "severity": "major"
+    },
+    {
+      "screen": "14-01",
+      "flow": "14",
+      "what": "Η μπάρα «Χωρίς ίντερνετ: μόνο ακτογραμμή» και τα κουμπιά ζουμ κρύβουν την ετικέτα της Πάνω σημαδούρας.",
+      "why_it_matters_to_me": "Στο Αιγαίο συχνά δεν έχω σήμα και θέλω να βλέπω τη σημαδούρα.",
+      "severity": "minor"
+    },
+    {
+      "screen": "14-46",
+      "flow": "14",
+      "what": "Το αποτέλεσμα των isochrones δεν το είδα στα στιγμιότυπα (λείπει το 14-46).",
+      "why_it_matters_to_me": "Δεν μπορώ να κρίνω αν το σχέδιο αξίζει να το δείξω στον κυβερνήτη.",
+      "severity": "minor"
+    }
+  ],
+  "confusing_words": [
+    "μούρες",
+    "Γρήγορη ματιά",
+    "σκέλος 1/2",
+    "Σημ. 1"
+  ],
+  "missing_for_me": [
+    "English UI",
+    "Start-line bias / favoured end",
+    "Κοινή χρήση του σχεδίου αγώνα με τον κυβερνήτη"
+  ],
+  "suggestions": [
+    "Add an English language switch, even only for Live and Map.",
+    "Show line bias in degrees and boat lengths in the pre-start Live."
+  ],
+  "quotes": [
+    "Nice numbers, but I need English and the favoured end of the line.",
+    "I'd show the isochrones to my skipper if I could share them."
+  ],
+  "summary": "Η Ολλανδή ναυτίλος εκτιμά τα μοντέλα καιρού και τις laylines στον χάρτη, αλλά δυσκολεύεται με τα ελληνικά και δεν βρήκε την πλεονεκτική άκρη της γραμμής. Χωρίς αγγλικά και χωρίς όργανα στα σκάφη της, δεν θα πλήρωνε."
+}

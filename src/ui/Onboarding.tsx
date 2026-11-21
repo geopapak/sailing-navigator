@@ -79,7 +79,7 @@ export function Onboarding() {
 
       {step === 1 && (
         <>
-          <h2>1. Να βλέπεις καλά</h2>
+          <h2>Να βλέπεις καλά</h2>
           <p className="small">Δοκίμασε. Η αλλαγή φαίνεται αμέσως.</p>
           <AppearancePickers />
           {nav()}
@@ -88,7 +88,7 @@ export function Onboarding() {
 
       {step === 2 && (
         <>
-          <h2>2. Βάλ' τη στην αρχική οθόνη</h2>
+          <h2>Βάλ' τη στην αρχική οθόνη</h2>
           <p className="small">Έτσι ανοίγει σαν κανονική εφαρμογή, με ένα άγγιγμα, ακόμα και χωρίς ίντερνετ.</p>
           <InstallHelp />
           {nav('Το έκανα')}
@@ -97,7 +97,7 @@ export function Onboarding() {
 
       {step === 3 && (
         <>
-          <h2>3. Πόσα νούμερα θέλεις;</h2>
+          <h2>Πόσα νούμερα θέλεις;</h2>
           <p className="small">Έχεις εμπειρία με όργανα αγώνων (TWS, TWA, VMG);</p>
           <button className={`opt ${settings.liveMode === 'simple' ? 'on' : ''}`} onClick={() => updateSettings({ liveMode: 'simple' })}>
             <span className="ic" aria-hidden>
@@ -124,7 +124,7 @@ export function Onboarding() {
 
       {step === 4 && (
         <>
-          <h2>4. Το σκάφος σου</h2>
+          <h2>Το σκάφος σου</h2>
           <p className="small">Διάλεξε έναν τρόπο. Μπορείς να το αλλάξεις μετά.</p>
           <button className="opt on" onClick={() => finish(() => startNewBoat('pdf'))}>
             <span className="ic" aria-hidden>

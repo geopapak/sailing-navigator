@@ -3,9 +3,11 @@ import { useNav } from './NavContext';
 import { AGREEMENT_TEXT, agreement, spreadAt, spreadTimeline, valueAt, type Comparison, type ModelSeries } from '../weather/compare';
 import { norm360 } from '../performance/angles';
 import { BtnIcon } from './Icons';
+import { PLAN_TEXT, type PlanTarget } from '../routing/planTarget';
+import { angle, dayTime, dir, num, qty, time } from '../format';
 
-const fmtHour = (ms: number) => new Date(ms).toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit' });
-const fmtDay = (ms: number) => new Date(ms).toLocaleString('el-GR', { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+const fmtHour = (ms: number) => time(ms);
+const fmtDay = (ms: number) => dayTime(ms);
 
 /** Fixed colour slot per series (Open-Meteo models in catalogue order; Windy series share a neutral dashed style). */
 const colorOf = (s: ModelSeries, i: number) => (s.source === 'windy' ? 'var(--mc-windy)' : `var(--mc-s${(i % 8) + 1})`);
@@ -126,7 +128,7 @@ function ModelChart({ c, kind, from, to, focus, hoverT, setHoverT, start }: Char
           <g key={v}>
             <line className="mc-grid" x1={pad.l} x2={W - pad.r} y1={y(v)} y2={y(v)} />
             <text className="mc-axis" x={pad.l - 4} y={y(v) + 3} textAnchor="end">
-              {kind === 'twd' ? `${Math.round(norm360(v))}°` : v}
+              {kind === 'twd' ? dir(norm360(v), 'T') : v}
             </text>
           </g>
         ))}
@@ -157,8 +159,10 @@ function ModelChart({ c, kind, from, to, focus, hoverT, setHoverT, start }: Char
   );
 }
 
-export function ModelCompareCard() {
+/** `target`: the plan target (P-067 KA-Λ12: the same start and marks as the plan); default «Διαδρομές μου». */
+export function ModelCompareCard({ target }: { target?: PlanTarget } = {}) {
   const nav = useNav();
+  const tg = target ?? nav.coursesTarget;
   const c = nav.comparison;
   const [focus, setFocus] = useState<string>();
   const [hoverT, setHoverT] = useState<number>();
@@ -181,38 +185,46 @@ export function ModelCompareCard() {
     const p = valueAt(c.waves.times, c.waves.period, c.start);
     return hs.length ? { min: Math.min(...hs), max: Math.max(...hs), dir: d, period: p } : undefined;
   }, [c]);
-  const stale = c && nav.course?.marks[0] && (Math.abs(nav.course.marks[0].lat - c.lat) > 0.01 || Math.abs(nav.course.marks[0].lon - c.lon) > 0.01);
+  const m0 = tg.marks[0];
+  const tStart = tg.start ?? tg.day;
+  const stale =
+    !!c && ((!!m0 && (Math.abs(m0.lat - c.lat) > 0.01 || Math.abs(m0.lon - c.lon) > 0.01)) || (tStart !== undefined && Math.abs(tStart - c.start) > 30 * 60_000));
 
   return (
     <section className="card mc">
       <div className="advisor-head">
         <h3>Σύγκριση μοντέλων</h3>
-        {c && <span className="muted small">λήψη {fmtHour(c.fetchedAt)}</span>}
+        {c && (
+          <span className="muted small" data-testid="compare-for">
+            {PLAN_TEXT.compareFor(c.start)} · λήψη {fmtHour(c.fetchedAt)}
+          </span>
+        )}
       </div>
       <p className="muted small">
         Τι λένε {c ? c.series.length : 'όλα τα'} μοντέλα για {c ? <b>{c.place}</b> : 'την εκκίνηση'}. Όσο πιο κοντά οι γραμμές, τόσο πιο σίγουρη η πρόγνωση.
       </p>
-      <button className="btn primary" disabled={nav.comparisonStatus.busy} onClick={nav.loadComparison}>
+      <button className="btn primary" disabled={nav.comparisonStatus.busy} onClick={() => nav.loadComparison(tg)}>
         {c && !nav.comparisonStatus.busy && <BtnIcon name="rotate" />}
         {nav.comparisonStatus.busy ? 'Λήψη μοντέλων…' : c ? 'Ανανέωση σύγκρισης' : 'Σύγκριση μοντέλων'}
       </button>
       {nav.comparisonStatus.error && <p className="warn-text">{nav.comparisonStatus.error}</p>}
-      {stale && <p className="muted small">Η σύγκριση είναι για άλλο σημείο εκκίνησης: πάτα «Ανανέωση σύγκρισης».</p>}
+      {stale && <p className="muted small">Η σύγκριση είναι για άλλη ώρα ή άλλο σημείο εκκίνησης: πάτα «Ανανέωση σύγκρισης».</p>}
 
       {c && atStart && ag && (
         <>
           <div className={`mc-verdict mc-${ag}`}>
             <span className="mc-badge">{ag === 'good' ? '✓' : ag === 'fair' ? '≈' : <BtnIcon name="warn" />} {AGREEMENT_TEXT[ag]}</span>
             <span>
-              Στην εκκίνηση ({fmtDay(c.start)}): <b>{atStart.meanTws.toFixed(0)} kt</b> (±{atStart.spreadTws.toFixed(1)}, εύρος {atStart.minTws.toFixed(0)}–
-              {atStart.maxTws.toFixed(0)}) από <b>{atStart.meanTwd.toFixed(0)}°</b> (±{atStart.spreadTwd.toFixed(0)}°)
+              Στην εκκίνηση ({fmtDay(c.start)}): <b>{qty(atStart.meanTws, 'kt', 0)}</b> (±{num(atStart.spreadTws)}, εύρος {num(atStart.minTws, 0)}–
+              {num(atStart.maxTws, 0)}) από{' '}
+              <b data-dir>{dir(atStart.meanTwd, 'T')}</b> (±{angle(atStart.spreadTwd)})
             </span>
           </div>
           {waves && (
             <p className="small">
-              Κύμα στη διάρκεια: {waves.min.toFixed(1)}–{waves.max.toFixed(1)} m
-              {waves.dir !== undefined && ` από ${waves.dir.toFixed(0)}°`}
-              {waves.period !== undefined && `, περίοδος ${waves.period.toFixed(0)} s`}
+              Κύμα στη διάρκεια: {num(waves.min)}–{qty(waves.max, 'm')}
+              {waves.dir !== undefined && ` από ${dir(waves.dir, 'T')}`}
+              {waves.period !== undefined && `, περίοδος ${qty(waves.period, 's', 0)}`}
             </p>
           )}
 
@@ -234,7 +246,7 @@ export function ModelCompareCard() {
               c.series
                 .map((s) => {
                   const v = (hoverSpread ?? atStart).byModel[s.short];
-                  return v ? `${s.short} ${v[0].toFixed(0)}/${v[1]}°` : null;
+                  return v ? `${s.short} ${num(v[0], 0)}/${dir(v[1], 'T')}` : null;
                 })
                 .filter(Boolean)
                 .join(' · ')}
@@ -267,15 +279,15 @@ export function ModelCompareCard() {
                         <td>{fmtHour(t)}</td>
                         <td>
                           <b>
-                            {s.meanTws.toFixed(0)}/{s.meanTwd.toFixed(0)}°
+                            {num(s.meanTws, 0)}/{dir(s.meanTwd, 'T')}
                           </b>
                         </td>
                         <td className={`mc-${a}`}>
-                          {s.spreadTws.toFixed(1)} / {s.spreadTwd.toFixed(0)}
+                          {num(s.spreadTws)} / {num(s.spreadTwd, 0)}
                         </td>
                         {c.series.map((m) => {
                           const v = s.byModel[m.short];
-                          return <td key={m.id}>{v ? `${v[0].toFixed(0)}/${v[1]}°` : '—'}</td>;
+                          return <td key={m.id}>{v ? `${num(v[0], 0)}/${dir(v[1], 'T')}` : '—'}</td>;
                         })}
                       </tr>
                     );

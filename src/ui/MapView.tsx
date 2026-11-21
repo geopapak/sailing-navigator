@@ -23,6 +23,7 @@ import {
   formatDepth,
   DEPTH_ATTRIBUTION,
   nauticalStyle,
+  scaleText,
   DEST_COLOR,
   DEST_WIDTH,
   shallowTiles,
@@ -32,6 +33,18 @@ import {
 } from './nauticalStyle';
 
 setWorkerUrl(workerUrl);
+
+/** Night: shades of red only (P-049, QA Μ5). */
+const NIGHT_RED = ['#ff3b30', '#b3261e', '#ff7a70', '#7a1a14'];
+const nightSailColor = (boat: BoatProfile, sailId: string) => {
+  const i = boat.sails.filter((s) => s.kind !== 'main').findIndex((s) => s.id === sailId);
+  return NIGHT_RED[(i < 0 ? 0 : i) % NIGHT_RED.length];
+};
+/** Wind arrows by strength; at night red, brighter with more wind. */
+const windColor = (theme: Theme): unknown =>
+  theme === 'night'
+    ? ['interpolate', ['linear'], ['get', 'tws'], 4, '#7a1a14', 15, '#b3261e', 25, '#ff3b30']
+    : ['interpolate', ['linear'], ['get', 'tws'], 4, '#2563eb', 8, '#0891b2', 12, '#16a34a', 16, '#ca8a04', 20, '#ea580c', 25, '#dc2626', 30, '#7e22ce'];
 
 const seaColor = (theme: Theme) => (theme === 'day' ? '#cfe3f3' : CHART_THEMES[theme].water);
 
@@ -91,6 +104,8 @@ interface Props {
   onMove?: (id: string, p: LatLon) => void;
   nextMarkId?: string;
   planned?: RouteResult;
+  /** The planned route belongs to another start time or course: drawn faded (ΚΑ-Λ11). */
+  plannedFaded?: boolean;
   live?: RouteResult;
   showIsochrones: boolean;
   showSeamarks: boolean;
@@ -169,6 +184,7 @@ export function MapView(p: Props) {
   // Create the map (again on "retry").
   useEffect(() => {
     let disposed = false;
+    let scaleObs: MutationObserver | undefined;
     setReady(false);
     setBase('loading');
     (async () => {
@@ -198,7 +214,20 @@ export function MapView(p: Props) {
         });
       }
       map.addControl(new NavigationControl({ visualizePitch: false }), 'top-right');
-      map.addControl(new ScaleControl({ unit: 'nautical' }), 'bottom-left');
+      const scale = new ScaleControl({ unit: 'nautical' });
+      map.addControl(scale, 'bottom-left');
+      // QA Μ6 (P-064): MapLibre writes «0.4 nm»; the app writes «0,4 NM».
+      const scaleEl = map.getContainer().querySelector<HTMLElement>('.maplibregl-ctrl-scale');
+      if (scaleEl) {
+        const fix = () => {
+          const t = scaleEl.textContent ?? '';
+          const g = scaleText(t);
+          if (g !== t) scaleEl.textContent = g;
+        };
+        scaleObs = new MutationObserver(fix);
+        scaleObs.observe(scaleEl, { childList: true, characterData: true, subtree: true });
+        fix();
+      }
       map.on('click', (e) => {
         const cur = propsRef.current;
         if (cur.addMode && cur.onAdd) {
@@ -238,10 +267,7 @@ export function MapView(p: Props) {
             'icon-allow-overlap': true,
           },
           paint: {
-            'icon-color': [
-              'interpolate', ['linear'], ['get', 'tws'],
-              4, '#2563eb', 8, '#0891b2', 12, '#16a34a', 16, '#ca8a04', 20, '#ea580c', 25, '#dc2626', 30, '#7e22ce',
-            ],
+            'icon-color': windColor(themeRef.current) as never,
             'icon-opacity': 0.85,
           },
         });
@@ -265,6 +291,7 @@ export function MapView(p: Props) {
     })();
     return () => {
       disposed = true;
+      scaleObs?.disconnect();
       depthReq.current?.abort();
       popup.current?.remove();
       popup.current = undefined;
@@ -355,10 +382,33 @@ export function MapView(p: Props) {
   useEffect(() => {
     if (!ready) return;
     const fc = routeSegments(p.planned);
-    for (const f of fc.features) f.properties.color = p.boat && f.properties.sailId ? sailColor(p.boat, String(f.properties.sailId)) : '#0b2a4a';
+    const night = theme === 'night';
+    for (const f of fc.features)
+      f.properties.color = p.boat && f.properties.sailId ? (night ? nightSailColor(p.boat, String(f.properties.sailId)) : sailColor(p.boat, String(f.properties.sailId))) : night ? NIGHT_RED[0] : '#0b2a4a';
     set('planned', fc);
     set('iso', p.showIsochrones ? isochroneLines(p.planned) : EMPTY);
-  }, [ready, p.planned, p.showIsochrones, p.boat]);
+    // QA Μ4 / ΚΑ-Λ11: a route computed for another time or course is drawn faded and dashed, never as current.
+    const map = mapRef.current;
+    if (map?.getLayer('planned')) {
+      map.setPaintProperty('planned', 'line-opacity', p.plannedFaded ? 0.4 : 1);
+      map.setPaintProperty('planned', 'line-dasharray', p.plannedFaded ? [2, 1.5] : undefined);
+    }
+  }, [ready, p.planned, p.plannedFaded, p.showIsochrones, p.boat, theme]);
+
+  // QA Μ5: the drawn layers in the night palette too (black and red only, nothing blue, green or white).
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+    const night = theme === 'night';
+    const paint: [string, string, unknown][] = [
+      ['wind', 'icon-color', windColor(theme)],
+      ['course', 'line-color', night ? NIGHT_RED[3] : '#6b7280'],
+      ['iso', 'line-color', night ? NIGHT_RED[1] : '#7c3aed'],
+      ['sim', 'circle-color', night ? NIGHT_RED[0] : '#f59e0b'],
+      ['boat', 'circle-stroke-color', night ? '#000' : '#fff'],
+    ];
+    for (const [layer, prop, value] of paint) if (map.getLayer(layer)) map.setPaintProperty(layer, prop as never, value as never);
+  }, [ready, theme]);
 
   useEffect(() => {
     if (!ready) return;
@@ -377,11 +427,11 @@ export function MapView(p: Props) {
             features: (['stbd', 'port'] as const).map((b) => ({
               type: 'Feature',
               geometry: { type: 'LineString', coordinates: l.lines[b].map((q) => [q.lon, q.lat]) },
-              properties: { color: b === 'stbd' ? '#16a34a' : '#dc2626' },
+              properties: { color: theme === 'night' ? (b === 'stbd' ? NIGHT_RED[2] : NIGHT_RED[0]) : b === 'stbd' ? '#16a34a' : '#dc2626' },
             })),
           },
     );
-  }, [ready, p.laylines]);
+  }, [ready, p.laylines, theme]);
 
   // Cruise: line to the destination and the 5 m line, coloured per theme (dim red at night).
   useEffect(() => {

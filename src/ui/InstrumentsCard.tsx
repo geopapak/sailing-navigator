@@ -2,16 +2,17 @@ import { useApp } from './AppContext';
 import { useInstruments } from './InstrumentsContext';
 import { mixedContentProblem } from '../instruments/client';
 import type { InstrumentField, InstrumentSettings, InstrumentSource } from '../instruments/types';
+import { dir, num, qty } from '../format';
 
 const ROWS: { k: InstrumentField; label: string; fmt: (v: number) => string }[] = [
-  { k: 'tws', label: 'TWS · ένταση ανέμου', fmt: (v) => `${v.toFixed(1)} kt` },
+  { k: 'tws', label: 'TWS · ένταση ανέμου', fmt: (v) => qty(v, 'kt') },
   { k: 'twa', label: 'TWA · γωνία ανέμου', fmt: (v) => `${Math.round(Math.abs(v))}° ${v < 0 ? 'αριστερές' : 'δεξιές'}` },
-  { k: 'twd', label: 'TWD · από πού φυσάει', fmt: (v) => `${Math.round(v).toString().padStart(3, '0')}°` },
-  { k: 'bsp', label: 'BSP · ταχύτητα', fmt: (v) => `${v.toFixed(2)} kt` },
-  { k: 'hdgTrue', label: 'HDG · πλώρη (°T)', fmt: (v) => `${Math.round(v)}°` },
-  { k: 'sog', label: 'SOG', fmt: (v) => `${v.toFixed(1)} kt` },
-  { k: 'lat', label: 'Θέση', fmt: (v) => v.toFixed(4) },
-  { k: 'depth', label: 'Βάθος', fmt: (v) => `${v.toFixed(1)} m` },
+  { k: 'twd', label: 'TWD · από πού φυσάει', fmt: (v) => dir(v, 'T') },
+  { k: 'bsp', label: 'BSP · ταχύτητα', fmt: (v) => qty(v, 'kt', 2) },
+  { k: 'hdgTrue', label: 'HDG · πλώρη (°T)', fmt: (v) => dir(v, 'T') },
+  { k: 'sog', label: 'SOG', fmt: (v) => qty(v, 'kt') },
+  { k: 'lat', label: 'Θέση', fmt: (v) => num(v, 4) },
+  { k: 'depth', label: 'Βάθος', fmt: (v) => qty(v, 'm') },
 ];
 
 const SOURCES: { id: InstrumentSource; label: string; hint: string }[] = [
@@ -31,7 +32,7 @@ export function InstrumentsCard() {
   const statusText = !cfg.enabled
     ? 'Χωρίς όργανα: όλα δουλεύουν με χειροκίνητες τιμές.'
     : inst.live
-      ? `Συνδεδεμένο · τελευταία τιμή πριν από ${(inst.ageSec ?? 0).toFixed(1).replace('.', ',')}″`
+      ? `Συνδεδεμένο · τελευταία τιμή πριν από ${num(inst.ageSec ?? 0)}″`
       : inst.message ?? (inst.status === 'connecting' ? 'Σύνδεση…' : 'Δεν έρχονται τιμές από τα όργανα.');
 
   return (
@@ -76,8 +77,8 @@ export function InstrumentsCard() {
               return (
                 <li key={r.k}>
                   <span>{r.label}</span>
-                  <b>{v === undefined ? '—' : r.k === 'lat' && inst.values.lon !== undefined ? `${v.toFixed(4)}, ${inst.values.lon.toFixed(4)}` : r.fmt(v)}</b>
-                  <span className={`small ${age !== undefined && age <= 10 ? 'ok-text' : 'muted'}`}>{age === undefined ? '' : `${age < 10 ? age.toFixed(1).replace('.', ',') : Math.round(age)} s`}</span>
+                  <b>{v === undefined ? '—' : r.k === 'lat' && inst.values.lon !== undefined ? `${num(v, 4)} / ${num(inst.values.lon, 4)}` : r.fmt(v)}</b>
+                  <span className={`small ${age !== undefined && age <= 10 ? 'ok-text' : 'muted'}`}>{age === undefined ? '' : qty(age, 's', age < 10 ? 1 : 0)}</span>
                 </li>
               );
             })}

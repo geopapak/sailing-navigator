@@ -1,0 +1,75 @@
+{
+  "id": "P090",
+  "method": "screens",
+  "flows_tried": [
+    "04",
+    "07",
+    "12",
+    "10",
+    "14"
+  ],
+  "scores": {
+    "first_impression": 3,
+    "ease_of_use": 2,
+    "usefulness_for_me": 3,
+    "readability_at_sea": 3,
+    "trust_in_numbers": 3,
+    "would_use_next_outing": 3,
+    "would_recommend": 5,
+    "would_pay": "no (boat pays)"
+  },
+  "likes": [
+    "ORC scoring names (All purpose, Windward/Leeward, ToT/ToD) stay in English (07-02).",
+    "Το πλάνο αγώνα στο πλήρωμα με θέσεις και σημείωση (12-06).",
+    "Διοργάνωση με γενική κατάταξη (10-16)."
+  ],
+  "problems": [
+    {
+      "screen": "όλες",
+      "flow": "01",
+      "what": "Όλα τα κουμπιά και τα μηνύματα είναι στα ελληνικά, χωρίς επιλογή γλώσσας.",
+      "why_it_matters_to_me": "Με ελληνικά A1 δεν καταλαβαίνω ούτε το «Αποθήκευση για αργότερα». Μεταφράζω με την κάμερα του κινητού.",
+      "severity": "blocker"
+    },
+    {
+      "screen": "12-21",
+      "flow": "12",
+      "what": "Το πλήρωμά μου (μισό ξένο) πρέπει να φτιάξει λογαριασμό σε ελληνική φόρμα με όρους GDPR (01-02).",
+      "why_it_matters_to_me": "Δεν θα το κάνουν· θα στείλω πάλι φωτογραφία στο WhatsApp.",
+      "severity": "major"
+    },
+    {
+      "screen": "04-03",
+      "flow": "04",
+      "what": "Το PDF πιστοποιητικού διαβάζεται με AI, 3 αναγνώσεις.",
+      "why_it_matters_to_me": "Το Farr 30 το μοιράζομαι με συνεταίρο· αν το διαβάσουμε δύο φορές, χάθηκαν.",
+      "severity": "minor"
+    },
+    {
+      "screen": "07-15",
+      "flow": "07",
+      "what": "Τα σταθερά κουμπιά «Θέση αντιπάλου / Τερματισμός» κόβουν την κάρτα ανέμου.",
+      "why_it_matters_to_me": "Αγχώνομαι όταν δεν βλέπω όλη την εικόνα.",
+      "severity": "minor"
+    }
+  ],
+  "confusing_words": [
+    "Αποθήκευση και έναρξη",
+    "Μέρος διοργάνωσης",
+    "Σίγαση",
+    "Δυσμενής",
+    "μούρες"
+  ],
+  "missing_for_me": [
+    "English UI",
+    "Spanish ή τουλάχιστον αγγλικά για το πλήρωμα"
+  ],
+  "suggestions": [
+    "Γλώσσα EN με τους ελληνικούς όρους σε παρένθεση"
+  ],
+  "quotes": [
+    "Good tool, wrong language for me. I need English to use it at the start line.",
+    "My crew will not create accounts in Greek."
+  ],
+  "summary": "Ο Ισπανός κυβερνήτης βλέπει χρήσιμες λειτουργίες (πλάνο πληρώματος, διοργάνωση), αλλά χωρίς αγγλικά δεν μπορεί να τη χειριστεί με ασφάλεια στον αγώνα. Για εκείνον αυτό είναι μπλοκάρισμα."
+}

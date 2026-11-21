@@ -7,6 +7,7 @@ import { boatItem, courseItem } from './fixtures/handlers';
 import { COURSE } from './fixtures/data/course-saronic';
 import { download, gpxTimes } from './fixtures/session';
 import { expectActiveBoat } from './fixtures/boat';
+import { fillDateTime } from './fixtures/datetime';
 
 const MIN = 60_000;
 const RACE = 'Δοκιμαστικός Σαρωνικού';
@@ -38,7 +39,7 @@ async function setupRace(app: AppFixture) {
   // 30 (the saved course is picked already; tapping it keeps it)
   await page.getByLabel('Όνομα', { exact: true }).fill(RACE);
   await expect(page.getByTestId('course-card').filter({ hasText: COURSE.name })).toHaveAttribute('aria-pressed', 'true');
-  await page.getByLabel('Εκκίνηση', { exact: true }).fill('2026-11-14T10:02');
+  await fillDateTime(page, 'Εκκίνηση', '2026-11-14T10:02');
   await expect(start).toBeEnabled();
   await start.click();
   await expect(page.getByTestId('session-end')).toBeVisible();

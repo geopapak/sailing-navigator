@@ -8,6 +8,7 @@ import { formatDM } from '../nav/geo';
 import type { Course } from '../boat/store';
 import type { Mark } from '../routing/isochrones';
 import { BtnIcon, Icon } from './Icons';
+import { date } from '../format';
 
 /** The course part of a race: saved course id (if any), its name and a snapshot of the marks. */
 export interface RaceCourseValue {
@@ -79,7 +80,7 @@ export function CoursePicker({ value, onChange, onNew, onEdit }: { value: RaceCo
                 {on && ' ✓'}
               </strong>
               <span className="muted small">
-                {c.marks.length} σημεία{used ? ` · αγώνας ${new Date(used).toLocaleDateString('el-GR')}` : ''}
+                {c.marks.length} σημεία{used ? ` · αγώνας ${date(used)}` : ''}
               </span>
             </span>
           </button>
@@ -229,7 +230,7 @@ export function CourseEditor({
           </span>
         </label>
         {marks.length < 2 && <p className="muted small">Βάλε τουλάχιστον εκκίνηση και μία σημαδούρα ή τερματισμό.</p>}
-        <button className="btn primary" disabled={marks.length < 2} onClick={() => onDone({ name: name.trim() || `Διαδρομή ${new Date().toLocaleDateString('el-GR')}`, marks, keep })}>
+        <button className="btn primary" disabled={marks.length < 2} onClick={() => onDone({ name: name.trim() || `Διαδρομή ${date(Date.now())}`, marks, keep })}>
           Έτοιμο — πίσω στον αγώνα
         </button>
       </section>

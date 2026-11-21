@@ -10,6 +10,7 @@ import {
   requiredSpeed,
   type ScoringMethod,
 } from '../scoring/corrected';
+import { num, qty } from '../format';
 
 interface ScoringState {
   method: ScoringMethod;
@@ -104,7 +105,7 @@ export function ScoringView() {
         </label>
         {myOpt && (
           <p className="muted small">
-            {me?.name}: ToD {myOpt.tod.toFixed(1)} s/NM · ToT {myOpt.tot.toFixed(4)}
+            {me?.name}: ToD {qty(myOpt.tod, 's/NM')} · ToT {num(myOpt.tot, 4)}
           </p>
         )}
       </section>
@@ -179,14 +180,14 @@ export function ScoringView() {
         {canCompare && perUnit !== undefined && (
           <div className="compare">
             <p>
-              {perUnit >= 0 ? 'Παίρνω' : 'Δίνω'} <strong>{Math.abs(perUnit).toFixed(1)} s</strong>
+              {perUnit >= 0 ? 'Παίρνω' : 'Δίνω'} <strong>{qty(Math.abs(perUnit), 's')}</strong>
               {s.method === 'ToT' ? ' ανά ώρα του αντιπάλου' : ' ανά NM'}
               {s.method === 'ToD' && distanceOk && <> · σύνολο <strong>{formatDuration(Math.abs(perUnit * distance))}</strong></>}
             </p>
             {tie !== undefined ? (
               <p>
                 Για να κερδίσω πρέπει να τερματίσω σε λιγότερο από <strong>{formatDuration(tie)}</strong>
-                {distanceOk && <> (μέση ταχύτητα ≥ <strong>{requiredSpeed(distance, tie).toFixed(2)} kt</strong>)</>}.
+                {distanceOk && <> (μέση ταχύτητα ≥ <strong>{qty(requiredSpeed(distance, tie), 'kt', 2)}</strong>)</>}.
               </p>
             ) : (
               <p className="muted small">Βάλε χρόνο (ή εκτίμηση) του αντιπάλου για να δεις τι χρειάζεσαι.</p>

@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { StickyBar } from './StickyBar';
 import { useHoldUpdate } from './useHoldUpdate';
 import { useApp } from './AppContext';
 import { useNav } from './NavContext';
@@ -14,7 +15,7 @@ import { TRAINING_TEXT as TT, WIND_TEXT as WT } from './sessionText';
 import { GOALS } from '../race/training';
 import { DEFAULT_TRAINING_ALERTS } from '../race/alerts';
 import type { TrainingGoal } from '../race/types';
-import { showAlert } from './Dialogs';
+import { askConfirm } from './Dialogs';
 import { startNewBoat } from './WelcomeCard';
 import { entryBoat } from './RaceView';
 import { SessionCard } from './HistoryView';
@@ -31,6 +32,7 @@ import { destPatch, type CruiseDest } from '../race/cruise';
 import { DestPicker, useRecents } from './CruiseViews';
 import { CRUISE_TEXT as CT } from './sessionText';
 import type { Race, SessionKind } from '../race/types';
+import { num } from '../format';
 
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 
@@ -55,12 +57,16 @@ export function HomeView({
   /** P-040: «Δες τη διοργάνωση». */
   onEvent?: (eventId: string) => void;
 }) {
-  const { boats } = useApp();
+  const { boats, ready } = useApp();
+  // Read after the dialog: the boats may arrive (first load or first /sync) while it is open.
+  const boatsRef = useRef(boats);
+  boatsRef.current = boats;
   const race = useRace();
   // P-040 AC 10–11: up to 2 open events; their saved races show only in their card.
   const evCards = openEvents(race.events, race.races).slice(0, 2);
   const inEvent = (r: Race) => !!r.eventId && race.events.some((e) => e.id === r.eventId);
-  const noBoat = boats.length === 0;
+  // Only after the device data is loaded, so a quick tap never shows the lock by mistake.
+  const noBoat = ready && boats.length === 0;
   const done = useMemo(
     () => race.races.filter((r) => r.status === 'finished').sort((a, b) => (b.finish ?? b.start) - (a.finish ?? a.start)),
     [race.races],
@@ -76,7 +82,7 @@ export function HomeView({
       {noBoat && (
         <section className="card">
           <h3>Καλώς ήρθες</h3>
-          <p className="small">Για Αγώνα και Προπόνηση χρειάζεται το σκάφος σου, από το πιστοποιητικό ORC. Για Αναψυχή μπορείς να ξεκινήσεις και χωρίς.</p>
+          <p className="small">Για Αγώνα και Προπόνηση χρειάζεται το σκάφος σου: από το πιστοποιητικό ORC ή με το χέρι. Για Αναψυχή μπορείς να ξεκινήσεις και χωρίς.</p>
           <button type="button" className="btn primary big-btn wide" onClick={() => startNewBoat()}>
             ＋ Πρόσθεσε το σκάφος σου
           </button>
@@ -90,15 +96,21 @@ export function HomeView({
             key={k}
             type="button"
             className={`mode-card ${need ? 'need' : ''}`}
-            aria-label={`${KIND_INFO[k].name}: ${need ? 'Θέλει πρώτα σκάφος με polar' : KIND_INFO[k].desc}`}
-            onClick={() => (need ? showAlert('Πρώτα πρόσθεσε το σκάφος σου') : onSetup(k))}
+            aria-label={`${KIND_INFO[k].name}: ${need ? 'Θέλει πρώτα σκάφος' : KIND_INFO[k].desc}`}
+            onClick={async () => {
+              if (!need) return onSetup(k);
+              const add = await askConfirm('Πρώτα πρόσθεσε το σκάφος σου', { ok: 'Πρόσθεσε σκάφος', cancel: 'Όχι τώρα' });
+              if (!add) return;
+              if (boatsRef.current.length > 0) onSetup(k);
+              else startNewBoat();
+            }}
           >
             <span className="ic">
               <Icon name={k} size={30} />
             </span>
             <span>
               <b>{KIND_INFO[k].name}</b>
-              <span className="d">{need ? 'Θέλει πρώτα σκάφος με polar' : KIND_INFO[k].desc}</span>
+              <span className="d">{need ? 'Θέλει πρώτα σκάφος' : KIND_INFO[k].desc}</span>
             </span>
             <span className="go" aria-hidden="true">
               ›
@@ -171,7 +183,7 @@ function BasicLive() {
   const v = inst.live ? inst.values : {};
   useNow(5000); // the age and the 30″ hold of the TWA
   const bw = useBasicWind();
-  const n1 = (x?: number) => (x === undefined ? '—' : x.toFixed(1).replace('.', ','));
+  const n1 = (x?: number) => num(x);
   const d0 = (x?: number) => (x === undefined ? '—' : `${Math.round(x)}°`);
   // P-053 AC 39–40: the manual wind of this screen first, else the instruments, else none.
   const m = bw.manual?.on ? bw.manual : undefined;
@@ -429,11 +441,11 @@ export function SessionSetup({ kind, onStarted }: { kind: 'training' | 'cruise';
         </p>
       )}
       {!(kind === 'cruise' && picking) && (
-        <div className="btn-row sticky-actions">
+        <StickyBar>
           <button type="button" className="btn primary big-btn wide" disabled={busy || !!race.session || (kind === 'training' && !boat)} onClick={start}>
             {kind === 'training' ? '● Έναρξη προπόνησης' : CT.start}
           </button>
-        </div>
+        </StickyBar>
       )}
     </div>
   );

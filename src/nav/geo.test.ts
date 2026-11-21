@@ -22,7 +22,7 @@ describe('geo', () => {
     expect(sogCogFromFixes(a, { ...a, t: 1000 })).toBeUndefined();
   });
   it('formats degrees/minutes', () => {
-    expect(formatDM(37.8723, true)).toBe("37°52.338'N");
-    expect(formatDM(-0.5, false)).toBe("0°30.000'W");
+    expect(formatDM(37.8723, true)).toBe("37°52,338'N");
+    expect(formatDM(-0.5, false)).toBe("0°30,000'W");
   });
 });

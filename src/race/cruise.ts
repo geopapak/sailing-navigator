@@ -1,3 +1,4 @@
+import { span } from '../format';
 import { distanceNm, type LatLon } from '../nav/geo';
 import type { Mark } from '../routing/isochrones';
 import { kindOf, sessionStats } from './session';
@@ -148,9 +149,45 @@ export function remainingNm(pos: LatLon, marks: LatLon[], next: number): number 
   return distanceNm(pos, marks[next]) + routeNm(marks.slice(next));
 }
 
-/** Mean SOG over the window before `now`, from the track; else the speed given (the GPS now). */
-export function meanSog(track: Pick<TrackPoint, 't' | 'sog'>[], now: number, windowMs = ETA_WINDOW_MS, current?: number): number | undefined {
-  const s = track.filter((p) => p.t > now - windowMs && p.t <= now && p.sog !== undefined && Number.isFinite(p.sog)).map((p) => p.sog!);
+/** A step between two track points longer than this is a pause or a lost GPS: no speed from it (s). */
+export const SOG_GAP_SEC = 300;
+/** A step longer than this is a GPS jump (nm). */
+export const SOG_JUMP_NM = 2;
+/** A speed above this is a GPS jump, not a sailing boat (kt). */
+export const SOG_MAX_KT = 30;
+
+type SogPoint = Pick<TrackPoint, 't' | 'sog'> & Partial<Pick<TrackPoint, 'lat' | 'lon'>>;
+
+/**
+ * The track's speeds (sorted by time): the point's own `sog`, else distance / time from
+ * the point before (P-056 §ΣΤ), without jumps > 2 nm, speeds > 30 kt or gaps (pauses).
+ */
+export function trackSpeeds(track: SogPoint[]): { t: number; sog: number }[] {
+  const pts = [...track].sort((a, b) => a.t - b.t);
+  const out: { t: number; sog: number }[] = [];
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i];
+    if (p.sog !== undefined && Number.isFinite(p.sog)) {
+      out.push({ t: p.t, sog: p.sog });
+      continue;
+    }
+    const q = pts[i - 1];
+    if (!q || p.lat === undefined || p.lon === undefined || q.lat === undefined || q.lon === undefined) continue;
+    const dt = (p.t - q.t) / 1000;
+    if (!(dt > 0) || dt > SOG_GAP_SEC) continue;
+    const d = distanceNm({ lat: q.lat, lon: q.lon }, { lat: p.lat, lon: p.lon });
+    const kt = (d / dt) * 3600;
+    if (d > SOG_JUMP_NM || !Number.isFinite(kt) || kt > SOG_MAX_KT) continue;
+    out.push({ t: p.t, sog: kt });
+  }
+  return out;
+}
+
+/** Mean SOG over the window before `now`, from the track (its speeds, or from its positions); else the speed given (the GPS now). */
+export function meanSog(track: SogPoint[], now: number, windowMs = ETA_WINDOW_MS, current?: number): number | undefined {
+  const s = trackSpeeds(track.filter((p) => p.t > now - windowMs - SOG_GAP_SEC * 1000 && p.t <= now))
+    .filter((p) => p.t > now - windowMs)
+    .map((p) => p.sog);
   if (current !== undefined && Number.isFinite(current)) s.push(current);
   return s.length ? s.reduce((a, x) => a + x, 0) / s.length : undefined;
 }
@@ -166,14 +203,14 @@ export function etaFrom(nm: number, kt: number | undefined, now: number): { at: 
  * Top speed of a cruise: the highest mean SOG over 30″ (every window starting at a
  * point and holding at least two points), not one noisy GPS point. Undefined without such a window.
  */
-export function maxSog30(track: Pick<TrackPoint, 't' | 'sog'>[], windowMs = MAX_WINDOW_MS): number | undefined {
-  const pts = track.filter((p) => p.sog !== undefined && Number.isFinite(p.sog)).sort((a, b) => a.t - b.t);
+export function maxSog30(track: SogPoint[], windowMs = MAX_WINDOW_MS): number | undefined {
+  const pts = trackSpeeds(track);
   let best: number | undefined;
   for (let i = 0; i < pts.length; i++) {
     let sum = 0;
     let n = 0;
     for (let j = i; j < pts.length && pts[j].t - pts[i].t <= windowMs; j++) {
-      sum += pts[j].sog!;
+      sum += pts[j].sog;
       n += 1;
     }
     if (n >= 2 && (best === undefined || sum / n > best)) best = sum / n;
@@ -238,11 +275,8 @@ export function pausedEta(track: Pick<TrackPoint, 't' | 'lat' | 'lon' | 'sog'>[]
   return etaFrom(remainingNm(last, marks, next), meanSog(before, pauseFrom), pauseFrom);
 }
 
-/** «45′» or «2 ώ 05′». */
-export function durText(sec: number): string {
-  const m = Math.max(0, Math.round(sec / 60));
-  return m >= 60 ? `${Math.floor(m / 60)} ώ ${String(m % 60).padStart(2, '0')}′` : `${m}′`;
-}
+/** «45′» or «2 ώ 05′». Alias of `span` (src/format). */
+export const durText = (sec: number): string => span(sec);
 
 /** Interval the cruise track was written at (15″ or 30″), from the gaps between points. */
 export function trackIntervalSec(track: Pick<TrackPoint, 't'>[], fallback: 15 | 30): 15 | 30 {

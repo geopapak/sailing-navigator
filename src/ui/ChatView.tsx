@@ -15,6 +15,7 @@ import { modelLabel } from '../weather/models';
 import { useRace } from './RaceContext';
 import { KIND_INFO } from '../race/session';
 import { CHAT_TEXT } from './sessionText';
+import { day, time } from '../format';
 
 interface Entry extends ChatMessage {
   at: number;
@@ -116,7 +117,13 @@ export function ChatView() {
   const waiting = configured && !!account && !account.ai.allowed && !settings.aiCode.trim();
 
   const live = getLiveSnapshot();
-  const planned = nav.planned;
+  // P-067 KA-Λ12: inside a race the race's own plan (its start and marks), else «Διαδρομές μου».
+  const sessionRace = race.session && race.kind === 'race' ? race.session : undefined;
+  useEffect(() => {
+    if (sessionRace) nav.loadRacePlan(sessionRace.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionRace?.id]);
+  const planned = sessionRace ? (nav.racePlans[sessionRace.id]?.route ?? undefined) : nav.planned;
   const comparison = nav.comparison;
 
   useEffect(() => {
@@ -140,7 +147,7 @@ export function ChatView() {
     if (useData.plan && planned && activeBoat) {
       const p = nav.plan;
       ctx.plan = buildPlanContext(activeBoat, {
-        courseName: nav.course?.name ?? "—",
+        courseName: sessionRace ? sessionRace.courseName || sessionRace.name : (nav.course?.name ?? '—'),
         windSource: p.windSource,
         model: p.windSource === 'forecast' && nav.forecast ? modelLabel(nav.forecast.model) : undefined,
         forecastFetched: p.windSource === 'forecast' && nav.forecast ? localIso(nav.forecast.fetchedAt) : undefined,
@@ -226,7 +233,7 @@ export function ChatView() {
             Live {live ? `(${ago(live.at)})` : '—'}
           </button>
           <button className={`chip small-chip ${useData.plan && planned ? 'on' : ''}`} disabled={!planned} onClick={() => setUseData({ ...useData, plan: !useData.plan })}>
-            Σχέδιο {planned ? `(${new Date(planned.start).toLocaleDateString('el-GR', { weekday: 'short' })})` : '—'}
+            Σχέδιο {planned ? `(${day(planned.start).split(' ')[0]})` : '—'}
           </button>
           <button
             className={`chip small-chip ${useData.models && comparison ? 'on' : ''}`}
@@ -239,7 +246,7 @@ export function ChatView() {
         {comparison && planned && Math.abs(comparison.start - planned.start) > 3_600_000 && (
           <p className="muted small">Η σύγκριση μοντέλων είναι για άλλη ώρα εκκίνησης από το σχέδιο ({localIso(comparison.start).slice(11, 16)}).</p>
         )}
-        {nav.plan.startLocal && !planned && <p className="muted small">Χωρίς υπολογισμένη διαδρομή: ο σύμβουλος δεν θα ξέρει το σχέδιο.</p>}
+        {(sessionRace || nav.plan.startLocal) && !planned && <p className="muted small">Χωρίς υπολογισμένη διαδρομή: ο σύμβουλος δεν θα ξέρει το σχέδιο.</p>}
         {waiting && (
           <p className="small">
             <BtnIcon name="lock" />
@@ -275,7 +282,7 @@ export function ChatView() {
               <div className="bubble-meta muted small">
                 {e.tools && e.tools.length > 0 && <span>Χρησιμοποίησε: {e.tools.map((t) => TOOL_LABEL[t] ?? t).join(', ')} · </span>}
                 {e.fallback && <span>εναλλακτικό μοντέλο · </span>}
-                <span>{new Date(e.at).toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit' })}</span>
+                <span>{time(e.at)}</span>
                 {e.sources && e.sources.length > 0 && (
                   <ul className="sources">
                     {e.sources.filter((s) => /^https?:\/\//i.test(s.url)).slice(0, 5).map((s) => (

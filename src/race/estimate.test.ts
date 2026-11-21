@@ -80,3 +80,58 @@ describe('race estimate', () => {
     expect(fmtGap(3725)).toBe('+1:02:05');
   });
 });
+
+describe('P-056: GPH / no correction and «1ος» only with a comparison', () => {
+  const manualOwn: RaceEntry = { id: 'us', name: 'Εμείς', own: true, source: 'own', boat: { gph: TRE_IRENE.gph, polar: TRE_IRENE.polar, scoring: [] } };
+  const fixAt = (entryId: string) => ({ entryId, t: T0 + 3600_000, lat: (A.lat + B.lat) / 2, lon: A.lon, source: 'manual' as const });
+
+  it('KA-A5: with «gph» an opponent with only a GPH gets a corrected time; without GPH «χωρίς GPH»', () => {
+    const gphOnly: RaceEntry = { id: 'g', name: 'Μόνο GPH', source: 'pdf', boat: { gph: TRE_IRENE.gph! * 1.05, scoring: [] } };
+    const bare: RaceEntry = { id: 'n', name: 'Τίποτα', source: 'none' };
+    const r = race({ scoringOptionId: 'gph', method: 'ToD', entries: [manualOwn, gphOnly, bare], fixes: [fixAt('us'), fixAt('g')] });
+    const rows = estimateRace(r, wind, T0 + 3600_000);
+    expect(rows.find((x) => x.entryId === 'g')!.corrected).toBeDefined();
+    expect(rows.find((x) => x.entryId === 'us')!.corrected).toBeDefined();
+    expect(rows.find((x) => x.entryId === 'n')!.missing).toBe('χωρίς GPH');
+    // Finished times go through ToD = GPH × NM.
+    const done = race({ scoringOptionId: 'gph', method: 'ToD', entries: [manualOwn], results: { us: 20_000 }, status: 'finished' });
+    expect(estimateRace(done, undefined)[0].corrected).toBeCloseTo(20_000 - TRE_IRENE.gph! * courseLengthNm(marks), 6);
+  });
+
+  it('KA-A6: with «none» corrected = elapsed for every boat', () => {
+    const bare: RaceEntry = { id: 'n', name: 'Τίποτα', source: 'none' };
+    const r = race({ scoringOptionId: 'none', method: 'ToT', entries: [own, bare], results: { us: 5000, n: 5100 }, status: 'finished' });
+    const rows = estimateRace(r, undefined);
+    expect(rows.map((x) => [x.entryId, x.corrected])).toEqual([
+      ['us', 5000],
+      ['n', 5100],
+    ]);
+  });
+
+  it('KA-Γ1: a rank only when at least two boats have a corrected time', () => {
+    const alone = estimateRace(race({ fixes: [fixAt('us')] }), wind, T0 + 3600_000);
+    expect(alone[0].corrected).toBeDefined();
+    expect(alone[0].rank).toBeUndefined();
+    const noPos: RaceEntry = { id: 'x', name: 'Χωρίς θέση', source: 'orc', boat: { ...TRE_IRENE } };
+    const two = estimateRace(race({ entries: [own, noPos, { ...noPos, id: 'y' }], fixes: [fixAt('us')] }), wind, T0 + 3600_000);
+    expect(two.every((x) => x.rank === undefined)).toBe(true);
+    expect(two.filter((x) => !x.own).map((x) => x.missing)).toEqual(['χωρίς θέση', 'χωρίς θέση']);
+    const both = estimateRace(race({ entries: [own, noPos], fixes: [fixAt('us'), fixAt('x')] }), wind, T0 + 3600_000);
+    expect(both.map((x) => x.rank)).toEqual([1, 2]);
+  });
+});
+
+describe('noComparison (KA-Γ2, Γ3)', () => {
+  it('says why there is no place', async () => {
+    const { noComparison } = await import('./estimate');
+    expect(noComparison([{ entryId: 'us', name: 'Εμείς', own: true, corrected: 100 }])).toEqual({ none: true, text: 'Χωρίς αντιπάλους' });
+    expect(
+      noComparison([
+        { entryId: 'us', name: 'Εμείς', own: true, corrected: 100 },
+        { entryId: 'x', name: 'Χ', own: false, missing: 'χωρίς θέση' },
+        { entryId: 'y', name: 'Υ', own: false, missing: 'χωρίς θέση' },
+      ]),
+    ).toEqual({ none: false, text: 'Χωρίς σύγκριση: λείπει θέση αντιπάλου' });
+    expect(noComparison([{ entryId: 'us', name: 'Εμείς', own: true, corrected: 100, rank: 1 }, { entryId: 'x', name: 'Χ', own: false, corrected: 120, rank: 2 }])).toBeUndefined();
+  });
+});

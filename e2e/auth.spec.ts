@@ -152,6 +152,10 @@ test.describe('όροι που δεν έχουν γίνει αποδεκτοί',
 
 test('σύνδεσμος πρόσκλησης χωρίς σύνδεση: πρώτα η σύνδεση, μετά η πρόσκληση', async ({ app }) => {
   await app.open('/?invite=e2e-invite-000000000001');
+  // P-056 ΚΑ-Δ1, Δ2: the invite hint, and «Νέος λογαριασμός» first on a device that never had an account.
+  await expect(app.page.getByRole('heading', { name: 'Νέος λογαριασμός' })).toBeVisible();
+  await expect(app.page.getByTestId('invite-hint')).toContainText('Άνοιξες πρόσκληση πληρώματος');
+  await app.page.getByRole('button', { name: 'Σύνδεση', exact: true }).click();
   await expect(signInBtn(app)).toBeVisible();
   expect(app.server.calls('/invites/*')).toHaveLength(0);
   await app.signIn(TEST_EMAIL);

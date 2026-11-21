@@ -25,6 +25,7 @@ import { activeMs, goalOf, goalSub, mss } from '../race/training';
 import { pausedSince } from '../race/pauses';
 import { destName } from '../race/cruise';
 import { CRUISE_TEXT } from './sessionText';
+import { day, time, timeSec } from '../format';
 
 /**
  * Inside a session (P-033): the bar on top with kind, running time, ⚙ quick
@@ -42,15 +43,11 @@ export const hms = (ms: number) => {
   const s = Math.max(0, Math.floor(ms / 1000));
   return `${Math.floor(s / 3600)}:${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 };
-const DAYS = ['Κυρ', 'Δευ', 'Τρί', 'Τετ', 'Πέμ', 'Παρ', 'Σάβ'];
-/** «Κυρ 23/11» */
-export const dayStr = (t: number) => {
-  const d = new Date(t);
-  return `${DAYS[d.getDay()]} ${d.getDate()}/${d.getMonth() + 1}`;
-};
-export const hhmm = (t: number) => new Date(t).toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit', hour12: false });
+/** «Κυρ 23/11» (aliases of src/format). */
+export const dayStr = (t: number) => day(t);
+export const hhmm = (t: number) => time(t);
 /** «14:32:07» (P-040: the time of a finish). */
-export const hhmmss = (t: number) => new Date(t).toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+export const hhmmss = (t: number) => timeSec(t);
 
 export function useNow(ms = 1000) {
   const [now, setNow] = useState(Date.now());
@@ -465,7 +462,7 @@ function QuickSettings({ kind, onClose }: { kind: SessionKind; onClose: () => vo
       <div className="settings-sub">Ειδοποιήσεις · {KIND_INFO[kind].name}</div>
       <KindAlertToggles kind={kind} quick />
       <div className="settings-sub">Ένταση</div>
-      <div className="seg" role="group" aria-label="Ένταση">
+      <div className="seg words" role="group" aria-label="Ένταση">
         {(
           [
             ['off', 'Σίγαση'],
@@ -493,7 +490,7 @@ function QuickSettings({ kind, onClose }: { kind: SessionKind; onClose: () => vo
         ))}
       </div>
       <div className="settings-sub">Θέμα</div>
-      <div className="seg" role="group" aria-label="Θέμα">
+      <div className="seg words" role="group" aria-label="Θέμα">
         {(Object.keys(THEME_INFO) as Theme[]).map((t) => (
           <button key={t} type="button" className={settings.theme === t ? 'on' : ''} aria-pressed={settings.theme === t} onClick={() => updateSettings({ theme: t })}>
             {THEME_INFO[t].label}

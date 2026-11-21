@@ -1,0 +1,78 @@
+{
+  "id": "P029",
+  "method": "browser",
+  "flows_tried": [
+    "01",
+    "05",
+    "07",
+    "11",
+    "14"
+  ],
+  "scores": {
+    "first_impression": 4,
+    "ease_of_use": 4,
+    "usefulness_for_me": 3,
+    "readability_at_sea": 4,
+    "trust_in_numbers": 2,
+    "would_use_next_outing": 3,
+    "would_recommend": 6,
+    "would_pay": "maybe (μόνο για Live με όργανα)"
+  },
+  "likes": [
+    "Όταν περνάς τη γραμμή τερματισμού με GPS ρωτάει «Τερματίσατε στις …;» και κλείνει τον αγώνα με 1 πάτημα (P029/54-finish-sheet).",
+    "Σε landscape 1180×820 το Live χωράει χωρίς οριζόντια κύλιση (P029/10-live-full-landscape-1).",
+    "Το Σούρουπο είναι ξεκούραστο κάτω από τη θήκη."
+  ],
+  "problems": [
+    {
+      "screen": "browser:P029/57-finish-analysis-1",
+      "flow": "11",
+      "what": "Ο αγώνας κράτησε 0:39:19 (10:02–10:41), αλλά τα σκέλη είναι 0:20:00 + 0:21:00 = 0:41:00, περισσότερο από τον αγώνα.",
+      "why_it_matters_to_me": "Αυτό ακριβώς ελέγχω μετά τον αγώνα. Αφού δεν αθροίζει, δεν το εμπιστεύομαι.",
+      "severity": "major"
+    },
+    {
+      "screen": "browser:P029/57-finish-analysis-1",
+      "flow": "11",
+      "what": "Η κεφαλίδα γράφει «3,5 NM» και τα σκέλη «1.5/1.9 NM» και «2.0/2.0 NM».",
+      "why_it_matters_to_me": "Ανακατεμένα δεκαδικά.",
+      "severity": "minor"
+    },
+    {
+      "screen": "browser:P029/06-prestart-all-1",
+      "flow": "07",
+      "what": "Ούτε στην προεκκίνηση ούτε στο Live βρήκα ευνοημένο άκρο της γραμμής ή isochrones.",
+      "why_it_matters_to_me": "Γι' αυτά θα το είχα στο tablet.",
+      "severity": "major"
+    },
+    {
+      "screen": "browser:P029/08-live-full-portrait-1",
+      "flow": "07",
+      "what": "Στο tablet το Live είναι μια στενή στήλη σαν κινητό, και ο χώρος δεξιά μένει άδειος.",
+      "why_it_matters_to_me": "Θέλω χάρτη και νούμερα δίπλα-δίπλα.",
+      "severity": "minor"
+    }
+  ],
+  "confusing_words": [],
+  "missing_for_me": [
+    "Isochrones",
+    "Ευνοημένο άκρο / bias της γραμμής εκκίνησης",
+    "Διάταξη δύο στηλών στο tablet"
+  ],
+  "suggestions": [
+    "Τα σκέλη να κόβονται στον τερματισμό, ώστε να αθροίζουν στον χρόνο του αγώνα.",
+    "Σε πλάτος από 900 px και πάνω: Live και χάρτης δίπλα-δίπλα."
+  ],
+  "quotes": [
+    "Ο τερματισμός από τη γραμμή δούλεψε μόνος του. Αυτό είναι καλό."
+  ],
+  "summary": "Η ανίχνευση της γραμμής τερματισμού και το landscape δουλεύουν. Η ανάλυση όμως έδειξε σκέλη που αθροίζουν περισσότερο από τον αγώνα, και για τακτικό με tablet λείπουν τα isochrones και το bias της γραμμής.",
+  "browser_metrics": {
+    "device": "iPad 820×1180 και landscape 1180×820 (Chromium), Σούρουπο",
+    "taps": {
+      "εγγραφή": 7,
+      "έναρξη αγώνα": 4,
+      "επιβεβαίωση τερματισμού": 1
+    }
+  }
+}

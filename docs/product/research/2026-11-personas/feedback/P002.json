@@ -1,0 +1,92 @@
+{
+  "id": "P002",
+  "method": "screens",
+  "flows_tried": [
+    "01",
+    "04",
+    "05",
+    "07",
+    "12",
+    "14"
+  ],
+  "scores": {
+    "first_impression": 3,
+    "ease_of_use": 2,
+    "usefulness_for_me": 3,
+    "readability_at_sea": 3,
+    "trust_in_numbers": 2,
+    "would_use_next_outing": 2,
+    "would_recommend": 4,
+    "would_pay": "no"
+  },
+  "likes": [
+    "Big numbers in race Live (07-15): speed, angle, next tack — readable without my glasses.",
+    "Race analysis with track, legs and % target graph (07-28, 07-30) is what I want after a race.",
+    "Privacy text says clearly the GPS track stays on the phone (01-05)."
+  ],
+  "problems": [
+    {
+      "screen": "01-01",
+      "flow": "01",
+      "what": "Όλη η εφαρμογή είναι μόνο στα ελληνικά. Δεν είδα επιλογή γλώσσας στις Ρυθμίσεις (05-01, 05-11).",
+      "why_it_matters_to_me": "Διαβάζω ελληνικά επιπέδου A2. Τα μεγάλα κείμενα (όροι, οδηγός, ειδοποιήσεις) τα περνάω από μεταφραστή.",
+      "severity": "major"
+    },
+    {
+      "screen": "05-03",
+      "flow": "05",
+      "what": "Τύποι σύνδεσης: μόνο Signal K και NMEA 0183 μέσω WebSocket. Δεν είδα Garmin / NMEA 2000.",
+      "why_it_matters_to_me": "Έχω Garmin με NMEA 2000 και gateway WiFi. Δεν ξέρω αν δουλεύει, και χωρίς όργανα χάνω τους στόχους ORC στο Live.",
+      "severity": "major"
+    },
+    {
+      "screen": "07-04",
+      "flow": "07",
+      "what": "Η νέα διαδρομή στήνεται με άγγιγμα στον χάρτη ή «Από GPS». Δεν είδα πεδίο για να γράψω συντεταγμένες από τις οδηγίες πλου.",
+      "why_it_matters_to_me": "Οι σημαδούρες έρχονται με συντεταγμένες. Με το δάχτυλο σε χάρτη χωρίς πλακίδια (07-04) δεν βάζω σωστά σημεία.",
+      "severity": "major"
+    },
+    {
+      "screen": "07-30",
+      "flow": "07",
+      "what": "Στα «Σκέλη» το σκέλος Εκκίνηση → Πάνω σημαδούρα γράφει 0:08:35, ενώ όλος ο αγώνας ήταν 0:03:52 (07-28). Γράφει και «1.0/1.9 NM» με τελεία.",
+      "why_it_matters_to_me": "Αν δεν ταιριάζουν ούτε οι χρόνοι μεταξύ τους, δεν μπορώ να εμπιστευτώ την ανάλυση για το πού έχασα.",
+      "severity": "major"
+    },
+    {
+      "screen": "12-21",
+      "flow": "12",
+      "what": "Ο σύνδεσμος πρόσκλησης για το πλήρωμα ανοίγει σκέτη οθόνη σύνδεσης, χωρίς να λέει ποιος καλεί και για ποιο σκάφος.",
+      "why_it_matters_to_me": "Οι άνθρωποι στο πλήρωμά μου δεν θα φτιάξουν λογαριασμό για να δουν μια διαδρομή. Θα τη στείλω πάλι στο WhatsApp.",
+      "severity": "major"
+    },
+    {
+      "screen": "07-09",
+      "flow": "07",
+      "what": "Η ώρα εκκίνησης εμφανίζεται «11/14/2026 10:05 AM» (αμερικανική μορφή).",
+      "why_it_matters_to_me": "Ούτε ελληνική ούτε γερμανική. Μπορεί κάποιος να γράψει λάθος μέρα.",
+      "severity": "minor"
+    }
+  ],
+  "confusing_words": [
+    "μούρες",
+    "πλαγιοδρομία",
+    "σημαδούρα / σημαντήρες",
+    "διοργάνωση / ιστιοδρομία",
+    "Αναψυχή"
+  ],
+  "missing_for_me": [
+    "Αγγλικά (ή γερμανικά) στο UI",
+    "Πεδίο συντεταγμένων για σημαδούρες",
+    "Σαφής οδηγία για Garmin NMEA 2000"
+  ],
+  "suggestions": [
+    "English language switch, even only for Live and Settings.",
+    "Allow typing mark coordinates (DD°MM.mmm')."
+  ],
+  "quotes": [
+    "“The numbers are big and clear — but everything around them I must translate.”",
+    "“If the leg time is longer than the whole race, which number do I believe?”"
+  ],
+  "summary": "Του αρέσουν τα μεγάλα νούμερα του Live και η ανάλυση, αλλά η εφαρμογή είναι μόνο ελληνικά, δεν βλέπει ρητά υποστήριξη για Garmin NMEA 2000 και δεν μπορεί να γράψει συντεταγμένες. Ασυμφωνία χρόνων στην ανάλυση του κόβει την εμπιστοσύνη."
+}

@@ -56,3 +56,12 @@ describe('5 m line (P-036)', () => {
     expect(SHALLOW_COLOR.night).toBe('#d1342a');
   });
 });
+
+describe('scale text (QA Μ6)', () => {
+  it('comma and «NM»', async () => {
+    const { scaleText } = await import('./nauticalStyle');
+    expect(scaleText('0.4 nm')).toBe('0,4 NM');
+    expect(scaleText('12 nm')).toBe('12 NM');
+    expect(scaleText('0,4 NM')).toBe('0,4 NM');
+  });
+});
